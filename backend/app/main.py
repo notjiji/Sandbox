@@ -9,8 +9,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.config import get_settings
 from app.core.exceptions import AppException, InternalServerError
 from app.core.logging import setup_logging
-from app.core.responses import error_response, success_response
+from app.core.responses import error_response
+from app.core.version import API_VERSION
 from app.middleware.request_logging import RequestLoggingMiddleware
+from app.api.v1.router import router as api_v1_router
 
 settings = get_settings()
 setup_logging(settings.LOG_LEVEL)
@@ -23,11 +25,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Sandbox",
-    version="0.1.0",
+    version=API_VERSION,
     lifespan=lifespan,
     docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
     redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
 )
+
+app.include_router(api_v1_router, prefix="/api/v1")
 
 app.add_middleware(RequestLoggingMiddleware)
 
@@ -73,9 +77,3 @@ async def unhandled_exception_handler(_request: Request, _exc: Exception) -> JSO
         status_code=internal.status_code,
     )
 
-
-@app.get("/health")
-def health_check() -> JSONResponse:
-    return success_response(
-        data={"status": "ok", "environment": settings.ENVIRONMENT},
-    )
