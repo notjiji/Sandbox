@@ -18,8 +18,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     JWT_SECRET: str
     REDIS_URL: str
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: str = ""
     ENVIRONMENT: str = "development"
+    LOG_LEVEL: str = "INFO"
 
     @property
     def database_url(self) -> str:
