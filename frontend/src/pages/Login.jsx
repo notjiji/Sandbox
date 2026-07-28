@@ -1,11 +1,46 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogIn } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
+import FormAlert from "../components/FormAlert";
+import FormError from "../components/FormError";
+import { authApi, ApiError } from "../lib/api";
+import { validateLoginForm } from "../lib/validation";
 
 export default function Login() {
-  const handleSubmit = (e) => {
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [errors, setErrors] = useState({});
+  const [alert, setAlert] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
+    setAlert("");
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    const validationErrors = validateLoginForm(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authApi.login(form);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setAlert(error.message);
+      } else {
+        setAlert("Unable to reach the server. Try again later.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -21,7 +56,9 @@ export default function Login() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        {alert && <FormAlert message={alert} />}
+
         <div>
           <label htmlFor="email" className="terminal-text mb-2 block">
             email_addr
@@ -31,10 +68,12 @@ export default function Login() {
             name="email"
             type="email"
             autoComplete="email"
-            required
+            value={form.email}
+            onChange={handleChange}
             placeholder="operator@domain.io"
             className="input-field"
           />
+          <FormError message={errors.email} />
         </div>
 
         <div>
@@ -51,20 +90,23 @@ export default function Login() {
             name="password"
             type="password"
             autoComplete="current-password"
-            required
+            value={form.password}
+            onChange={handleChange}
             placeholder="••••••••"
             className="input-field"
           />
+          <FormError message={errors.password} />
         </div>
 
         <motion.button
           type="submit"
-          className="btn-primary w-full"
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
+          disabled={loading}
+          className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+          whileHover={{ scale: loading ? 1 : 1.01 }}
+          whileTap={{ scale: loading ? 1 : 0.98 }}
         >
           <LogIn size={18} />
-          Authenticate
+          {loading ? "Authenticating..." : "Authenticate"}
         </motion.button>
       </form>
     </AuthLayout>

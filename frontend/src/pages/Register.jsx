@@ -1,11 +1,64 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { UserPlus } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
+import FormAlert from "../components/FormAlert";
+import FormError from "../components/FormError";
+import { authApi, ApiError } from "../lib/api";
+import { validateRegisterForm } from "../lib/validation";
 
 export default function Register() {
-  const handleSubmit = (e) => {
+  const [form, setForm] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [errors, setErrors] = useState({});
+  const [alert, setAlert] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
+    setAlert("");
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    const validationErrors = validateRegisterForm(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authApi.register({
+        full_name: form.fullName,
+        email: form.email,
+        password: form.password,
+        confirm_password: form.confirmPassword,
+      });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.details?.length) {
+          const fieldErrors = {};
+          error.details.forEach(({ field, message }) => {
+            const key = field === "full_name" ? "fullName" : field === "confirm_password" ? "confirmPassword" : field;
+            fieldErrors[key] = message;
+          });
+          setErrors(fieldErrors);
+        }
+        setAlert(error.message);
+      } else {
+        setAlert("Unable to reach the server. Try again later.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -21,7 +74,9 @@ export default function Register() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        {alert && <FormAlert message={alert} />}
+
         <div>
           <label htmlFor="fullName" className="terminal-text mb-2 block">
             display_name
@@ -31,10 +86,12 @@ export default function Register() {
             name="fullName"
             type="text"
             autoComplete="name"
-            required
+            value={form.fullName}
+            onChange={handleChange}
             placeholder="Operator Zero"
             className="input-field"
           />
+          <FormError message={errors.fullName} />
         </div>
 
         <div>
@@ -46,10 +103,12 @@ export default function Register() {
             name="email"
             type="email"
             autoComplete="email"
-            required
+            value={form.email}
+            onChange={handleChange}
             placeholder="operator@domain.io"
             className="input-field"
           />
+          <FormError message={errors.email} />
         </div>
 
         <div>
@@ -61,11 +120,12 @@ export default function Register() {
             name="password"
             type="password"
             autoComplete="new-password"
-            required
-            minLength={8}
+            value={form.password}
+            onChange={handleChange}
             placeholder="min 8 characters"
             className="input-field"
           />
+          <FormError message={errors.password} />
         </div>
 
         <div>
@@ -77,21 +137,23 @@ export default function Register() {
             name="confirmPassword"
             type="password"
             autoComplete="new-password"
-            required
-            minLength={8}
+            value={form.confirmPassword}
+            onChange={handleChange}
             placeholder="repeat pass key"
             className="input-field"
           />
+          <FormError message={errors.confirmPassword} />
         </div>
 
         <motion.button
           type="submit"
-          className="btn-primary w-full"
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
+          disabled={loading}
+          className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+          whileHover={{ scale: loading ? 1 : 1.01 }}
+          whileTap={{ scale: loading ? 1 : 0.98 }}
         >
           <UserPlus size={18} />
-          Initialize Account
+          {loading ? "Initializing..." : "Initialize Account"}
         </motion.button>
       </form>
     </AuthLayout>

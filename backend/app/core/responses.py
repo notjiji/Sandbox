@@ -14,6 +14,9 @@ def error_response(
     code: str,
     message: str,
     status_code: int = 400,
+    details: list[dict[str, str]] | None = None,
 ) -> JSONResponse:
-    payload = ErrorResponse(error=ErrorDetail(code=code, message=message)).model_dump()
-    return JSONResponse(status_code=status_code, content=payload)
+    error: dict[str, Any] = {"code": code, "message": message}
+    if details:
+        error["details"] = details
+    return JSONResponse(status_code=status_code, content={"success": False, "error": error})
