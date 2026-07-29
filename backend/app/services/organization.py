@@ -27,6 +27,7 @@ from app.schemas.organization import (
     UpdateMemberRoleRequest,
     UpdateOrganizationRequest,
 )
+from app.services.audit import AuditAction, record_audit_event
 
 
 def _to_organization_summary(membership: OrganizationMember) -> OrganizationSummary:
@@ -95,6 +96,15 @@ def update_current_organization(
         name=body.name,
         description=body.description,
     )
+    record_audit_event(
+        db,
+        action=AuditAction.ORG_UPDATE,
+        user_id=membership.user_id,
+        organization_id=organization.id,
+        resource_type="organization",
+        resource_id=organization.id,
+        details={"name": body.name, "description": body.description},
+    )
     db.commit()
     db.refresh(organization)
     return _to_organization_detail(organization)
@@ -108,6 +118,14 @@ def delete_current_organization(db: Session, membership: OrganizationMember) -> 
         raise NotFoundError("Organization", "Organization is inactive")
 
     deactivate_organization(db, organization)
+    record_audit_event(
+        db,
+        action=AuditAction.ORG_DELETE,
+        user_id=membership.user_id,
+        organization_id=organization.id,
+        resource_type="organization",
+        resource_id=organization.id,
+    )
     db.commit()
 
 
@@ -148,6 +166,19 @@ def invite_member(
         user_id=user.id,
         role=body.role,
     )
+    record_audit_event(
+        db,
+        action=AuditAction.ORG_MEMBER_INVITE,
+        user_id=membership.user_id,
+        organization_id=organization.id,
+        resource_type="organization_member",
+        resource_id=created.id,
+        details={
+            "invited_user_id": str(user.id),
+            "invited_email": user.email,
+            "role": body.role.value,
+        },
+    )
     db.commit()
     db.refresh(created)
     created = get_organization_member_by_id(
@@ -180,6 +211,18 @@ def update_member(
         raise ForbiddenError("You cannot change your own role")
 
     updated = update_member_role(db, target, role=body.role)
+    record_audit_event(
+        db,
+        action=AuditAction.ORG_MEMBER_UPDATE,
+        user_id=membership.user_id,
+        organization_id=membership.organization_id,
+        resource_type="organization_member",
+        resource_id=target.id,
+        details={
+            "target_user_id": str(target.user_id),
+            "role": body.role.value,
+        },
+    )
     db.commit()
     db.refresh(updated)
     return _to_member_summary(updated)
@@ -206,6 +249,15 @@ def remove_member(
         raise ForbiddenError("You cannot remove yourself from the organization")
 
     remove_organization_member(db, target)
+    record_audit_event(
+        db,
+        action=AuditAction.ORG_MEMBER_REMOVE,
+        user_id=membership.user_id,
+        organization_id=membership.organization_id,
+        resource_type="organization_member",
+        resource_id=target.id,
+        details={"removed_user_id": str(target.user_id)},
+    )
     db.commit()
 
 
@@ -236,6 +288,15 @@ def transfer_organization_ownership(
 
     update_member_role(db, membership, role=OrganizationRole.ADMIN)
     update_member_role(db, target, role=OrganizationRole.OWNER)
+    record_audit_event(
+        db,
+        action=AuditAction.ORG_OWNERSHIP_TRANSFER,
+        user_id=membership.user_id,
+        organization_id=membership.organization_id,
+        resource_type="organization",
+        resource_id=membership.organization_id,
+        details={"new_owner_user_id": str(target.user_id)},
+    )
     db.commit()
     db.refresh(target)
     return _to_member_summary(target)

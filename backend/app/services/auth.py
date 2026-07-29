@@ -53,6 +53,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
 )
 from app.services.email import send_password_reset_email, send_verification_otp_email
+from app.services.audit import AuditAction, record_auth_event
 from app.services.token_context import build_access_token_context
 
 
@@ -89,6 +90,14 @@ def register_user(
         last_name=last_name,
     )
     _issue_verification_otp(db, user=user)
+    record_auth_event(
+        db,
+        action=AuditAction.AUTH_REGISTER,
+        user_id=user.id,
+        resource_type="user",
+        resource_id=user.id,
+        details={"email": email},
+    )
     db.commit()
     db.refresh(user)
     return RegisterResponse(
@@ -100,12 +109,33 @@ def register_user(
 def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
     user = get_user_by_email(db, email)
     if not user or not verify_password(password, user.hashed_password):
+        record_auth_event(
+            db,
+            action=AuditAction.AUTH_LOGIN_FAILED,
+            user_id=user.id if user else None,
+            details={"email": email, "reason": "invalid_credentials"},
+        )
+        db.commit()
         raise UnauthorizedError("Invalid email or password")
 
     if not user.is_active:
+        record_auth_event(
+            db,
+            action=AuditAction.AUTH_LOGIN_FAILED,
+            user_id=user.id,
+            details={"email": email, "reason": "inactive_account"},
+        )
+        db.commit()
         raise UnauthorizedError("Account is inactive")
 
     if not user.is_verified:
+        record_auth_event(
+            db,
+            action=AuditAction.AUTH_LOGIN_FAILED,
+            user_id=user.id,
+            details={"email": email, "reason": "email_not_verified"},
+        )
+        db.commit()
         raise EmailNotVerifiedError()
 
     token_context = build_access_token_context(db, user)
@@ -116,6 +146,14 @@ def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
         user_id=user.id,
         token=refresh_token,
         expires_at=get_refresh_token_expiry(),
+    )
+    record_auth_event(
+        db,
+        action=AuditAction.AUTH_LOGIN,
+        user_id=user.id,
+        resource_type="session",
+        resource_id=refresh_record.id,
+        details={"email": email, "session_id": str(refresh_record.id)},
     )
     db.commit()
 
@@ -152,6 +190,14 @@ def verify_email(db: Session, *, email: str, otp: str) -> MessageResponse:
 
     mark_user_verified(db, user)
     revoke_verification_otp(db, record)
+    record_auth_event(
+        db,
+        action=AuditAction.AUTH_EMAIL_VERIFIED,
+        user_id=user.id,
+        resource_type="user",
+        resource_id=user.id,
+        details={"email": email},
+    )
     db.commit()
     return MessageResponse(message="Email verified successfully")
 
@@ -189,6 +235,14 @@ def refresh_access_token(db: Session, *, refresh_token: str) -> RefreshResponse:
         expires_at=get_refresh_token_expiry(),
     )
     revoke_refresh_token(db, record, replaced_by_id=new_record.id)
+    record_auth_event(
+        db,
+        action=AuditAction.AUTH_REFRESH,
+        user_id=user.id,
+        resource_type="session",
+        resource_id=new_record.id,
+        details={"previous_session_id": str(record.id), "session_id": str(new_record.id)},
+    )
     db.commit()
 
     return RefreshResponse(
@@ -202,6 +256,13 @@ def refresh_access_token(db: Session, *, refresh_token: str) -> RefreshResponse:
 def logout_user(db: Session, *, refresh_token: str) -> LogoutResponse:
     record = get_refresh_token_by_hash(db, refresh_token)
     if record and not record.revoked:
+        record_auth_event(
+            db,
+            action=AuditAction.AUTH_LOGOUT,
+            user_id=record.user_id,
+            resource_type="session",
+            resource_id=record.id,
+        )
         revoke_refresh_token(db, record)
         db.commit()
 
@@ -219,6 +280,14 @@ def request_password_reset(db: Session, *, email: str) -> ForgotPasswordResponse
             user_id=user.id,
             token=token,
             expires_at=get_password_reset_expiry(),
+        )
+        record_auth_event(
+            db,
+            action=AuditAction.AUTH_PASSWORD_RESET_REQUEST,
+            user_id=user.id,
+            resource_type="user",
+            resource_id=user.id,
+            details={"email": email},
         )
         db.commit()
         reset_link = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={token}"
@@ -242,6 +311,13 @@ def reset_password(db: Session, *, body: ResetPasswordRequest) -> MessageRespons
     update_user_password(db, user, hash_password(body.new_password))
     mark_password_reset_token_used(db, record)
     revoke_all_user_refresh_tokens(db, user.id)
+    record_auth_event(
+        db,
+        action=AuditAction.AUTH_PASSWORD_RESET,
+        user_id=user.id,
+        resource_type="user",
+        resource_id=user.id,
+    )
     db.commit()
 
     return MessageResponse(message="Password reset successfully")
@@ -256,6 +332,13 @@ def change_password(db: Session, user, *, body: ChangePasswordRequest) -> Messag
 
     update_user_password(db, user, hash_password(body.new_password))
     revoke_all_user_refresh_tokens(db, user.id)
+    record_auth_event(
+        db,
+        action=AuditAction.AUTH_PASSWORD_CHANGE,
+        user_id=user.id,
+        resource_type="user",
+        resource_id=user.id,
+    )
     db.commit()
 
     return MessageResponse(message="Password changed successfully")

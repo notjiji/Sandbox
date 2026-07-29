@@ -18,6 +18,7 @@ from app.core.responses import error_response
 from app.core.version import API_VERSION
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.core.request_context import RequestContextMiddleware
 
 settings = get_settings()
 setup_logging(settings.LOG_LEVEL)
@@ -40,6 +41,7 @@ app.state.limiter = limiter
 app.include_router(api_v1_router, prefix="/api/v1")
 
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestContextMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,

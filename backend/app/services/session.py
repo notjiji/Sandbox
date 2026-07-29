@@ -12,6 +12,7 @@ from app.repositories.refresh_token import (
     revoke_refresh_token,
 )
 from app.schemas.session import RevokeSessionResponse, SessionListResponse, SessionSummary
+from app.services.audit import AuditAction, record_auth_event
 
 
 def _to_session_summary(session_id: uuid.UUID | None, record) -> SessionSummary:
@@ -47,6 +48,14 @@ def revoke_user_session(
 
     revoked_current = current_session_id is not None and record.id == current_session_id
     if not record.revoked:
+        record_auth_event(
+            db,
+            action=AuditAction.AUTH_SESSION_REVOKED,
+            user_id=user.id,
+            resource_type="session",
+            resource_id=record.id,
+            details={"revoked_current_session": revoked_current},
+        )
         revoke_refresh_token(db, record)
         db.commit()
 
@@ -67,6 +76,14 @@ def revoke_other_sessions(
         raise NotFoundError("Session", "Current session not found")
 
     count = revoke_all_user_sessions_except(db, user.id, except_session_id=current_session_id)
+    record_auth_event(
+        db,
+        action=AuditAction.AUTH_SESSIONS_REVOKED_OTHERS,
+        user_id=user.id,
+        resource_type="session",
+        resource_id=current_session_id,
+        details={"revoked_count": count},
+    )
     db.commit()
     return RevokeSessionResponse(
         message=f"Signed out {count} other session(s)",
@@ -76,6 +93,13 @@ def revoke_other_sessions(
 
 def revoke_all_sessions(db: Session, user: User) -> RevokeSessionResponse:
     revoke_all_user_refresh_tokens(db, user.id)
+    record_auth_event(
+        db,
+        action=AuditAction.AUTH_SESSIONS_REVOKED_ALL,
+        user_id=user.id,
+        resource_type="user",
+        resource_id=user.id,
+    )
     db.commit()
     return RevokeSessionResponse(
         message="Signed out of all sessions",

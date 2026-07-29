@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.repositories.user import get_primary_membership, update_user_profile
 from app.schemas.user import UpdateUserProfileRequest, UserProfileResponse
+from app.services.audit import AuditAction, record_auth_event
 
 
 def get_user_profile(db: Session, user: User) -> UserProfileResponse:
@@ -32,6 +33,17 @@ def update_profile(
         user,
         first_name=body.first_name,
         last_name=body.last_name,
+    )
+    record_auth_event(
+        db,
+        action=AuditAction.USER_PROFILE_UPDATE,
+        user_id=user.id,
+        resource_type="user",
+        resource_id=user.id,
+        details={
+            "first_name": body.first_name,
+            "last_name": body.last_name,
+        },
     )
     db.commit()
     db.refresh(user)
