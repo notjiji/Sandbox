@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.repositories.user import get_primary_membership
-from app.schemas.user import UserProfileResponse
+from app.repositories.user import get_primary_membership, update_user_profile
+from app.schemas.user import UpdateUserProfileRequest, UserProfileResponse
 
 
 def get_user_profile(db: Session, user: User) -> UserProfileResponse:
@@ -19,3 +19,20 @@ def get_user_profile(db: Session, user: User) -> UserProfileResponse:
         role=role,
         organization=organization_name,
     )
+
+
+def update_profile(
+    db: Session,
+    user: User,
+    *,
+    body: UpdateUserProfileRequest,
+) -> UserProfileResponse:
+    update_user_profile(
+        db,
+        user,
+        first_name=body.first_name,
+        last_name=body.last_name,
+    )
+    db.commit()
+    db.refresh(user)
+    return get_user_profile(db, user)

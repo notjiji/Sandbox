@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { BadgeCheck, Building2, Mail, Shield } from "lucide-react";
+import { BadgeCheck, Building2, Mail, Save, Shield } from "lucide-react";
 import AppShell from "../components/AppShell";
 import FormAlert from "../components/FormAlert";
+import FormError from "../components/FormError";
 import { authApi, ApiError } from "../lib/api";
+import { validateProfileForm } from "../lib/validation";
 
 function ProfileSkeleton() {
   return (
@@ -19,8 +21,12 @@ function ProfileSkeleton() {
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);
+  const [form, setForm] = useState({ firstName: "", lastName: "" });
+  const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -28,7 +34,12 @@ export default function Profile() {
     async function loadProfile() {
       try {
         const data = await authApi.getMe();
-        if (active) setProfile(data);
+        if (!active) return;
+        setProfile(data);
+        setForm({
+          firstName: data.first_name,
+          lastName: data.last_name,
+        });
       } catch (error) {
         if (!active) return;
         if (error instanceof ApiError) {
@@ -47,12 +58,65 @@ export default function Profile() {
     };
   }, []);
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
+    setAlert("");
+    setSuccess("");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const validationErrors = validateProfileForm(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const updated = await authApi.updateMe({
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+      });
+      setProfile(updated);
+      setForm({
+        firstName: updated.first_name,
+        lastName: updated.last_name,
+      });
+      setSuccess("Profile updated successfully.");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.details?.length) {
+          const fieldErrors = {};
+          error.details.forEach(({ field, message }) => {
+            const key =
+              field === "first_name"
+                ? "firstName"
+                : field === "last_name"
+                  ? "lastName"
+                  : field;
+            fieldErrors[key] = message;
+          });
+          setErrors(fieldErrors);
+        }
+        setAlert(error.message);
+      } else {
+        setAlert("Unable to update profile.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <AppShell
       title="Profile"
       subtitle="Your operator identity in the sandbox."
     >
       {alert && <FormAlert message={alert} />}
+      {success && <FormAlert message={success} variant="success" />}
       {loading && <ProfileSkeleton />}
 
       {!loading && profile && (
@@ -84,7 +148,54 @@ export default function Profile() {
             )}
           </div>
 
-          <dl className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label htmlFor="firstName" className="terminal-text mb-2 block">
+                  first_name
+                </label>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  autoComplete="given-name"
+                  value={form.firstName}
+                  onChange={handleChange}
+                  className="input-field"
+                />
+                <FormError message={errors.firstName} />
+              </div>
+
+              <div>
+                <label htmlFor="lastName" className="terminal-text mb-2 block">
+                  last_name
+                </label>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  value={form.lastName}
+                  onChange={handleChange}
+                  className="input-field"
+                />
+                <FormError message={errors.lastName} />
+              </div>
+            </div>
+
+            <motion.button
+              type="submit"
+              disabled={saving}
+              className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+              whileHover={{ scale: saving ? 1 : 1.01 }}
+              whileTap={{ scale: saving ? 1 : 0.98 }}
+            >
+              <Save size={18} />
+              {saving ? "Saving..." : "Save Profile"}
+            </motion.button>
+          </form>
+
+          <dl className="mt-8 space-y-5 border-t border-brand-800/50 pt-6">
             <div className="flex items-center gap-3">
               <Mail size={18} className="text-brand-400" />
               <div>

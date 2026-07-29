@@ -201,4 +201,6 @@ export const authApi = {
   changePassword: (data) =>
     apiRequest("/auth/change-password", { method: "PUT", body: data, auth: true }),
   getMe: () => apiRequest("/users/me", { auth: true }),
+  updateMe: (data) =>
+    apiRequest("/users/me", { method: "PATCH", body: data, auth: true }),
 };

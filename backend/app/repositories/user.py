@@ -97,3 +97,17 @@ def is_password_reset_token_valid(record: PasswordResetToken) -> bool:
 def mark_user_verified(db: Session, user: User) -> None:
     user.is_verified = True
     db.add(user)
+
+
+def update_user_profile(
+    db: Session,
+    user: User,
+    *,
+    first_name: str,
+    last_name: str,
+) -> User:
+    user.first_name = first_name
+    user.last_name = last_name
+    db.add(user)
+    db.flush()
+    return user
