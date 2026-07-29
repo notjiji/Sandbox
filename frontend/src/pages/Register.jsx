@@ -47,7 +47,13 @@ export default function Register() {
         password: form.password,
       });
       setSuccess(response.message ?? "Account created successfully");
-      setTimeout(() => navigate("/login"), 1500);
+      setTimeout(
+        () =>
+          navigate(
+            `/verify-email?email=${encodeURIComponent(form.email.trim().toLowerCase())}`,
+          ),
+        800,
+      );
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.details?.length) {

@@ -72,6 +72,30 @@ class ForgotPasswordRequest(BaseSchema):
 
 class RegisterResponse(BaseSchema):
     message: str
+    email: str
+
+
+class VerifyEmailRequest(BaseSchema):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email_field(cls, value: str) -> str:
+        if isinstance(value, str):
+            return normalize_email(value)
+        return value
+
+
+class ResendVerificationRequest(BaseSchema):
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email_field(cls, value: str) -> str:
+        if isinstance(value, str):
+            return normalize_email(value)
+        return value
 
 
 class LoginResponse(BaseSchema):

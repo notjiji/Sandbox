@@ -38,6 +38,18 @@ class ForbiddenError(AppException):
         )
 
 
+class EmailNotVerifiedError(AppException):
+    def __init__(
+        self,
+        message: str = "Email address not verified. Check your inbox for the verification code.",
+    ) -> None:
+        super().__init__(
+            code="EMAIL_NOT_VERIFIED",
+            message=message,
+            status_code=403,
+        )
+
+
 class ValidationAppError(AppException):
     def __init__(self, message: str) -> None:
         super().__init__(

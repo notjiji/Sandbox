@@ -6,5 +6,6 @@ class UserProfileResponse(BaseSchema):
     first_name: str
     last_name: str
     email: str
+    is_verified: bool
     role: str | None = None
     organization: str | None = None

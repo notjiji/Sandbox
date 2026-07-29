@@ -1,14 +1,29 @@
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.exceptions import ConflictError, UnauthorizedError, ValidationAppError
+from app.core.exceptions import (
+    ConflictError,
+    EmailNotVerifiedError,
+    UnauthorizedError,
+    ValidationAppError,
+)
 from app.core.security import (
     create_access_token,
     generate_opaque_token,
+    generate_otp,
     get_password_reset_expiry,
     get_refresh_token_expiry,
+    get_verification_otp_expiry,
     hash_password,
     verify_password,
+)
+from app.repositories.email_verification import (
+    create_verification_otp,
+    get_latest_verification_otp,
+    increment_otp_attempts,
+    is_verification_otp_valid,
+    revoke_verification_otp,
+    verify_otp_code,
 )
 from app.repositories.refresh_token import (
     create_refresh_token_record,
@@ -24,6 +39,7 @@ from app.repositories.user import (
     get_user_by_email,
     is_password_reset_token_valid,
     mark_password_reset_token_used,
+    mark_user_verified,
     update_user_password,
 )
 from app.schemas.auth import (
@@ -36,8 +52,19 @@ from app.schemas.auth import (
     RegisterResponse,
     ResetPasswordRequest,
 )
-from app.services.email import send_password_reset_email
+from app.services.email import send_password_reset_email, send_verification_otp_email
 from app.services.token_context import build_access_token_context
+
+
+def _issue_verification_otp(db: Session, *, user) -> None:
+    otp = generate_otp()
+    create_verification_otp(
+        db,
+        user_id=user.id,
+        otp=otp,
+        expires_at=get_verification_otp_expiry(),
+    )
+    send_verification_otp_email(to_email=user.email, otp=otp)
 
 
 def register_user(
@@ -48,8 +75,11 @@ def register_user(
     email: str,
     password: str,
 ) -> RegisterResponse:
-    if get_user_by_email(db, email):
-        raise ConflictError("An account with this email already exists")
+    existing = get_user_by_email(db, email)
+    if existing:
+        if existing.is_verified:
+            raise ConflictError("An account with this email already exists")
+        raise ConflictError("An account with this email already exists but is not verified")
 
     user = create_user(
         db,
@@ -58,9 +88,13 @@ def register_user(
         first_name=first_name,
         last_name=last_name,
     )
+    _issue_verification_otp(db, user=user)
     db.commit()
     db.refresh(user)
-    return RegisterResponse(message="Account created successfully")
+    return RegisterResponse(
+        message="Account created. Check your email for a verification code.",
+        email=user.email,
+    )
 
 
 def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
@@ -70,6 +104,9 @@ def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
 
     if not user.is_active:
         raise UnauthorizedError("Account is inactive")
+
+    if not user.is_verified:
+        raise EmailNotVerifiedError()
 
     token_context = build_access_token_context(db, user)
     access_token, expires_in = create_access_token(token_context)
@@ -89,6 +126,46 @@ def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
     )
 
 
+def verify_email(db: Session, *, email: str, otp: str) -> MessageResponse:
+    settings = get_settings()
+    user = get_user_by_email(db, email)
+    if not user or not user.is_active:
+        raise UnauthorizedError("Invalid verification code")
+
+    if user.is_verified:
+        return MessageResponse(message="Email already verified")
+
+    record = get_latest_verification_otp(db, user.id)
+    if not record or not is_verification_otp_valid(record):
+        raise UnauthorizedError("Invalid or expired verification code")
+
+    if record.attempts >= settings.EMAIL_VERIFICATION_OTP_MAX_ATTEMPTS:
+        revoke_verification_otp(db, record)
+        db.commit()
+        raise UnauthorizedError("Too many attempts. Request a new verification code.")
+
+    if not verify_otp_code(record, otp):
+        increment_otp_attempts(db, record)
+        db.commit()
+        raise UnauthorizedError("Invalid or expired verification code")
+
+    mark_user_verified(db, user)
+    revoke_verification_otp(db, record)
+    db.commit()
+    return MessageResponse(message="Email verified successfully")
+
+
+def resend_verification(db: Session, *, email: str) -> MessageResponse:
+    user = get_user_by_email(db, email)
+    if user and user.is_active and not user.is_verified:
+        _issue_verification_otp(db, user=user)
+        db.commit()
+
+    return MessageResponse(
+        message="If the account exists and is unverified, a new code will be sent.",
+    )
+
+
 def refresh_access_token(db: Session, *, refresh_token: str) -> RefreshResponse:
     record = get_refresh_token_by_hash(db, refresh_token)
     if not record or not is_refresh_token_valid(record):
@@ -97,6 +174,9 @@ def refresh_access_token(db: Session, *, refresh_token: str) -> RefreshResponse:
     user = record.user
     if not user.is_active:
         raise UnauthorizedError("Account is inactive")
+
+    if not user.is_verified:
+        raise EmailNotVerifiedError()
 
     token_context = build_access_token_context(db, user)
     access_token, expires_in = create_access_token(token_context)

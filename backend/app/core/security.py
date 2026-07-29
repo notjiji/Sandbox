@@ -118,3 +118,14 @@ def get_refresh_token_expiry() -> datetime:
 def get_password_reset_expiry() -> datetime:
     settings = get_settings()
     return datetime.now(UTC) + timedelta(hours=settings.PASSWORD_RESET_TOKEN_EXPIRE_HOURS)
+
+
+def generate_otp() -> str:
+    import secrets
+
+    return f"{secrets.randbelow(900000) + 100000:06d}"
+
+
+def get_verification_otp_expiry() -> datetime:
+    settings = get_settings()
+    return datetime.now(UTC) + timedelta(minutes=settings.EMAIL_VERIFICATION_OTP_EXPIRE_MINUTES)

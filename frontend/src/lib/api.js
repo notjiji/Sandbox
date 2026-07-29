@@ -56,6 +56,10 @@ export async function apiRequest(path, options = {}) {
 
 export const authApi = {
   register: (data) => apiRequest("/auth/register", { method: "POST", body: data }),
+  verifyEmail: (data) =>
+    apiRequest("/auth/verify-email", { method: "POST", body: data }),
+  resendVerification: (data) =>
+    apiRequest("/auth/resend-verification", { method: "POST", body: data }),
   login: async (data) => {
     const payload = await apiRequest("/auth/login", { method: "POST", body: data });
     tokenStorage.setTokens(payload);

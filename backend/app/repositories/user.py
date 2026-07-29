@@ -92,3 +92,8 @@ def is_password_reset_token_valid(record: PasswordResetToken) -> bool:
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=UTC)
     return expires_at > datetime.now(UTC)
+
+
+def mark_user_verified(db: Session, user: User) -> None:
+    user.is_verified = True
+    db.add(user)

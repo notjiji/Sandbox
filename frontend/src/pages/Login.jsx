@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogIn } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
@@ -10,6 +10,8 @@ import { validateLoginForm } from "../lib/validation";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = location.state?.from ?? "/profile";
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState("");
@@ -36,9 +38,15 @@ export default function Login() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      navigate("/");
+      navigate(redirectTo);
     } catch (error) {
       if (error instanceof ApiError) {
+        if (error.code === "EMAIL_NOT_VERIFIED") {
+          navigate(
+            `/verify-email?email=${encodeURIComponent(form.email.trim().toLowerCase())}`,
+          );
+          return;
+        }
         setAlert(error.message);
       } else {
         setAlert("Unable to reach the server. Try again later.");

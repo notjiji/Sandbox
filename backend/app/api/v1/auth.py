@@ -14,7 +14,9 @@ from app.schemas.auth import (
     LogoutRequest,
     RefreshRequest,
     RegisterRequest,
+    ResendVerificationRequest,
     ResetPasswordRequest,
+    VerifyEmailRequest,
 )
 from app.services.auth import (
     change_password,
@@ -23,7 +25,9 @@ from app.services.auth import (
     refresh_access_token,
     register_user,
     request_password_reset,
+    resend_verification,
     reset_password,
+    verify_email,
 )
 
 router = APIRouter()
@@ -41,6 +45,28 @@ def register(request: Request, body: RegisterRequest, db: Session = Depends(get_
         password=body.password,
     )
     return JSONResponse(status_code=201, content=result.model_dump())
+
+
+@router.post("/verify-email")
+@limiter.limit(settings.RATE_LIMIT_AUTH)
+def verify_email_route(
+    request: Request,
+    body: VerifyEmailRequest,
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    result = verify_email(db, email=str(body.email), otp=body.otp)
+    return JSONResponse(status_code=200, content=result.model_dump())
+
+
+@router.post("/resend-verification")
+@limiter.limit(settings.RATE_LIMIT_AUTH)
+def resend_verification_route(
+    request: Request,
+    body: ResendVerificationRequest,
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    result = resend_verification(db, email=str(body.email))
+    return JSONResponse(status_code=200, content=result.model_dump())
 
 
 @router.post("/login")

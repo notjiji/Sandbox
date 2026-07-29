@@ -34,3 +34,8 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    email_verification_otps: Mapped[list["EmailVerificationOtp"]] = relationship(
+        "EmailVerificationOtp",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
