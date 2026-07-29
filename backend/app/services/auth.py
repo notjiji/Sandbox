@@ -119,7 +119,7 @@ def refresh_access_token(db: Session, *, refresh_token: str) -> RefreshResponse:
 
 def logout_user(db: Session, *, refresh_token: str) -> LogoutResponse:
     record = get_refresh_token_by_hash(db, refresh_token)
-    if record and record.revoked_at is None:
+    if record and not record.revoked:
         revoke_refresh_token(db, record)
         db.commit()
 

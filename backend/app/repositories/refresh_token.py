@@ -23,6 +23,7 @@ def create_refresh_token_record(
         user_id=user_id,
         token_hash=hash_token(token),
         expires_at=expires_at,
+        revoked=False,
     )
     db.add(record)
     db.flush()
@@ -30,6 +31,7 @@ def create_refresh_token_record(
 
 
 def revoke_refresh_token(db: Session, record: RefreshToken, replaced_by_id: uuid.UUID | None = None) -> None:
+    record.revoked = True
     record.revoked_at = datetime.now(UTC)
     if replaced_by_id:
         record.replaced_by_id = replaced_by_id
@@ -40,16 +42,17 @@ def revoke_all_user_refresh_tokens(db: Session, user_id: uuid.UUID) -> None:
     now = datetime.now(UTC)
     records = (
         db.query(RefreshToken)
-        .filter(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
+        .filter(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
         .all()
     )
     for record in records:
+        record.revoked = True
         record.revoked_at = now
         db.add(record)
 
 
 def is_refresh_token_valid(record: RefreshToken) -> bool:
-    if record.revoked_at is not None:
+    if record.revoked:
         return False
     expires_at = record.expires_at
     if expires_at.tzinfo is None:

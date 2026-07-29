@@ -62,6 +62,7 @@ def create_password_reset_token(
         user_id=user_id,
         token_hash=hash_token(token),
         expires_at=expires_at,
+        revoked=False,
     )
     db.add(record)
     db.flush()
@@ -79,12 +80,13 @@ def get_password_reset_token(db: Session, token: str) -> PasswordResetToken | No
 
 
 def mark_password_reset_token_used(db: Session, record: PasswordResetToken) -> None:
+    record.revoked = True
     record.used_at = datetime.now(UTC)
     db.add(record)
 
 
 def is_password_reset_token_valid(record: PasswordResetToken) -> bool:
-    if record.used_at is not None:
+    if record.revoked:
         return False
     expires_at = record.expires_at
     if expires_at.tzinfo is None:
