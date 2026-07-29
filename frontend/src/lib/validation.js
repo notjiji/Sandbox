@@ -54,6 +54,16 @@ export function validateRegisterForm({
   return errors;
 }
 
+export function validateResetPasswordForm({ password, confirmPassword }) {
+  const errors = {};
+  const passwordError = validatePassword(password);
+  if (passwordError) errors.password = passwordError;
+  if (password && confirmPassword && password !== confirmPassword) {
+    errors.confirmPassword = "Passwords do not match";
+  }
+  return errors;
+}
+
 export function validateForgotPasswordForm({ email }) {
   const errors = {};
   const emailError = validateEmail(email);

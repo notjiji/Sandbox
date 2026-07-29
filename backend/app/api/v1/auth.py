@@ -2,18 +2,29 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rate_limit import limiter
-from app.core.responses import success_response
+from app.models.user import User
 from app.schemas.auth import (
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
     RegisterRequest,
+    ResetPasswordRequest,
 )
-from app.services.auth import login_user, logout_user, refresh_access_token, register_user
+from app.services.auth import (
+    change_password,
+    login_user,
+    logout_user,
+    refresh_access_token,
+    register_user,
+    request_password_reset,
+    reset_password,
+)
 
 router = APIRouter()
 settings = get_settings()
@@ -55,7 +66,33 @@ def logout(request: Request, body: LogoutRequest, db: Session = Depends(get_db))
 
 @router.post("/forgot-password")
 @limiter.limit(settings.RATE_LIMIT_AUTH)
-def forgot_password(request: Request, body: ForgotPasswordRequest) -> JSONResponse:
-    return success_response(
-        data={"message": "If the email exists, a recovery link will be sent"},
-    )
+def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    result = request_password_reset(db, email=str(body.email))
+    return JSONResponse(status_code=200, content=result.model_dump())
+
+
+@router.post("/reset-password")
+@limiter.limit(settings.RATE_LIMIT_AUTH)
+def reset_password_route(
+    request: Request,
+    body: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    result = reset_password(db, body=body)
+    return JSONResponse(status_code=200, content=result.model_dump())
+
+
+@router.put("/change-password")
+@limiter.limit(settings.RATE_LIMIT_AUTH)
+def change_password_route(
+    request: Request,
+    body: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> JSONResponse:
+    result = change_password(db, current_user, body=body)
+    return JSONResponse(status_code=200, content=result.model_dump())

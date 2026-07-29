@@ -7,6 +7,7 @@ x-backend-env: &backend-env
   CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-true}
   RATE_LIMIT_DEFAULT: ${RATE_LIMIT_DEFAULT:-100/minute}
   RATE_LIMIT_AUTH: ${RATE_LIMIT_AUTH:-10/minute}
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
 
 x-backend-depends: &backend-depends
   postgres:

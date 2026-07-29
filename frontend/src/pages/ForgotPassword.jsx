@@ -33,7 +33,7 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const response = await authApi.forgotPassword(form);
-      setSuccess(response?.data?.message ?? "Recovery signal sent if the address exists.");
+      setSuccess(response.message ?? "If the email exists, a recovery link will be sent.");
     } catch (error) {
       if (error instanceof ApiError) {
         setAlert(error.message);

@@ -36,6 +36,18 @@ def revoke_refresh_token(db: Session, record: RefreshToken, replaced_by_id: uuid
     db.add(record)
 
 
+def revoke_all_user_refresh_tokens(db: Session, user_id: uuid.UUID) -> None:
+    now = datetime.now(UTC)
+    records = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
+        .all()
+    )
+    for record in records:
+        record.revoked_at = now
+        db.add(record)
+
+
 def is_refresh_token_valid(record: RefreshToken) -> bool:
     if record.revoked_at is not None:
         return False

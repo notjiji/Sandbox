@@ -80,5 +80,13 @@ export const authApi = {
     tokenStorage.clear();
   },
   forgotPassword: (data) =>
-    apiRequest("/auth/forgot-password", { method: "POST", body: data }),
+    apiRequest("/auth/forgot-password", {
+      method: "POST",
+      body: { email: data.email.trim().toLowerCase() },
+    }),
+  resetPassword: (data) =>
+    apiRequest("/auth/reset-password", { method: "POST", body: data }),
+  changePassword: (data) =>
+    apiRequest("/auth/change-password", { method: "PUT", body: data, auth: true }),
+  getMe: () => apiRequest("/users/me", { auth: true }),
 };

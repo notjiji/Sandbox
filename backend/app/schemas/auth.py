@@ -95,3 +95,43 @@ class RefreshResponse(BaseSchema):
 
 class LogoutResponse(BaseSchema):
     message: str
+
+
+class ForgotPasswordResponse(BaseSchema):
+    message: str
+
+
+class ResetPasswordRequest(BaseSchema):
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        if len(value) < PASSWORD_MIN_LENGTH:
+            raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
+        if not PASSWORD_PATTERN.match(value):
+            raise ValueError(
+                "Password must include uppercase, lowercase, number, and special character"
+            )
+        return value
+
+
+class ChangePasswordRequest(BaseSchema):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        if len(value) < PASSWORD_MIN_LENGTH:
+            raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
+        if not PASSWORD_PATTERN.match(value):
+            raise ValueError(
+                "Password must include uppercase, lowercase, number, and special character"
+            )
+        return value
+
+
+class MessageResponse(BaseSchema):
+    message: str
