@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { UserPlus } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
@@ -9,14 +9,17 @@ import { authApi, ApiError } from "../lib/api";
 import { validateRegisterForm } from "../lib/validation";
 
 export default function Register() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
-    fullName: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -24,6 +27,7 @@ export default function Register() {
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
     setAlert("");
+    setSuccess("");
   };
 
   const handleSubmit = async (e) => {
@@ -36,18 +40,27 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await authApi.register({
-        full_name: form.fullName,
-        email: form.email,
+      const response = await authApi.register({
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+        email: form.email.trim().toLowerCase(),
         password: form.password,
-        confirm_password: form.confirmPassword,
       });
+      setSuccess(response.message ?? "Account created successfully");
+      setTimeout(() => navigate("/login"), 1500);
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.details?.length) {
           const fieldErrors = {};
           error.details.forEach(({ field, message }) => {
-            const key = field === "full_name" ? "fullName" : field === "confirm_password" ? "confirmPassword" : field;
+            const key =
+              field === "first_name"
+                ? "firstName"
+                : field === "last_name"
+                  ? "lastName"
+                  : field === "confirm_password"
+                    ? "confirmPassword"
+                    : field;
             fieldErrors[key] = message;
           });
           setErrors(fieldErrors);
@@ -76,22 +89,42 @@ export default function Register() {
     >
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         {alert && <FormAlert message={alert} />}
+        {success && <FormAlert message={success} variant="success" />}
 
-        <div>
-          <label htmlFor="fullName" className="terminal-text mb-2 block">
-            display_name
-          </label>
-          <input
-            id="fullName"
-            name="fullName"
-            type="text"
-            autoComplete="name"
-            value={form.fullName}
-            onChange={handleChange}
-            placeholder="Operator Zero"
-            className="input-field"
-          />
-          <FormError message={errors.fullName} />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="firstName" className="terminal-text mb-2 block">
+              first_name
+            </label>
+            <input
+              id="firstName"
+              name="firstName"
+              type="text"
+              autoComplete="given-name"
+              value={form.firstName}
+              onChange={handleChange}
+              placeholder="John"
+              className="input-field"
+            />
+            <FormError message={errors.firstName} />
+          </div>
+
+          <div>
+            <label htmlFor="lastName" className="terminal-text mb-2 block">
+              last_name
+            </label>
+            <input
+              id="lastName"
+              name="lastName"
+              type="text"
+              autoComplete="family-name"
+              value={form.lastName}
+              onChange={handleChange}
+              placeholder="Doe"
+              className="input-field"
+            />
+            <FormError message={errors.lastName} />
+          </div>
         </div>
 
         <div>
@@ -105,7 +138,7 @@ export default function Register() {
             autoComplete="email"
             value={form.email}
             onChange={handleChange}
-            placeholder="operator@domain.io"
+            placeholder="john@company.com"
             className="input-field"
           />
           <FormError message={errors.email} />
@@ -122,7 +155,7 @@ export default function Register() {
             autoComplete="new-password"
             value={form.password}
             onChange={handleChange}
-            placeholder="min 8 characters"
+            placeholder="StrongPassword123!"
             className="input-field"
           />
           <FormError message={errors.password} />

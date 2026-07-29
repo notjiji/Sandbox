@@ -9,7 +9,8 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    first_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(128), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
@@ -21,4 +22,9 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     audit_logs: Mapped[list["AuditLog"]] = relationship(
         "AuditLog",
         back_populates="user",
+    )
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        "RefreshToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )

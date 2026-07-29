@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogIn } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
@@ -9,6 +9,7 @@ import { authApi, ApiError } from "../lib/api";
 import { validateLoginForm } from "../lib/validation";
 
 export default function Login() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState("");
@@ -31,7 +32,11 @@ export default function Login() {
 
     setLoading(true);
     try {
-      await authApi.login(form);
+      await authApi.login({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      });
+      navigate("/");
     } catch (error) {
       if (error instanceof ApiError) {
         setAlert(error.message);

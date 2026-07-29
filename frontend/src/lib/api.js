@@ -1,3 +1,5 @@
+import { tokenStorage } from "./auth";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 function createRequestId() {
@@ -15,17 +17,25 @@ export class ApiError extends Error {
 }
 
 export async function apiRequest(path, options = {}) {
-  const { method = "GET", body, headers = {} } = options;
+  const { method = "GET", body, headers = {}, auth = false } = options;
   const requestId = createRequestId();
+  const requestHeaders = {
+    "Content-Type": "application/json",
+    "X-Request-ID": requestId,
+    ...headers,
+  };
+
+  if (auth) {
+    const accessToken = tokenStorage.getAccessToken();
+    if (accessToken) {
+      requestHeaders.Authorization = `Bearer ${accessToken}`;
+    }
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Request-ID": requestId,
-      ...headers,
-    },
+    headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -35,7 +45,7 @@ export async function apiRequest(path, options = {}) {
     const error = payload?.error ?? {};
     throw new ApiError(
       error.code ?? "HTTP_ERROR",
-      error.message ?? "Request failed",
+      error.message ?? payload?.message ?? "Request failed",
       response.status,
       error.details ?? null,
     );
@@ -45,8 +55,30 @@ export async function apiRequest(path, options = {}) {
 }
 
 export const authApi = {
-  login: (data) => apiRequest("/auth/login", { method: "POST", body: data }),
   register: (data) => apiRequest("/auth/register", { method: "POST", body: data }),
+  login: async (data) => {
+    const payload = await apiRequest("/auth/login", { method: "POST", body: data });
+    tokenStorage.setTokens(payload);
+    return payload;
+  },
+  refresh: async (refreshToken) => {
+    const payload = await apiRequest("/auth/refresh", {
+      method: "POST",
+      body: { refresh_token: refreshToken ?? tokenStorage.getRefreshToken() },
+    });
+    tokenStorage.setTokens(payload);
+    return payload;
+  },
+  logout: async () => {
+    const refreshToken = tokenStorage.getRefreshToken();
+    if (refreshToken) {
+      await apiRequest("/auth/logout", {
+        method: "POST",
+        body: { refresh_token: refreshToken },
+      });
+    }
+    tokenStorage.clear();
+  },
   forgotPassword: (data) =>
     apiRequest("/auth/forgot-password", { method: "POST", body: data }),
 };

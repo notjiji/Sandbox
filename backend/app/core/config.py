@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT: str = "100/minute"
     RATE_LIMIT_AUTH: str = "10/minute"
 
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_SECONDS: int = 900
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
     @property
     def database_url(self) -> str:
         return (
