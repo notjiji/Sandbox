@@ -35,11 +35,9 @@ class Settings(BaseSettings):
     PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 1
 
     FRONTEND_URL: str = "http://localhost"
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = "noreply@sandbox.local"
+
+    RESEND_API_KEY: str = ""
+    RESEND_FROM: str = "Sandbox <onboarding@resend.dev>"
 
     @property
     def database_url(self) -> str:
@@ -70,6 +68,9 @@ class Settings(BaseSettings):
 
         if "changeme" in self.POSTGRES_PASSWORD.lower():
             raise ValueError("Production requires a non-default POSTGRES_PASSWORD")
+
+        if not self.RESEND_API_KEY:
+            raise ValueError("Production requires RESEND_API_KEY for transactional email")
 
         return self
 

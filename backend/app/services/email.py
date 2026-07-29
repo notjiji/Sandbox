@@ -1,5 +1,4 @@
-import smtplib
-from email.message import EmailMessage
+import resend
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -10,16 +9,23 @@ logger = get_logger("sandbox.email")
 def send_password_reset_email(*, to_email: str, reset_link: str) -> None:
     settings = get_settings()
     subject = "Reset your Sandbox password"
-    body = (
+    text = (
         "You requested a password reset for your Sandbox account.\n\n"
         f"Reset your password using this link:\n{reset_link}\n\n"
         "If you did not request this, you can ignore this email.\n"
         f"This link expires in {settings.PASSWORD_RESET_TOKEN_EXPIRE_HOURS} hour(s)."
     )
+    html = f"""
+    <p>You requested a password reset for your Sandbox account.</p>
+    <p><a href="{reset_link}">Reset your password</a></p>
+    <p>Or copy this link:<br><code>{reset_link}</code></p>
+    <p>If you did not request this, you can ignore this email.</p>
+    <p>This link expires in {settings.PASSWORD_RESET_TOKEN_EXPIRE_HOURS} hour(s).</p>
+    """
 
-    if not settings.SMTP_HOST:
+    if not settings.RESEND_API_KEY:
         logger.info(
-            "password reset email (dev mode)",
+            "password reset email (dev mode — set RESEND_API_KEY to send real emails)",
             extra={
                 "to_email": to_email,
                 "reset_link": reset_link,
@@ -27,16 +33,18 @@ def send_password_reset_email(*, to_email: str, reset_link: str) -> None:
         )
         return
 
-    message = EmailMessage()
-    message["Subject"] = subject
-    message["From"] = settings.SMTP_FROM
-    message["To"] = to_email
-    message.set_content(body)
+    resend.api_key = settings.RESEND_API_KEY
+    response = resend.Emails.send(
+        {
+            "from": settings.RESEND_FROM,
+            "to": [to_email],
+            "subject": subject,
+            "text": text,
+            "html": html,
+        }
+    )
 
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-        server.starttls()
-        if settings.SMTP_USER and settings.SMTP_PASSWORD:
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.send_message(message)
-
-    logger.info("password reset email sent", extra={"to_email": to_email})
+    logger.info(
+        "password reset email sent via Resend",
+        extra={"to_email": to_email, "resend_id": response.get("id")},
+    )
