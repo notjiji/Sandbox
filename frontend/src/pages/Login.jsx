@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogIn } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
@@ -11,7 +11,10 @@ import { validateLoginForm } from "../lib/validation";
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = location.state?.from ?? "/profile";
+  const [searchParams] = useSearchParams();
+  const redirectTo =
+    searchParams.get("from") || location.state?.from || "/profile";
+  const sessionExpired = searchParams.get("reason") === "session-expired";
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState("");
@@ -70,6 +73,9 @@ export default function Login() {
       }
     >
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        {sessionExpired && (
+          <FormAlert message="Your session expired. Please sign in again." />
+        )}
         {alert && <FormAlert message={alert} />}
 
         <div>

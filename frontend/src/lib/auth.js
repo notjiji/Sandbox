@@ -2,6 +2,9 @@ const ACCESS_TOKEN_KEY = "sandbox_access_token";
 const REFRESH_TOKEN_KEY = "sandbox_refresh_token";
 const TOKEN_EXPIRY_KEY = "sandbox_token_expiry";
 
+/** Refresh access token this many ms before JWT expiry. */
+export const TOKEN_REFRESH_BUFFER_MS = 60_000;
+
 export const tokenStorage = {
   setTokens({ access_token, refresh_token, expires_in }) {
     localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
@@ -20,9 +23,31 @@ export const tokenStorage = {
     return localStorage.getItem(REFRESH_TOKEN_KEY);
   },
 
+  getTokenExpiry() {
+    const raw = localStorage.getItem(TOKEN_EXPIRY_KEY);
+    return raw ? Number(raw) : null;
+  },
+
+  isAuthenticated() {
+    return Boolean(this.getAccessToken() && this.getRefreshToken());
+  },
+
+  shouldRefreshAccessToken(bufferMs = TOKEN_REFRESH_BUFFER_MS) {
+    const expiry = this.getTokenExpiry();
+    if (!expiry) return true;
+    return Date.now() >= expiry - bufferMs;
+  },
+
   clear() {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(TOKEN_EXPIRY_KEY);
   },
 };
+
+export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
+
+export function notifySessionExpired() {
+  tokenStorage.clear();
+  window.dispatchEvent(new CustomEvent(AUTH_SESSION_EXPIRED_EVENT));
+}

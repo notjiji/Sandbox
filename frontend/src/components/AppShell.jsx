@@ -7,7 +7,7 @@ import { tokenStorage } from "../lib/auth";
 
 export default function AppShell({ children, title, subtitle }) {
   const navigate = useNavigate();
-  const isAuthenticated = Boolean(tokenStorage.getAccessToken());
+  const isAuthenticated = tokenStorage.isAuthenticated();
 
   const handleLogout = async () => {
     try {

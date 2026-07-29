@@ -1,11 +1,18 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { tokenStorage } from "../lib/auth";
+import { useEffect, useState } from "react";
+import { AUTH_SESSION_EXPIRED_EVENT, tokenStorage } from "../lib/auth";
 
 export default function ProtectedRoute() {
   const location = useLocation();
-  const accessToken = tokenStorage.getAccessToken();
+  const [allowed, setAllowed] = useState(() => tokenStorage.isAuthenticated());
 
-  if (!accessToken) {
+  useEffect(() => {
+    const syncAuth = () => setAllowed(tokenStorage.isAuthenticated());
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, syncAuth);
+    return () => window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, syncAuth);
+  }, []);
+
+  if (!allowed) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
