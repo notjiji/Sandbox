@@ -4,10 +4,20 @@ from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerificationError
 
 from app.core.config import get_settings
 
 ACCESS_TOKEN_TYPE = "access"
+
+_password_hasher = PasswordHasher(
+    time_cost=3,
+    memory_cost=65536,
+    parallelism=4,
+    hash_len=32,
+    salt_len=16,
+)
 
 
 @dataclass(frozen=True)
@@ -24,11 +34,26 @@ class AccessTokenPayload(AccessTokenContext):
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    return _password_hasher.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    if hashed_password.startswith("$argon2"):
+        try:
+            return _password_hasher.verify(hashed_password, plain_password)
+        except (VerificationError, InvalidHashError):
+            return False
+
+    if hashed_password.startswith(("$2a$", "$2b$", "$2y$")):
+        try:
+            return bcrypt.checkpw(
+                plain_password.encode("utf-8"),
+                hashed_password.encode("utf-8"),
+            )
+        except ValueError:
+            return False
+
+    return False
 
 
 def hash_token(token: str) -> str:

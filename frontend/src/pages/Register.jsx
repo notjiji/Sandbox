@@ -155,7 +155,7 @@ export default function Register() {
             autoComplete="new-password"
             value={form.password}
             onChange={handleChange}
-            placeholder="StrongPassword123!"
+            placeholder="StrongPassword123! (min 12 chars)"
             className="input-field"
           />
           <FormError message={errors.password} />

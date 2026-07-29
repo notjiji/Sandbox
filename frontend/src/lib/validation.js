@@ -1,7 +1,11 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MIN_LENGTH = 12;
+const PASSWORD_MAX_LENGTH = 128;
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|[\]<>/_+=\-]).+$/;
+
+export const PASSWORD_REQUIREMENTS =
+  "At least 12 characters with uppercase, lowercase, number, and special character";
 
 export function validateEmail(email) {
   if (!email?.trim()) return "Email is required";
@@ -14,8 +18,11 @@ export function validatePassword(password) {
   if (password.length < PASSWORD_MIN_LENGTH) {
     return `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
   }
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    return `Password must be at most ${PASSWORD_MAX_LENGTH} characters`;
+  }
   if (!PASSWORD_PATTERN.test(password)) {
-    return "Password must include uppercase, lowercase, number, and special character";
+    return PASSWORD_REQUIREMENTS;
   }
   return null;
 }

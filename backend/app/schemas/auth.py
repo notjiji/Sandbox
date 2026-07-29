@@ -1,13 +1,11 @@
-import re
-
 from pydantic import EmailStr, Field, field_validator
 
-from app.schemas.base import BaseSchema
-
-PASSWORD_MIN_LENGTH = 8
-PASSWORD_PATTERN = re.compile(
-    r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?\":{}|<>\[\]/_+=\-]).+$"
+from app.core.password import (
+    PASSWORD_MAX_LENGTH,
+    PASSWORD_MIN_LENGTH,
+    validate_password_strength,
 )
+from app.schemas.base import BaseSchema
 
 
 def normalize_email(value: str) -> str:
@@ -16,7 +14,7 @@ def normalize_email(value: str) -> str:
 
 class LoginRequest(BaseSchema):
     email: EmailStr
-    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+    password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
 
     @field_validator("email", mode="before")
     @classmethod
@@ -30,7 +28,7 @@ class RegisterRequest(BaseSchema):
     first_name: str = Field(min_length=1, max_length=128)
     last_name: str = Field(min_length=1, max_length=128)
     email: EmailStr
-    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
     @field_validator("first_name", "last_name", mode="before")
     @classmethod
@@ -48,13 +46,8 @@ class RegisterRequest(BaseSchema):
 
     @field_validator("password")
     @classmethod
-    def validate_password_strength(cls, value: str) -> str:
-        if len(value) < PASSWORD_MIN_LENGTH:
-            raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
-        if not PASSWORD_PATTERN.match(value):
-            raise ValueError(
-                "Password must include uppercase, lowercase, number, and special character"
-            )
+    def validate_password(cls, value: str) -> str:
+        validate_password_strength(value)
         return value
 
 
@@ -103,33 +96,23 @@ class ForgotPasswordResponse(BaseSchema):
 
 class ResetPasswordRequest(BaseSchema):
     token: str = Field(min_length=1)
-    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
     @field_validator("new_password")
     @classmethod
-    def validate_password_strength(cls, value: str) -> str:
-        if len(value) < PASSWORD_MIN_LENGTH:
-            raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
-        if not PASSWORD_PATTERN.match(value):
-            raise ValueError(
-                "Password must include uppercase, lowercase, number, and special character"
-            )
+    def validate_password(cls, value: str) -> str:
+        validate_password_strength(value)
         return value
 
 
 class ChangePasswordRequest(BaseSchema):
-    current_password: str = Field(min_length=1, max_length=128)
-    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+    current_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
     @field_validator("new_password")
     @classmethod
-    def validate_password_strength(cls, value: str) -> str:
-        if len(value) < PASSWORD_MIN_LENGTH:
-            raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
-        if not PASSWORD_PATTERN.match(value):
-            raise ValueError(
-                "Password must include uppercase, lowercase, number, and special character"
-            )
+    def validate_password(cls, value: str) -> str:
+        validate_password_strength(value)
         return value
 
 
