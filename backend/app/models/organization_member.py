@@ -11,7 +11,8 @@ from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 class OrganizationRole(str, enum.Enum):
     OWNER = "owner"
     ADMIN = "admin"
-    MEMBER = "member"
+    SECURITY_ANALYST = "security_analyst"
+    MANAGER = "manager"
     VIEWER = "viewer"
 
 
@@ -36,7 +37,7 @@ class OrganizationMember(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     role: Mapped[OrganizationRole] = mapped_column(
         Enum(OrganizationRole, name="organization_role", native_enum=True),
         nullable=False,
-        default=OrganizationRole.MEMBER,
+        default=OrganizationRole.VIEWER,
     )
 
     organization: Mapped["Organization"] = relationship(
