@@ -75,3 +75,12 @@ class InternalServerError(AppException):
             message=message,
             status_code=500,
         )
+
+
+class NotImplementedFeatureError(AppException):
+    def __init__(self, feature: str) -> None:
+        super().__init__(
+            code="NOT_IMPLEMENTED",
+            message=f"{feature} is not available yet",
+            status_code=501,
+        )

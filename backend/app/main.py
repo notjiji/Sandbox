@@ -45,7 +45,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins_list,
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Organization-ID"],
     expose_headers=["X-Request-ID"],
 )
 app.add_middleware(SlowAPIMiddleware)
