@@ -111,7 +111,7 @@ def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
     token_context = build_access_token_context(db, user)
     access_token, expires_in = create_access_token(token_context)
     refresh_token = generate_opaque_token()
-    create_refresh_token_record(
+    refresh_record = create_refresh_token_record(
         db,
         user_id=user.id,
         token=refresh_token,
@@ -123,6 +123,7 @@ def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=expires_in,
+        session_id=str(refresh_record.id),
     )
 
 
@@ -194,6 +195,7 @@ def refresh_access_token(db: Session, *, refresh_token: str) -> RefreshResponse:
         access_token=access_token,
         refresh_token=new_refresh_token,
         expires_in=expires_in,
+        session_id=str(new_record.id),
     )
 
 

@@ -54,6 +54,10 @@ async function rawApiRequest(path, options = {}) {
     if (accessToken) {
       requestHeaders.Authorization = `Bearer ${accessToken}`;
     }
+    const sessionId = tokenStorage.getSessionId();
+    if (sessionId) {
+      requestHeaders["X-Session-ID"] = sessionId;
+    }
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -203,4 +207,11 @@ export const authApi = {
   getMe: () => apiRequest("/users/me", { auth: true }),
   updateMe: (data) =>
     apiRequest("/users/me", { method: "PATCH", body: data, auth: true }),
+  listSessions: () => apiRequest("/auth/sessions", { auth: true }),
+  revokeSession: (sessionId) =>
+    apiRequest(`/auth/sessions/${sessionId}`, { method: "DELETE", auth: true }),
+  revokeOtherSessions: () =>
+    apiRequest("/auth/sessions/revoke-others", { method: "POST", auth: true }),
+  revokeAllSessions: () =>
+    apiRequest("/auth/sessions/revoke-all", { method: "POST", auth: true }),
 };

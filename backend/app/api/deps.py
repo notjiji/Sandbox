@@ -46,6 +46,17 @@ def get_organization_id_header(
         raise UnauthorizedError("Invalid X-Organization-ID header") from exc
 
 
+def get_current_session_id_header(
+    x_session_id: Annotated[str | None, Header(alias="X-Session-ID")] = None,
+) -> uuid.UUID | None:
+    if not x_session_id:
+        return None
+    try:
+        return uuid.UUID(x_session_id)
+    except ValueError as exc:
+        raise UnauthorizedError("Invalid X-Session-ID header") from exc
+
+
 def get_current_membership(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

@@ -102,12 +102,14 @@ class LoginResponse(BaseSchema):
     access_token: str
     refresh_token: str
     expires_in: int
+    session_id: str
 
 
 class RefreshResponse(BaseSchema):
     access_token: str
     refresh_token: str
     expires_in: int
+    session_id: str
 
 
 class LogoutResponse(BaseSchema):

@@ -58,3 +58,56 @@ def is_refresh_token_valid(record: RefreshToken) -> bool:
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=UTC)
     return expires_at > datetime.now(UTC)
+
+
+def list_active_sessions_for_user(db: Session, user_id: uuid.UUID) -> list[RefreshToken]:
+    now = datetime.now(UTC)
+    return (
+        db.query(RefreshToken)
+        .filter(
+            RefreshToken.user_id == user_id,
+            RefreshToken.revoked.is_(False),
+            RefreshToken.expires_at > now,
+        )
+        .order_by(RefreshToken.created_at.desc())
+        .all()
+    )
+
+
+def get_user_session_by_id(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    session_id: uuid.UUID,
+) -> RefreshToken | None:
+    return (
+        db.query(RefreshToken)
+        .filter(
+            RefreshToken.id == session_id,
+            RefreshToken.user_id == user_id,
+        )
+        .first()
+    )
+
+
+def revoke_all_user_sessions_except(
+    db: Session,
+    user_id: uuid.UUID,
+    *,
+    except_session_id: uuid.UUID,
+) -> int:
+    now = datetime.now(UTC)
+    records = (
+        db.query(RefreshToken)
+        .filter(
+            RefreshToken.user_id == user_id,
+            RefreshToken.id != except_session_id,
+            RefreshToken.revoked.is_(False),
+        )
+        .all()
+    )
+    for record in records:
+        record.revoked = True
+        record.revoked_at = now
+        db.add(record)
+    return len(records)
