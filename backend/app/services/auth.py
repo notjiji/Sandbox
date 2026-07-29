@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.exceptions import (
+    AccountLockedError,
     ConflictError,
     EmailNotVerifiedError,
     UnauthorizedError,
@@ -53,6 +54,11 @@ from app.schemas.auth import (
     ResetPasswordRequest,
 )
 from app.services.email import send_password_reset_email, send_verification_otp_email
+from app.services.account_lockout import (
+    clear_login_lockout,
+    get_lockout_status,
+    record_failed_login,
+)
 from app.services.audit import AuditAction, record_auth_event
 from app.services.token_context import build_access_token_context
 
@@ -107,15 +113,45 @@ def register_user(
 
 
 def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
+    lockout = get_lockout_status(email)
+    if lockout.locked:
+        record_auth_event(
+            db,
+            action=AuditAction.AUTH_LOGIN_FAILED,
+            details={
+                "email": email,
+                "reason": "account_locked",
+                "retry_after_seconds": lockout.retry_after_seconds,
+            },
+        )
+        db.commit()
+        raise AccountLockedError(retry_after_seconds=lockout.retry_after_seconds)
+
     user = get_user_by_email(db, email)
     if not user or not verify_password(password, user.hashed_password):
+        lockout = record_failed_login(email)
+        details = {"email": email, "reason": "invalid_credentials"}
+        if lockout.failed_attempts:
+            details["failed_attempts"] = lockout.failed_attempts
         record_auth_event(
             db,
             action=AuditAction.AUTH_LOGIN_FAILED,
             user_id=user.id if user else None,
-            details={"email": email, "reason": "invalid_credentials"},
+            details=details,
         )
+        if lockout.newly_locked:
+            record_auth_event(
+                db,
+                action=AuditAction.AUTH_ACCOUNT_LOCKED,
+                user_id=user.id if user else None,
+                details={
+                    "email": email,
+                    "retry_after_seconds": lockout.retry_after_seconds,
+                },
+            )
         db.commit()
+        if lockout.locked:
+            raise AccountLockedError(retry_after_seconds=lockout.retry_after_seconds)
         raise UnauthorizedError("Invalid email or password")
 
     if not user.is_active:
@@ -155,6 +191,7 @@ def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
         resource_id=refresh_record.id,
         details={"email": email, "session_id": str(refresh_record.id)},
     )
+    clear_login_lockout(email)
     db.commit()
 
     return LoginResponse(
@@ -318,6 +355,7 @@ def reset_password(db: Session, *, body: ResetPasswordRequest) -> MessageRespons
         resource_type="user",
         resource_id=user.id,
     )
+    clear_login_lockout(user.email)
     db.commit()
 
     return MessageResponse(message="Password reset successfully")
@@ -339,6 +377,7 @@ def change_password(db: Session, user, *, body: ChangePasswordRequest) -> Messag
         resource_type="user",
         resource_id=user.id,
     )
+    clear_login_lockout(user.email)
     db.commit()
 
     return MessageResponse(message="Password changed successfully")

@@ -11,7 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import router as api_v1_router
 from app.core.config import get_settings
-from app.core.exceptions import AppException, InternalServerError
+from app.core.exceptions import AccountLockedError, AppException, InternalServerError
 from app.core.logging import setup_logging
 from app.core.rate_limit import limiter
 from app.core.responses import error_response
@@ -48,7 +48,7 @@ app.add_middleware(
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Organization-ID", "X-Session-ID"],
-    expose_headers=["X-Request-ID"],
+    expose_headers=["X-Request-ID", "Retry-After"],
 )
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
@@ -63,6 +63,14 @@ async def rate_limit_handler(_request: Request, _exc: RateLimitExceeded) -> JSON
         message="Too many requests. Please try again later.",
         status_code=429,
     )
+
+
+@app.exception_handler(AccountLockedError)
+async def account_locked_handler(_request: Request, exc: AccountLockedError) -> JSONResponse:
+    response = error_response(code=exc.code, message=exc.message, status_code=exc.status_code)
+    if exc.retry_after_seconds:
+        response.headers["Retry-After"] = str(exc.retry_after_seconds)
+    return response
 
 
 @app.exception_handler(AppException)

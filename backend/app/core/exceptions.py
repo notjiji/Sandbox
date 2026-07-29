@@ -50,6 +50,20 @@ class EmailNotVerifiedError(AppException):
         )
 
 
+class AccountLockedError(AppException):
+    def __init__(self, retry_after_seconds: int | None = None) -> None:
+        message = "Account temporarily locked due to too many failed login attempts."
+        if retry_after_seconds and retry_after_seconds > 0:
+            minutes = max(1, (retry_after_seconds + 59) // 60)
+            message = f"{message} Try again in {minutes} minute(s)."
+        super().__init__(
+            code="ACCOUNT_LOCKED",
+            message=message,
+            status_code=429,
+        )
+        self.retry_after_seconds = retry_after_seconds
+
+
 class ValidationAppError(AppException):
     def __init__(self, message: str) -> None:
         super().__init__(

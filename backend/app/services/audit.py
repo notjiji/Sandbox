@@ -11,6 +11,7 @@ class AuditAction:
     AUTH_REGISTER = "auth.register"
     AUTH_LOGIN = "auth.login"
     AUTH_LOGIN_FAILED = "auth.login_failed"
+    AUTH_ACCOUNT_LOCKED = "auth.account_locked"
     AUTH_LOGOUT = "auth.logout"
     AUTH_REFRESH = "auth.refresh"
     AUTH_PASSWORD_CHANGE = "auth.password_change"
