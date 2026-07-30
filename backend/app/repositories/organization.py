@@ -30,6 +30,28 @@ def get_organization_by_id(db: Session, organization_id: uuid.UUID) -> Organizat
     return db.query(Organization).filter(Organization.id == organization_id).first()
 
 
+def get_organization_by_slug(db: Session, slug: str) -> Organization | None:
+    return db.query(Organization).filter(Organization.slug == slug).first()
+
+
+def create_organization(
+    db: Session,
+    *,
+    name: str,
+    slug: str,
+    description: str | None = None,
+) -> Organization:
+    organization = Organization(
+        name=name,
+        slug=slug,
+        description=description,
+        is_active=True,
+    )
+    db.add(organization)
+    db.flush()
+    return organization
+
+
 def list_memberships_for_user(db: Session, user_id: uuid.UUID) -> list[OrganizationMember]:
     return (
         db.query(OrganizationMember)

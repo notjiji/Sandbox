@@ -21,3 +21,8 @@ class Organization(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         "AuditLog",
         back_populates="organization",
     )
+    projects: Mapped[list["Project"]] = relationship(
+        "Project",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+    )

@@ -24,10 +24,14 @@ class AuditAction:
     USER_PROFILE_UPDATE = "user.profile_update"
     ORG_UPDATE = "org.update"
     ORG_DELETE = "org.delete"
+    ORG_CREATE = "org.create"
     ORG_MEMBER_INVITE = "org.member_invite"
     ORG_MEMBER_UPDATE = "org.member_update"
     ORG_MEMBER_REMOVE = "org.member_remove"
     ORG_OWNERSHIP_TRANSFER = "org.ownership_transfer"
+    PROJECT_CREATE = "project.create"
+    PROJECT_UPDATE = "project.update"
+    PROJECT_DELETE = "project.delete"
 
 
 def primary_organization_id(db: Session, user_id: uuid.UUID) -> uuid.UUID | None:

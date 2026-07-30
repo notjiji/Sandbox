@@ -3,13 +3,16 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationAppError
+from app.core.slug import slugify, unique_slug
 from app.models.organization import Organization
 from app.models.organization_member import OrganizationMember, OrganizationRole
 from app.models.user import User
 from app.repositories.organization import (
     add_organization_member,
+    create_organization,
     deactivate_organization,
     get_membership,
+    get_organization_by_slug,
     get_organization_member_by_id,
     list_memberships_for_user,
     list_organization_members,
@@ -19,6 +22,7 @@ from app.repositories.organization import (
 )
 from app.repositories.user import get_user_by_email
 from app.schemas.organization import (
+    CreateOrganizationRequest,
     InviteMemberRequest,
     MemberSummary,
     OrganizationDetail,
@@ -66,6 +70,42 @@ def _to_member_summary(membership: OrganizationMember) -> MemberSummary:
 def list_user_organizations(db: Session, user: User) -> list[OrganizationSummary]:
     memberships = list_memberships_for_user(db, user.id)
     return [_to_organization_summary(membership) for membership in memberships]
+
+
+def create_user_organization(
+    db: Session,
+    user: User,
+    *,
+    body: CreateOrganizationRequest,
+) -> OrganizationDetail:
+    slug = slugify(body.slug or body.name)
+    if get_organization_by_slug(db, slug):
+        slug = unique_slug(body.name, suffix=uuid.uuid4())
+
+    organization = create_organization(
+        db,
+        name=body.name,
+        slug=slug,
+        description=body.description,
+    )
+    add_organization_member(
+        db,
+        organization_id=organization.id,
+        user_id=user.id,
+        role=OrganizationRole.OWNER,
+    )
+    record_audit_event(
+        db,
+        action=AuditAction.ORG_CREATE,
+        user_id=user.id,
+        organization_id=organization.id,
+        resource_type="organization",
+        resource_id=organization.id,
+        details={"name": organization.name, "slug": organization.slug},
+    )
+    db.commit()
+    db.refresh(organization)
+    return _to_organization_detail(organization)
 
 
 def get_current_organization(

@@ -5,7 +5,8 @@ import { LogIn } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
 import FormAlert from "../components/FormAlert";
 import FormError from "../components/FormError";
-import { authApi, ApiError } from "../lib/api";
+import { authApi, orgApi, ApiError } from "../lib/api";
+import { ensureActiveOrganization } from "../lib/org";
 import { validateLoginForm } from "../lib/validation";
 
 export default function Login() {
@@ -41,6 +42,12 @@ export default function Login() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
+      try {
+        const organizations = await orgApi.listMine();
+        ensureActiveOrganization(organizations);
+      } catch {
+        // Org context is optional until the user joins or creates one.
+      }
       navigate(redirectTo);
     } catch (error) {
       if (error instanceof ApiError) {

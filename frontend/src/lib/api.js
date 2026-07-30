@@ -1,4 +1,5 @@
 import { notifySessionExpired, tokenStorage } from "./auth";
+import { orgStorage } from "./org";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
@@ -57,6 +58,10 @@ async function rawApiRequest(path, options = {}) {
     const sessionId = tokenStorage.getSessionId();
     if (sessionId) {
       requestHeaders["X-Session-ID"] = sessionId;
+    }
+    const organizationId = orgStorage.getActiveOrgId();
+    if (organizationId) {
+      requestHeaders["X-Organization-ID"] = organizationId;
     }
   }
 
@@ -194,6 +199,7 @@ export const authApi = {
       }
     }
     tokenStorage.clear();
+    orgStorage.clear();
   },
   forgotPassword: (data) =>
     apiRequest("/auth/forgot-password", {
@@ -214,4 +220,16 @@ export const authApi = {
     apiRequest("/auth/sessions/revoke-others", { method: "POST", auth: true }),
   revokeAllSessions: () =>
     apiRequest("/auth/sessions/revoke-all", { method: "POST", auth: true }),
+};
+
+export const orgApi = {
+  listMine: () => apiRequest("/organizations/me", { auth: true }),
+  create: (data) =>
+    apiRequest("/organizations", { method: "POST", body: data, auth: true }),
+  getCurrent: () => apiRequest("/organizations/current", { auth: true }),
+};
+
+export const projectApi = {
+  list: () => apiRequest("/projects", { auth: true }),
+  create: (data) => apiRequest("/projects", { method: "POST", body: data, auth: true }),
 };

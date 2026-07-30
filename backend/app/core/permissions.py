@@ -13,6 +13,11 @@ class Permission(str, enum.Enum):
     MEMBER_REMOVE = "member:remove"
     MEMBER_TRANSFER_OWNERSHIP = "member:transfer_ownership"
 
+    PROJECT_READ = "project:read"
+    PROJECT_CREATE = "project:create"
+    PROJECT_UPDATE = "project:update"
+    PROJECT_DELETE = "project:delete"
+
     ASSET_READ = "asset:read"
     ASSET_CREATE = "asset:create"
     ASSET_UPDATE = "asset:update"
@@ -48,6 +53,9 @@ SECURITY_ANALYST_PERMISSIONS = frozenset(
     {
         Permission.ORG_READ,
         Permission.MEMBER_READ,
+        Permission.PROJECT_READ,
+        Permission.PROJECT_CREATE,
+        Permission.PROJECT_UPDATE,
         Permission.ASSET_READ,
         Permission.ASSET_CREATE,
         Permission.ASSET_UPDATE,
@@ -68,6 +76,7 @@ MANAGER_PERMISSIONS = frozenset(
     {
         Permission.ORG_READ,
         Permission.MEMBER_READ,
+        Permission.PROJECT_READ,
         Permission.ASSET_READ,
         Permission.SCAN_READ,
         Permission.FINDING_READ,
@@ -79,6 +88,7 @@ MANAGER_PERMISSIONS = frozenset(
 VIEWER_PERMISSIONS = frozenset(
     {
         Permission.ORG_READ,
+        Permission.PROJECT_READ,
         Permission.ASSET_READ,
         Permission.SCAN_READ,
         Permission.FINDING_READ,

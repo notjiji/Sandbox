@@ -58,5 +58,6 @@ export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
 
 export function notifySessionExpired() {
   tokenStorage.clear();
+  orgStorage.clear();
   window.dispatchEvent(new CustomEvent(AUTH_SESSION_EXPIRED_EVENT));
 }

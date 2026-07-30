@@ -11,6 +11,7 @@ from app.core.responses import success_response
 from app.models.organization_member import OrganizationMember
 from app.models.user import User
 from app.schemas.organization import (
+    CreateOrganizationRequest,
     InviteMemberRequest,
     TransferOwnershipRequest,
     UpdateMemberRoleRequest,
@@ -18,6 +19,7 @@ from app.schemas.organization import (
 )
 from app.schemas.rbac import build_roles_list_response
 from app.services.organization import (
+    create_user_organization,
     delete_current_organization,
     get_current_organization,
     invite_member,
@@ -50,6 +52,16 @@ def list_my_organizations(
             "total": len(organizations),
         }
     )
+
+
+@router.post("", status_code=201)
+def create_organization(
+    body: CreateOrganizationRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> JSONResponse:
+    organization = create_user_organization(db, current_user, body=body)
+    return success_response(data=organization.model_dump(mode="json"), status_code=201)
 
 
 @router.get("/current")

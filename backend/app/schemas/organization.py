@@ -21,6 +21,19 @@ class OrganizationDetail(BaseSchema):
     is_active: bool
 
 
+class CreateOrganizationRequest(BaseSchema):
+    name: str = Field(min_length=1, max_length=255)
+    slug: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def trim_name(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
 class UpdateOrganizationRequest(BaseSchema):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)

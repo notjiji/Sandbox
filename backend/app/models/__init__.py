@@ -4,6 +4,7 @@ from app.models.email_verification_otp import EmailVerificationOtp
 from app.models.organization import Organization
 from app.models.organization_member import OrganizationMember, OrganizationRole
 from app.models.password_reset_token import PasswordResetToken
+from app.models.project import Project
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 
@@ -15,6 +16,7 @@ __all__ = [
     "OrganizationMember",
     "OrganizationRole",
     "PasswordResetToken",
+    "Project",
     "RefreshToken",
     "User",
 ]
