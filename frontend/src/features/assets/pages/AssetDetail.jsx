@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Radar } from "lucide-react";
+import { Pencil, Radar } from "lucide-react";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
 import FormAlert from "@/shared/components/FormAlert";
 import { ApiError } from "@/shared/api/client";
@@ -13,6 +13,7 @@ import {
   AssetStatusBadge,
   AssetTypeBadge,
 } from "../components/AssetBadges";
+import AssetLifecycleActions from "../components/AssetLifecycleActions";
 import PlaceholderPanel from "../components/PlaceholderPanel";
 import { assetsApi } from "../api";
 import { useAssetAuditHistory } from "../hooks";
@@ -76,6 +77,16 @@ export default function AssetDetail() {
         <p className="text-brand-500">Loading asset...</p>
       ) : asset ? (
         <div className="space-y-6">
+          {asset.status === "deleted" && (
+            <div className="rounded-lg border border-red-500/30 bg-red-950/20 px-4 py-3 text-sm text-red-200">
+              This asset has been deleted. Restore it to edit details or run scans.
+            </div>
+          )}
+          {asset.status === "archived" && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+              This asset is archived. Restore it to run scans; other details can still be edited.
+            </div>
+          )}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -100,15 +111,34 @@ export default function AssetDetail() {
                 )}
               </div>
 
-              {asset.status === "active" && (
-                <Link
-                  to={`/projects/${projectId}/assets/${assetId}/scans`}
-                  className="btn-primary inline-flex items-center gap-2"
-                >
-                  <Radar size={18} />
-                  View scans
-                </Link>
-              )}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                {asset.status === "active" && (
+                  <Link
+                    to={`/projects/${projectId}/assets/${assetId}/scans`}
+                    className="btn-primary inline-flex items-center gap-2"
+                  >
+                    <Radar size={18} />
+                    View scans
+                  </Link>
+                )}
+                {asset.status !== "deleted" && (
+                  <Link
+                    to={`/projects/${projectId}/assets/${assetId}/edit`}
+                    className="btn-ghost inline-flex items-center gap-2"
+                  >
+                    <Pencil size={18} />
+                    {asset.status === "archived" ? "Edit details" : "Edit"}
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <AssetLifecycleActions
+                projectId={projectId}
+                asset={asset}
+                onChanged={load}
+              />
             </div>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

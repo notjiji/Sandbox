@@ -16,6 +16,7 @@ __all__ = [
     "validate_hierarchy",
     "validate_parent_type",
     "validate_restorable",
+    "validate_updatable",
     "validate_update_payload",
 ]
 
@@ -23,11 +24,19 @@ __all__ = [
 def validate_update_payload(body: UpdateAssetRequest) -> None:
     if body.model_dump(exclude_none=True) == {}:
         raise ValidationAppError("At least one field must be provided")
+    if body.status == AssetStatus.DELETED:
+        raise ValidationAppError("Use DELETE to remove an asset; status cannot be set to deleted")
+    if body.status == AssetStatus.ARCHIVED:
+        raise ValidationAppError("Use PATCH /archive to archive an asset; status cannot be set to archived")
 
 
 def validate_create_payload(body: CreateAssetRequest) -> None:
     if not body.name.strip():
         raise ValidationAppError("Asset name is required")
+    if body.status == AssetStatus.DELETED:
+        raise ValidationAppError("New assets cannot be created with deleted status")
+    if body.status == AssetStatus.ARCHIVED:
+        raise ValidationAppError("New assets cannot be created with archived status")
     validate_hierarchy(body.type, body.parent_id)
     validate_asset_metadata(body.type, body.metadata, allow_private=body.allow_private_ip)
 
@@ -86,6 +95,11 @@ def validate_archivable(asset: Asset) -> None:
 def validate_restorable(asset: Asset) -> None:
     if asset.status not in {AssetStatus.ARCHIVED, AssetStatus.DELETED}:
         raise ValidationAppError("Only archived or deleted assets can be restored")
+
+
+def validate_updatable(asset: Asset) -> None:
+    if asset.deleted_at is not None or asset.status == AssetStatus.DELETED:
+        raise ValidationAppError("Deleted assets cannot be updated; restore the asset first")
 
 
 def parse_parent_id(parent_id: str | None) -> uuid.UUID | None:

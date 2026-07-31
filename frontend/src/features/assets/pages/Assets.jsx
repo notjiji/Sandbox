@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { Link, useParams } from "react-router-dom";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
 import FormAlert from "@/shared/components/FormAlert";
 import { projectsApi } from "@/features/projects/api";
 import ProjectNav from "@/features/projects/components/ProjectNav";
-import AssetCreateForm from "../components/AssetCreateForm";
 import AssetFilters from "../components/AssetFilters";
+import AssetPagination from "../components/AssetPagination";
 import AssetTable from "../components/AssetTable";
 import { useProjectAssets } from "../hooks";
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+const DEFAULT_PAGE_SIZE = 20;
 
 const DEFAULT_FILTERS = {
   search: "",
@@ -22,9 +24,15 @@ export default function Assets() {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [showCreate, setShowCreate] = useState(false);
-  const { assets, total, loading, error, reload } = useProjectAssets(projectId, filters);
-  const { assets: allAssets, reload: reloadParents } = useProjectAssets(projectId, { limit: 100 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+
+  const query = useMemo(
+    () => ({ ...filters, page, limit: pageSize }),
+    [filters, page, pageSize],
+  );
+
+  const { assets, total, loading, error } = useProjectAssets(projectId, query);
 
   useEffect(() => {
     let active = true;
@@ -36,15 +44,15 @@ export default function Assets() {
     };
   }, [projectId]);
 
-  const handleCreated = useCallback(async () => {
-    setShowCreate(false);
-    await Promise.all([reload(), reloadParents()]);
-  }, [reload, reloadParents]);
+  const handleFiltersChange = useCallback((next) => {
+    setFilters(next);
+    setPage(1);
+  }, []);
 
-  const summary = useMemo(() => {
-    if (loading) return "Loading assets...";
-    return `${total} asset${total === 1 ? "" : "s"} in this project`;
-  }, [loading, total]);
+  const handlePageSizeChange = useCallback((nextLimit) => {
+    setPageSize(nextLimit);
+    setPage(1);
+  }, []);
 
   return (
     <DashboardShell title="Assets" subtitle="Search, filter, and manage digital assets.">
@@ -53,46 +61,34 @@ export default function Assets() {
 
       <div className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-brand-500">{summary}</p>
-          <button
-            type="button"
-            onClick={() => setShowCreate((value) => !value)}
-            className="btn-primary w-fit"
-          >
-            {showCreate ? "Hide form" : "Add asset"}
-          </button>
+          <p className="text-sm text-brand-500">
+            {loading ? "Loading assets..." : `${total} asset${total === 1 ? "" : "s"} in this project`}
+          </p>
+          <Link to={`/projects/${projectId}/assets/new`} className="btn-primary w-fit">
+            Add asset
+          </Link>
         </div>
 
-        <AssetFilters filters={filters} onChange={setFilters} />
+        <AssetFilters filters={filters} onChange={handleFiltersChange} />
 
         {loading ? (
           <p className="text-brand-500">Loading assets...</p>
         ) : (
-          <AssetTable
-            assets={assets}
-            projectId={projectId}
-            projectName={project?.name}
-          />
-        )}
-
-        {showCreate && (
-          <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-panel p-6"
-            >
-              <h2 className="mb-2 text-lg font-semibold text-brand-100">Register a new asset</h2>
-              <p className="text-sm text-brand-500">
-                Assets start in Pending status. Activate them when ready to scan.
-              </p>
-            </motion.div>
-            <AssetCreateForm
+          <>
+            <AssetTable
+              assets={assets}
               projectId={projectId}
-              parentAssets={allAssets}
-              onCreated={handleCreated}
+              projectName={project?.name}
             />
-          </div>
+            <AssetPagination
+              page={page}
+              limit={pageSize}
+              total={total}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              onPageChange={setPage}
+              onLimitChange={handlePageSizeChange}
+            />
+          </>
         )}
       </div>
     </DashboardShell>

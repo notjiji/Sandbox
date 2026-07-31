@@ -157,3 +157,28 @@ export function buildMetadataPayload(type, primaryValue, extraMetadata = {}) {
   }
   return payload;
 }
+
+export function assetToFormState(asset) {
+  const primaryKey = PRIMARY_METADATA_KEYS[asset.type];
+  return {
+    name: asset.name ?? "",
+    description: asset.description ?? "",
+    primary_value: primaryKey ? (asset.metadata?.[primaryKey] ?? "") : "",
+    os: asset.metadata?.os ?? "",
+    connection_type: asset.metadata?.connection_type ?? "ssh",
+    allow_private_ip: false,
+    type: asset.type,
+    status: asset.status,
+    environment: asset.environment,
+    criticality: asset.criticality,
+    owner: asset.owner ?? "",
+    tags: (asset.tags ?? []).join(", "),
+    parent_id: asset.parent_id ?? "",
+  };
+}
+
+export const HOST_TYPES_WITH_OS = ["server", "windows_server"];
+
+export function typeNeedsOsFields(type) {
+  return HOST_TYPES_WITH_OS.includes(type);
+}

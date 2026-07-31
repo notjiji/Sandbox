@@ -44,6 +44,7 @@ from app.assets.validators import (
     validate_hierarchy,
     validate_parent_type,
     validate_restorable,
+    validate_updatable,
     validate_update_payload,
 )
 from app.audit.repositories.audit_repository import list_audit_logs_for_resource
@@ -123,7 +124,13 @@ class AssetService:
         project_id: uuid.UUID,
         asset_id: uuid.UUID,
     ) -> AssetSummary:
-        asset = self._get_asset_entity(db, membership, project_id=project_id, asset_id=asset_id)
+        asset = self._get_asset_entity(
+            db,
+            membership,
+            project_id=project_id,
+            asset_id=asset_id,
+            include_deleted=True,
+        )
         children_count = 0
         if asset.type in PARENT_ASSET_TYPES:
             children_count = len(list_child_assets(db, parent_id=asset.id))
@@ -181,6 +188,7 @@ class AssetService:
     ) -> AssetSummary:
         validate_update_payload(body)
         asset = self._get_asset_entity(db, membership, project_id=project_id, asset_id=asset_id)
+        validate_updatable(asset)
         validate_asset_metadata_for_update(
             body,
             asset_type=asset.type,
@@ -316,7 +324,13 @@ class AssetService:
         asset_id: uuid.UUID,
         limit: int = 50,
     ) -> AuditLogListResponse:
-        self._get_asset_entity(db, membership, project_id=project_id, asset_id=asset_id)
+        self._get_asset_entity(
+            db,
+            membership,
+            project_id=project_id,
+            asset_id=asset_id,
+            include_deleted=True,
+        )
         logs = list_audit_logs_for_resource(
             db,
             resource_type="asset",
@@ -432,9 +446,15 @@ class AssetService:
         *,
         project_id: uuid.UUID,
         asset_id: uuid.UUID,
+        include_deleted: bool = False,
     ) -> Asset:
         require_active_project(db, membership, project_id)
-        asset = get_asset_by_id(db, project_id=project_id, asset_id=asset_id)
+        asset = get_asset_by_id(
+            db,
+            project_id=project_id,
+            asset_id=asset_id,
+            include_deleted=include_deleted,
+        )
         if not asset:
             raise NotFoundError("Asset")
         return asset

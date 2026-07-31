@@ -52,6 +52,59 @@ def test_asset_hierarchy_validation() -> None:
         pass
 
 
+def test_deleted_status_blocked_on_update() -> None:
+    from app.assets.enums import AssetStatus
+    from app.assets.schemas import UpdateAssetRequest
+    from app.assets.validators import validate_update_payload
+    from app.core.exceptions import ValidationAppError
+
+    try:
+        validate_update_payload(UpdateAssetRequest(status=AssetStatus.DELETED))
+        raise AssertionError("expected ValidationAppError")
+    except ValidationAppError:
+        pass
+
+
+def test_archived_status_blocked_on_update() -> None:
+    from app.assets.enums import AssetStatus
+    from app.assets.schemas import UpdateAssetRequest
+    from app.assets.validators import validate_update_payload
+    from app.core.exceptions import ValidationAppError
+
+    try:
+        validate_update_payload(UpdateAssetRequest(status=AssetStatus.ARCHIVED))
+        raise AssertionError("expected ValidationAppError")
+    except ValidationAppError:
+        pass
+
+
+def test_deleted_asset_not_updatable() -> None:
+    from datetime import datetime, timezone
+
+    from app.assets.enums import AssetStatus
+    from app.assets.validators import validate_updatable
+    from app.core.exceptions import ValidationAppError
+
+    class StubAsset:
+        deleted_at = datetime.now(timezone.utc)
+        status = AssetStatus.DELETED
+
+    try:
+        validate_updatable(StubAsset())
+        raise AssertionError("expected ValidationAppError")
+    except ValidationAppError:
+        pass
+
+
+def test_cloud_account_validation() -> None:
+    from app.assets.enums import AssetType
+    from app.assets.type_validators import validate_asset_metadata
+
+    validate_asset_metadata(AssetType.CLOUD_ACCOUNT, {"account_id": "123456789012"})
+    validate_asset_metadata(AssetType.KUBERNETES_CLUSTER, {"cluster": "prod-cluster"})
+    validate_asset_metadata(AssetType.S3_BUCKET, {"bucket": "my-app-bucket"})
+
+
 def test_metadata_helpers() -> None:
     from app.assets.enums import AssetCriticality, AssetEnvironment, AssetStatus, AssetType
     from app.assets.metadata import PRIMARY_METADATA_KEYS, resolve_primary_value

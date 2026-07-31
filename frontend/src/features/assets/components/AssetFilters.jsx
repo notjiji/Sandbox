@@ -51,7 +51,7 @@ export default function AssetFilters({ filters, onChange }) {
           aria-label="Filter by status"
         >
           <option value="">All statuses</option>
-          {ASSET_STATUSES.filter((status) => status !== "deleted").map((status) => (
+          {ASSET_STATUSES.map((status) => (
             <option key={status} value={status}>
               {ASSET_STATUS_LABELS[status]}
             </option>
