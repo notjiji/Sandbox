@@ -120,6 +120,11 @@ def get_password_reset_expiry() -> datetime:
     return datetime.now(UTC) + timedelta(hours=settings.PASSWORD_RESET_TOKEN_EXPIRE_HOURS)
 
 
+def get_organization_invite_expiry() -> datetime:
+    settings = get_settings()
+    return datetime.now(UTC) + timedelta(days=settings.ORGANIZATION_INVITE_EXPIRE_DAYS)
+
+
 def generate_otp() -> str:
     import secrets
 

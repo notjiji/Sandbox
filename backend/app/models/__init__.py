@@ -4,6 +4,7 @@ from app.models.base import Base
 from app.models.email_verification_otp import EmailVerificationOtp
 from app.models.finding import Finding, FindingSeverity, FindingStatus
 from app.models.organization import Organization
+from app.models.organization_invite import InviteStatus, OrganizationInvite
 from app.models.organization_member import MemberStatus, OrganizationMember, OrganizationRole
 from app.models.password_reset_token import PasswordResetToken
 from app.models.project import Project
@@ -22,8 +23,10 @@ __all__ = [
     "Finding",
     "FindingSeverity",
     "FindingStatus",
+    "InviteStatus",
     "MemberStatus",
     "Organization",
+    "OrganizationInvite",
     "OrganizationMember",
     "OrganizationRole",
     "PasswordResetToken",

@@ -81,6 +81,7 @@ def register_user(
     last_name: str,
     email: str,
     password: str,
+    invite_token: str | None = None,
 ) -> RegisterResponse:
     existing = get_user_by_email(db, email)
     if existing:
@@ -106,6 +107,12 @@ def register_user(
     )
     db.commit()
     db.refresh(user)
+
+    if invite_token:
+        from app.services.organization import accept_invite_by_token
+
+        accept_invite_by_token(db, user=user, token=invite_token)
+
     return RegisterResponse(
         message="Account created. Check your email for a verification code.",
         email=user.email,

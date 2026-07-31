@@ -51,6 +51,7 @@ def register(request: Request, body: RegisterRequest, db: Session = Depends(get_
         last_name=body.last_name,
         email=str(body.email),
         password=body.password,
+        invite_token=body.invite_token,
     )
     return JSONResponse(status_code=201, content=result.model_dump())
 

@@ -42,7 +42,7 @@ function parseErrorPayload(payload, response) {
 }
 
 async function rawApiRequest(path, options = {}) {
-  const { method = "GET", body, headers = {}, auth = false } = options;
+  const { method = "GET", body, headers = {}, auth = false, organizationId = undefined } = options;
   const requestId = createRequestId();
   const requestHeaders = {
     "Content-Type": "application/json",
@@ -59,9 +59,10 @@ async function rawApiRequest(path, options = {}) {
     if (sessionId) {
       requestHeaders["X-Session-ID"] = sessionId;
     }
-    const organizationId = orgStorage.getActiveOrgId();
-    if (organizationId) {
-      requestHeaders["X-Organization-ID"] = organizationId;
+    const resolvedOrgId =
+      organizationId !== undefined ? organizationId : orgStorage.getActiveOrgId();
+    if (resolvedOrgId) {
+      requestHeaders["X-Organization-ID"] = resolvedOrgId;
     }
   }
 
@@ -96,9 +97,6 @@ async function performTokenRefresh() {
   return payload;
 }
 
-/**
- * Coalesce concurrent refresh attempts into a single in-flight request.
- */
 export async function refreshAccessToken() {
   if (!refreshPromise) {
     refreshPromise = performTokenRefresh().finally(() => {
@@ -174,6 +172,10 @@ export async function apiRequest(path, options = {}, retried = false) {
   }
 }
 
+function unwrapData(payload) {
+  return payload?.data ?? payload;
+}
+
 export const authApi = {
   register: (data) => apiRequest("/auth/register", { method: "POST", body: data }),
   verifyEmail: (data) =>
@@ -227,9 +229,58 @@ export const orgApi = {
   create: (data) =>
     apiRequest("/organizations", { method: "POST", body: data, auth: true }),
   getCurrent: () => apiRequest("/organizations/current", { auth: true }),
+  updateCurrent: (data) =>
+    apiRequest("/organizations/current", { method: "PATCH", body: data, auth: true }),
+  deleteCurrent: () =>
+    apiRequest("/organizations/current", { method: "DELETE", auth: true }),
+  listMembers: () => apiRequest("/organizations/current/members", { auth: true }),
+  listInvites: () => apiRequest("/organizations/current/invites", { auth: true }),
+  inviteMember: (data) =>
+    apiRequest("/organizations/current/members", {
+      method: "POST",
+      body: data,
+      auth: true,
+    }),
+  acceptInvitation: (organizationId) =>
+    apiRequest("/organizations/current/members/accept", {
+      method: "POST",
+      auth: true,
+      organizationId,
+    }),
+  updateMember: (membershipId, data) =>
+    apiRequest(`/organizations/current/members/${membershipId}`, {
+      method: "PATCH",
+      body: data,
+      auth: true,
+    }),
+  removeMember: (membershipId) =>
+    apiRequest(`/organizations/current/members/${membershipId}`, {
+      method: "DELETE",
+      auth: true,
+    }),
+  revokeInvite: (inviteId) =>
+    apiRequest(`/organizations/current/invites/${inviteId}`, {
+      method: "DELETE",
+      auth: true,
+    }),
+  previewInvite: (token) => apiRequest(`/organizations/invites/${token}`),
+  acceptInviteToken: (token) =>
+    apiRequest(`/organizations/invites/${token}/accept`, {
+      method: "POST",
+      auth: true,
+      organizationId: null,
+    }),
+  listRoles: () => apiRequest("/organizations/roles"),
 };
 
 export const projectApi = {
   list: () => apiRequest("/projects", { auth: true }),
   create: (data) => apiRequest("/projects", { method: "POST", body: data, auth: true }),
+  get: (projectId) => apiRequest(`/projects/${projectId}`, { auth: true }),
+  update: (projectId, data) =>
+    apiRequest(`/projects/${projectId}`, { method: "PATCH", body: data, auth: true }),
+  delete: (projectId) =>
+    apiRequest(`/projects/${projectId}`, { method: "DELETE", auth: true }),
 };
+
+export { unwrapData };

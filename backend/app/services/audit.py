@@ -26,6 +26,7 @@ class AuditAction:
     ORG_DELETE = "org.delete"
     ORG_CREATE = "org.create"
     ORG_MEMBER_INVITE = "org.member_invite"
+    ORG_MEMBER_INVITE_REVOKE = "org.member_invite_revoke"
     ORG_MEMBER_ACCEPT = "org.member_accept"
     ORG_MEMBER_UPDATE = "org.member_update"
     ORG_MEMBER_REMOVE = "org.member_remove"

@@ -20,13 +20,17 @@ from app.schemas.organization import (
 from app.schemas.rbac import build_roles_list_response
 from app.services.organization import (
     accept_invitation,
+    accept_invite_by_token,
     create_user_organization,
     delete_current_organization,
     get_current_organization,
+    get_invite_preview,
     invite_member,
     list_current_organization_members,
+    list_current_pending_invites,
     list_user_organizations,
     remove_member,
+    revoke_invite,
     transfer_organization_ownership,
     update_current_organization,
     update_member,
@@ -39,6 +43,25 @@ router = APIRouter()
 def list_roles() -> JSONResponse:
     response = build_roles_list_response()
     return JSONResponse(status_code=200, content=response.model_dump(mode="json"))
+
+
+@router.get("/invites/{token}")
+def preview_invite(
+    token: str,
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    preview = get_invite_preview(db, token=token)
+    return success_response(data=preview.model_dump(mode="json"))
+
+
+@router.post("/invites/{token}/accept")
+def accept_invite_token(
+    token: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> JSONResponse:
+    organization = accept_invite_by_token(db, user=current_user, token=token)
+    return success_response(data=organization.model_dump(mode="json"))
 
 
 @router.get("/me")
@@ -107,6 +130,20 @@ def list_members(
     )
 
 
+@router.get("/current/invites")
+def list_pending_invites(
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.MEMBER_READ)),
+) -> JSONResponse:
+    invites = list_current_pending_invites(db, membership)
+    return success_response(
+        data={
+            "items": [invite.model_dump(mode="json") for invite in invites],
+            "total": len(invites),
+        }
+    )
+
+
 @router.post("/current/members/accept")
 def accept_organization_invitation(
     db: Session = Depends(get_db),
@@ -122,8 +159,18 @@ def invite_organization_member(
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(Permission.MEMBER_INVITE)),
 ) -> JSONResponse:
-    member = invite_member(db, membership, body=body)
-    return success_response(data=member.model_dump(mode="json"), status_code=201)
+    result = invite_member(db, membership, body=body)
+    return success_response(data=result.model_dump(mode="json"), status_code=201)
+
+
+@router.delete("/current/invites/{invite_id}", status_code=200)
+def delete_pending_invite(
+    invite_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.MEMBER_INVITE)),
+) -> JSONResponse:
+    revoke_invite(db, membership, invite_id=invite_id)
+    return success_response(data={"message": "Invitation revoked successfully"})
 
 
 @router.patch("/current/members/{membership_id}")

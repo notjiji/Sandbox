@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { UserPlus } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
@@ -10,10 +10,13 @@ import { validateRegisterForm } from "../lib/validation";
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("invite") ?? undefined;
+  const prefilledEmail = searchParams.get("email") ?? "";
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
-    email: "",
+    email: prefilledEmail,
     password: "",
     confirmPassword: "",
   });
@@ -45,6 +48,7 @@ export default function Register() {
         last_name: form.lastName.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
+        invite_token: inviteToken,
       });
       setSuccess(response.message ?? "Account created successfully");
       setTimeout(

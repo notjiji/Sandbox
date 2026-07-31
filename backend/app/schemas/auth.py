@@ -29,6 +29,7 @@ class RegisterRequest(BaseSchema):
     last_name: str = Field(min_length=1, max_length=128)
     email: EmailStr
     password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
+    invite_token: str | None = Field(default=None, min_length=1)
 
     @field_validator("first_name", "last_name", mode="before")
     @classmethod

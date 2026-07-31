@@ -6,7 +6,7 @@ import AuthLayout from "../components/AuthLayout";
 import FormAlert from "../components/FormAlert";
 import FormError from "../components/FormError";
 import { authApi, orgApi, ApiError } from "../lib/api";
-import { ensureActiveOrganization } from "../lib/org";
+import { getActiveOrganizations, resolveActiveOrganization } from "../lib/org";
 import { validateLoginForm } from "../lib/validation";
 
 export default function Login() {
@@ -14,7 +14,7 @@ export default function Login() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const redirectTo =
-    searchParams.get("from") || location.state?.from || "/profile";
+    searchParams.get("from") || location.state?.from || "/dashboard";
   const sessionExpired = searchParams.get("reason") === "session-expired";
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
@@ -44,7 +44,12 @@ export default function Login() {
       });
       try {
         const organizations = await orgApi.listMine();
-        ensureActiveOrganization(organizations);
+        const activeOrgs = getActiveOrganizations(organizations);
+        if (activeOrgs.length === 0) {
+          navigate("/select-organization");
+          return;
+        }
+        resolveActiveOrganization(organizations);
       } catch {
         // Org context is optional until the user joins or creates one.
       }

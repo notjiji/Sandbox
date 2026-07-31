@@ -110,3 +110,33 @@ class UpdateMemberRoleRequest(BaseSchema):
 
 class TransferOwnershipRequest(BaseSchema):
     new_owner_user_id: str = Field(min_length=1)
+
+
+class InviteResult(BaseSchema):
+    invite_id: str
+    email: str
+    role: OrganizationRole
+    status: str
+    user_exists: bool
+    membership_id: str | None = None
+
+
+class PendingInviteSummary(BaseSchema):
+    invite_id: str
+    email: str
+    role: OrganizationRole
+    status: str
+    invited_at: datetime
+    expires_at: datetime
+    membership_id: str | None = None
+
+
+class InvitePreview(BaseSchema):
+    organization_id: str
+    organization_name: str
+    organization_slug: str
+    email: str
+    role: OrganizationRole
+    inviter_name: str
+    expires_at: datetime
+    user_exists: bool
