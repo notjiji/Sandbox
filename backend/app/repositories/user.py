@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import hash_token
-from app.models.organization_member import OrganizationMember
+from app.models.organization_member import MemberStatus, OrganizationMember
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
 
@@ -45,7 +45,10 @@ def get_primary_membership(db: Session, user_id: uuid.UUID) -> OrganizationMembe
     return (
         db.query(OrganizationMember)
         .options(joinedload(OrganizationMember.organization))
-        .filter(OrganizationMember.user_id == user_id)
+        .filter(
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.status == MemberStatus.ACTIVE,
+        )
         .order_by(OrganizationMember.created_at.asc())
         .first()
     )

@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ConflictError, NotFoundError, ValidationAppError
+from app.core.exceptions import NotFoundError, ValidationAppError
 from app.core.slug import slugify, unique_slug
 from app.models.organization_member import OrganizationMember
 from app.models.project import Project
@@ -25,6 +25,7 @@ def _to_project_summary(project: Project) -> ProjectSummary:
         name=project.name,
         slug=project.slug,
         description=project.description,
+        created_by=str(project.created_by) if project.created_by else None,
         is_active=project.is_active,
     )
 
@@ -85,6 +86,7 @@ def create_organization_project(
         name=body.name,
         slug=slug,
         description=body.description,
+        created_by=membership.user_id,
     )
     record_audit_event(
         db,

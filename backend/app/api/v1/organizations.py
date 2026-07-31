@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_permission
+from app.api.deps import get_current_membership_any_status, get_current_user, require_permission
 from app.core.database import get_db
 from app.core.permissions import Permission
 from app.core.responses import success_response
@@ -19,6 +19,7 @@ from app.schemas.organization import (
 )
 from app.schemas.rbac import build_roles_list_response
 from app.services.organization import (
+    accept_invitation,
     create_user_organization,
     delete_current_organization,
     get_current_organization,
@@ -104,6 +105,15 @@ def list_members(
             "total": len(members),
         }
     )
+
+
+@router.post("/current/members/accept")
+def accept_organization_invitation(
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(get_current_membership_any_status),
+) -> JSONResponse:
+    member = accept_invitation(db, membership)
+    return success_response(data=member.model_dump(mode="json"))
 
 
 @router.post("/current/members", status_code=201)

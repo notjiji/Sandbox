@@ -56,12 +56,14 @@ def create_project(
     name: str,
     slug: str,
     description: str | None = None,
+    created_by: uuid.UUID | None = None,
 ) -> Project:
     project = Project(
         organization_id=organization_id,
         name=name,
         slug=slug,
         description=description,
+        created_by=created_by,
         is_active=True,
     )
     db.add(project)

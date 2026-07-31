@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
+from app.api.v1 import assets, findings, reports, scans
 from app.core.database import get_db
 from app.core.permissions import Permission
 from app.core.responses import success_response
@@ -19,6 +20,11 @@ from app.services.project import (
 )
 
 router = APIRouter()
+
+router.include_router(assets.router, prefix="/{project_id}/assets", tags=["assets"])
+router.include_router(scans.router, prefix="/{project_id}/scans", tags=["scans"])
+router.include_router(findings.router, prefix="/{project_id}/findings", tags=["findings"])
+router.include_router(reports.router, prefix="/{project_id}/reports", tags=["reports"])
 
 
 @router.get("")

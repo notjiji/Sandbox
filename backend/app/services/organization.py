@@ -1,11 +1,12 @@
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationAppError
 from app.core.slug import slugify, unique_slug
 from app.models.organization import Organization
-from app.models.organization_member import OrganizationMember, OrganizationRole
+from app.models.organization_member import MemberStatus, OrganizationMember, OrganizationRole
 from app.models.user import User
 from app.repositories.organization import (
     add_organization_member,
@@ -41,6 +42,7 @@ def _to_organization_summary(membership: OrganizationMember) -> OrganizationSumm
         name=org.name,
         slug=org.slug,
         role=membership.role,
+        membership_status=membership.status,
         is_active=org.is_active,
     )
 
@@ -51,6 +53,12 @@ def _to_organization_detail(organization: Organization) -> OrganizationDetail:
         name=organization.name,
         slug=organization.slug,
         description=organization.description,
+        industry=organization.industry,
+        website=organization.website,
+        logo_url=organization.logo_url,
+        country=organization.country,
+        timezone=organization.timezone,
+        created_by=str(organization.created_by) if organization.created_by else None,
         is_active=organization.is_active,
     )
 
@@ -64,6 +72,8 @@ def _to_member_summary(membership: OrganizationMember) -> MemberSummary:
         first_name=user.first_name,
         last_name=user.last_name,
         role=membership.role,
+        status=membership.status,
+        joined_at=membership.joined_at,
     )
 
 
@@ -87,12 +97,20 @@ def create_user_organization(
         name=body.name,
         slug=slug,
         description=body.description,
+        industry=body.industry,
+        website=body.website,
+        logo_url=body.logo_url,
+        country=body.country,
+        timezone=body.timezone,
+        created_by=user.id,
     )
     add_organization_member(
         db,
         organization_id=organization.id,
         user_id=user.id,
         role=OrganizationRole.OWNER,
+        status=MemberStatus.ACTIVE,
+        joined_at=datetime.now(UTC),
     )
     record_audit_event(
         db,
@@ -127,7 +145,7 @@ def update_current_organization(
     organization = membership.organization
     if not organization.is_active:
         raise NotFoundError("Organization", "Organization is inactive")
-    if body.name is None and body.description is None:
+    if body.model_dump(exclude_none=True) == {}:
         raise ValidationAppError("At least one field must be provided")
 
     update_organization(
@@ -135,6 +153,11 @@ def update_current_organization(
         organization,
         name=body.name,
         description=body.description,
+        industry=body.industry,
+        website=body.website,
+        logo_url=body.logo_url,
+        country=body.country,
+        timezone=body.timezone,
     )
     record_audit_event(
         db,
@@ -143,7 +166,7 @@ def update_current_organization(
         organization_id=organization.id,
         resource_type="organization",
         resource_id=organization.id,
-        details={"name": body.name, "description": body.description},
+        details=body.model_dump(exclude_none=True),
     )
     db.commit()
     db.refresh(organization)
@@ -205,6 +228,7 @@ def invite_member(
         organization_id=organization.id,
         user_id=user.id,
         role=body.role,
+        status=MemberStatus.INVITED,
     )
     record_audit_event(
         db,
@@ -229,6 +253,28 @@ def invite_member(
     return _to_member_summary(created)
 
 
+def accept_invitation(db: Session, membership: OrganizationMember) -> MemberSummary:
+    if membership.status != MemberStatus.INVITED:
+        raise ValidationAppError("No pending invitation to accept")
+
+    updated = update_member_role(
+        db,
+        membership,
+        status=MemberStatus.ACTIVE,
+    )
+    record_audit_event(
+        db,
+        action=AuditAction.ORG_MEMBER_ACCEPT,
+        user_id=membership.user_id,
+        organization_id=membership.organization_id,
+        resource_type="organization_member",
+        resource_id=membership.id,
+    )
+    db.commit()
+    db.refresh(updated)
+    return _to_member_summary(updated)
+
+
 def update_member(
     db: Session,
     membership: OrganizationMember,
@@ -236,6 +282,9 @@ def update_member(
     target_membership_id: uuid.UUID,
     body: UpdateMemberRoleRequest,
 ) -> MemberSummary:
+    if body.role is None and body.status is None:
+        raise ValidationAppError("At least one field must be provided")
+
     target = get_organization_member_by_id(
         db,
         membership_id=target_membership_id,
@@ -244,13 +293,16 @@ def update_member(
     if not target:
         raise NotFoundError("Member")
 
-    if target.role == OrganizationRole.OWNER:
+    if target.role == OrganizationRole.OWNER and body.role is not None:
         raise ForbiddenError("Cannot change the owner's role directly")
 
-    if membership.user_id == target.user_id and body.role != membership.role:
+    if membership.user_id == target.user_id and body.role is not None and body.role != membership.role:
         raise ForbiddenError("You cannot change your own role")
 
-    updated = update_member_role(db, target, role=body.role)
+    if target.role == OrganizationRole.OWNER and body.status == MemberStatus.SUSPENDED:
+        raise ForbiddenError("Cannot suspend the organization owner")
+
+    updated = update_member_role(db, target, role=body.role, status=body.status)
     record_audit_event(
         db,
         action=AuditAction.ORG_MEMBER_UPDATE,
@@ -258,10 +310,7 @@ def update_member(
         organization_id=membership.organization_id,
         resource_type="organization_member",
         resource_id=target.id,
-        details={
-            "target_user_id": str(target.user_id),
-            "role": body.role.value,
-        },
+        details=body.model_dump(exclude_none=True),
     )
     db.commit()
     db.refresh(updated)
@@ -325,6 +374,8 @@ def transfer_organization_ownership(
     )
     if not target:
         raise NotFoundError("Member", "New owner must already be a member of the organization")
+    if target.status != MemberStatus.ACTIVE:
+        raise ValidationAppError("New owner must have an active membership")
 
     update_member_role(db, membership, role=OrganizationRole.ADMIN)
     update_member_role(db, target, role=OrganizationRole.OWNER)

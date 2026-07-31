@@ -9,6 +9,7 @@ class ProjectSummary(BaseSchema):
     name: str
     slug: str
     description: str | None = None
+    created_by: str | None = None
     is_active: bool
 
 

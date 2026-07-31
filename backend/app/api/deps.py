@@ -9,7 +9,7 @@ from app.core.exceptions import ForbiddenError, NotFoundError, UnauthorizedError
 from app.core.permissions import Permission
 from app.core.rbac import has_all_permissions, has_any_permission, has_permission
 from app.core.security import decode_access_token
-from app.models.organization_member import OrganizationMember
+from app.models.organization_member import MemberStatus, OrganizationMember
 from app.models.user import User
 from app.repositories.organization import get_membership, get_organization_by_id
 from app.repositories.user import get_user_by_id
@@ -62,6 +62,34 @@ def get_current_membership(
     current_user: User = Depends(get_current_user),
     organization_id: uuid.UUID | None = Depends(get_organization_id_header),
 ) -> OrganizationMember:
+    if organization_id is None:
+        raise UnauthorizedError("X-Organization-ID header is required")
+
+    if not get_organization_by_id(db, organization_id):
+        raise NotFoundError("Organization")
+
+    membership = get_membership(
+        db,
+        organization_id=organization_id,
+        user_id=current_user.id,
+    )
+    if not membership:
+        raise ForbiddenError("You are not a member of this organization")
+
+    if membership.status == MemberStatus.INVITED:
+        raise ForbiddenError("You must accept the organization invitation first")
+    if membership.status == MemberStatus.SUSPENDED:
+        raise ForbiddenError("Your membership in this organization is suspended")
+
+    return membership
+
+
+def get_current_membership_any_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    organization_id: uuid.UUID | None = Depends(get_organization_id_header),
+) -> OrganizationMember:
+    """Resolve membership without enforcing active status (e.g. invitation accept)."""
     if organization_id is None:
         raise UnauthorizedError("X-Organization-ID header is required")
 

@@ -1,7 +1,8 @@
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,6 +15,12 @@ class OrganizationRole(str, enum.Enum):
     SECURITY_ANALYST = "security_analyst"
     MANAGER = "manager"
     VIEWER = "viewer"
+
+
+class MemberStatus(str, enum.Enum):
+    INVITED = "invited"
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
 
 
 class OrganizationMember(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -39,6 +46,12 @@ class OrganizationMember(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         default=OrganizationRole.VIEWER,
     )
+    status: Mapped[MemberStatus] = mapped_column(
+        Enum(MemberStatus, name="member_status", native_enum=True),
+        nullable=False,
+        default=MemberStatus.ACTIVE,
+    )
+    joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     organization: Mapped["Organization"] = relationship(
         "Organization",
