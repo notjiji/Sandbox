@@ -60,6 +60,19 @@ def create_asset(
     return success_response(data=asset.model_dump(mode="json"), status_code=201)
 
 
+@router.get("/{asset_id}/audit-history")
+def list_asset_audit_history(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    result = asset_service.list_audit_history(
+        db, membership, project_id=project_id, asset_id=asset_id
+    )
+    return success_response(data=result.model_dump(mode="json"))
+
+
 @router.get("/{asset_id}")
 def get_asset(
     project_id: uuid.UUID,

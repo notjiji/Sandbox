@@ -18,6 +18,7 @@ import Members from "@/features/members/pages/Members";
 import Projects from "@/features/projects/pages/Projects";
 import ProjectDetail from "@/features/projects/pages/ProjectDetail";
 import Assets from "@/features/assets/pages/Assets";
+import AssetDetail from "@/features/assets/pages/AssetDetail";
 import Scans from "@/features/scans/pages/Scans";
 import Findings from "@/features/findings/pages/Findings";
 import Reports from "@/features/reports/pages/Reports";
@@ -45,6 +46,7 @@ export default function AppRoutes() {
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:projectId" element={<ProjectDetail />} />
           <Route path="/projects/:projectId/assets" element={<Assets />} />
+          <Route path="/projects/:projectId/assets/:assetId" element={<AssetDetail />} />
           <Route path="/projects/:projectId/assets/:assetId/scans" element={<Scans />} />
           <Route path="/projects/:projectId/findings" element={<Findings />} />
           <Route path="/projects/:projectId/reports" element={<Reports />} />

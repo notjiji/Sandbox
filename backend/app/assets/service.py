@@ -46,6 +46,8 @@ from app.assets.validators import (
     validate_restorable,
     validate_update_payload,
 )
+from app.audit.repositories.audit_repository import list_audit_logs_for_resource
+from app.audit.schemas import AuditLogListResponse, AuditLogSummary
 from app.audit.service import record_audit_event
 from app.core.exceptions import NotFoundError
 from app.members.models import OrganizationMember
@@ -305,6 +307,36 @@ class AssetService:
             raise NotFoundError("Asset")
         return self.to_summary(reloaded)
 
+    def list_audit_history(
+        self,
+        db: Session,
+        membership: OrganizationMember,
+        *,
+        project_id: uuid.UUID,
+        asset_id: uuid.UUID,
+        limit: int = 50,
+    ) -> AuditLogListResponse:
+        self._get_asset_entity(db, membership, project_id=project_id, asset_id=asset_id)
+        logs = list_audit_logs_for_resource(
+            db,
+            resource_type="asset",
+            resource_id=asset_id,
+            limit=limit,
+        )
+        items = [
+            AuditLogSummary(
+                id=str(log.id),
+                action=log.action,
+                user_id=str(log.user_id) if log.user_id else None,
+                resource_type=log.resource_type,
+                resource_id=str(log.resource_id) if log.resource_id else None,
+                details=log.details,
+                created_at=log.created_at,
+            )
+            for log in logs
+        ]
+        return AuditLogListResponse(items=items, total=len(items))
+
     def get_scan_target(
         self,
         db: Session,
@@ -473,3 +505,4 @@ update_project_asset = asset_service.update_for_project
 delete_project_asset = asset_service.delete_for_project
 archive_project_asset = asset_service.archive_for_project
 restore_project_asset = asset_service.restore_for_project
+list_asset_audit_history = asset_service.list_audit_history

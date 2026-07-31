@@ -30,3 +30,22 @@ def create_audit_log(
     db.add(record)
     db.flush()
     return record
+
+
+def list_audit_logs_for_resource(
+    db: Session,
+    *,
+    resource_type: str,
+    resource_id: uuid.UUID,
+    limit: int = 50,
+) -> list[AuditLog]:
+    return (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.resource_type == resource_type,
+            AuditLog.resource_id == resource_id,
+        )
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )

@@ -27,4 +27,6 @@ export const assetsApi = {
     apiRequest(`${base(projectId)}/${assetId}/restore`, { method: "PATCH", auth: true }),
   delete: (projectId, assetId) =>
     apiRequest(`${base(projectId)}/${assetId}`, { method: "DELETE", auth: true }),
+  auditHistory: (projectId, assetId) =>
+    apiRequest(`${base(projectId)}/${assetId}/audit-history`, { auth: true }),
 };
