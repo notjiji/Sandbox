@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.findings.enums import FindingSeverity, FindingStatus
 from app.findings.models import Finding
@@ -34,6 +34,7 @@ def create_finding(
 def list_findings_for_project(db: Session, *, project_id: uuid.UUID) -> list[Finding]:
     return (
         db.query(Finding)
+        .options(joinedload(Finding.asset))
         .filter(Finding.project_id == project_id)
         .order_by(Finding.created_at.desc())
         .all()

@@ -1,10 +1,16 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, String
+from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.assets.enums import AssetStatus, AssetType
+from app.assets.enums import (
+    AssetCriticality,
+    AssetEnvironment,
+    AssetStatus,
+    AssetType,
+)
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
@@ -13,6 +19,12 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     __tablename__ = "assets"
 
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     project_id: Mapped[uuid.UUID] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("projects.id", ondelete="CASCADE"),
@@ -25,24 +37,37 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=True,
         index=True,
     )
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    identifier: Mapped[str | None] = mapped_column(String(512), nullable=True)
     type: Mapped[AssetType] = mapped_column(
         Enum(AssetType, name="asset_type", native_enum=True),
         nullable=False,
         default=AssetType.WEBSITE,
     )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[AssetStatus] = mapped_column(
         Enum(AssetStatus, name="asset_status", native_enum=True),
         nullable=False,
-        default=AssetStatus.ACTIVE,
+        default=AssetStatus.PENDING,
     )
+    environment: Mapped[AssetEnvironment] = mapped_column(
+        Enum(AssetEnvironment, name="asset_environment", native_enum=True),
+        nullable=False,
+        default=AssetEnvironment.PRODUCTION,
+    )
+    criticality: Mapped[AssetCriticality] = mapped_column(
+        Enum(AssetCriticality, name="asset_criticality", native_enum=True),
+        nullable=False,
+        default=AssetCriticality.MEDIUM,
+    )
+    owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    organization: Mapped["Organization"] = relationship("Organization")
     project: Mapped["Project"] = relationship("Project", back_populates="assets")
     parent: Mapped["Asset | None"] = relationship(
         "Asset", remote_side="Asset.id", back_populates="children"
@@ -51,5 +76,59 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         "Asset", back_populates="parent", cascade="all, delete-orphan"
     )
     creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])
+    metadata_entries: Mapped[list["AssetMetadataEntry"]] = relationship(
+        "AssetMetadataEntry",
+        back_populates="asset",
+        cascade="all, delete-orphan",
+    )
+    tags: Mapped[list["AssetTag"]] = relationship(
+        "AssetTag",
+        back_populates="asset",
+        cascade="all, delete-orphan",
+    )
     scans: Mapped[list["Scan"]] = relationship("Scan", back_populates="asset")
     findings: Mapped[list["Finding"]] = relationship("Finding", back_populates="asset")
+
+
+class AssetMetadataEntry(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Type-specific key/value metadata for an asset."""
+
+    __tablename__ = "asset_metadata"
+    __table_args__ = (
+        UniqueConstraint("asset_id", "key", name="uq_asset_metadata_asset_key"),
+    )
+
+    asset_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    key: Mapped[str] = mapped_column(String(255), nullable=False)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+
+    asset: Mapped["Asset"] = relationship("Asset", back_populates="metadata_entries")
+
+
+class AssetTag(Base, UUIDPrimaryKeyMixin):
+    """Unlimited tags attached to an asset for search and filtering."""
+
+    __tablename__ = "asset_tags"
+    __table_args__ = (
+        UniqueConstraint("asset_id", "tag", name="uq_asset_tags_asset_tag"),
+    )
+
+    asset_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    tag: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    asset: Mapped["Asset"] = relationship("Asset", back_populates="tags")

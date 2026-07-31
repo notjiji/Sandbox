@@ -38,6 +38,32 @@ PARENT_ASSET_TYPES: frozenset[AssetType] = frozenset(CHILD_PARENT_MAP.values())
 
 
 class AssetStatus(str, enum.Enum):
+    """Asset lifecycle — only ACTIVE assets can be scanned."""
+
+    PENDING = "pending"
     ACTIVE = "active"
-    INACTIVE = "inactive"
     ARCHIVED = "archived"
+    DELETED = "deleted"
+
+
+class AssetEnvironment(str, enum.Enum):
+    PRODUCTION = "production"
+    STAGING = "staging"
+    DEVELOPMENT = "development"
+    TESTING = "testing"
+
+
+class AssetCriticality(str, enum.Enum):
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+# Multipliers for risk scoring based on asset business importance.
+CRITICALITY_RISK_MULTIPLIERS: dict[AssetCriticality, float] = {
+    AssetCriticality.CRITICAL: 4.0,
+    AssetCriticality.HIGH: 2.0,
+    AssetCriticality.MEDIUM: 1.0,
+    AssetCriticality.LOW: 0.25,
+}

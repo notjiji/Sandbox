@@ -1,17 +1,28 @@
 from pydantic import Field
 
-from app.assets.enums import AssetType, AssetStatus
+from app.assets.enums import (
+    AssetCriticality,
+    AssetEnvironment,
+    AssetStatus,
+    AssetType,
+)
 from app.schemas.base import BaseSchema
 
 
 class AssetSummary(BaseSchema):
     id: str
+    organization_id: str
     project_id: str
     parent_id: str | None = None
     name: str
-    identifier: str | None = None
+    description: str | None = None
     type: AssetType
     status: AssetStatus
+    environment: AssetEnvironment
+    criticality: AssetCriticality
+    owner: str | None = None
+    metadata: dict[str, str] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
     created_by: str | None = None
     children_count: int = 0
 
@@ -23,8 +34,14 @@ class AssetListResponse(BaseSchema):
 
 class CreateAssetRequest(BaseSchema):
     name: str = Field(min_length=1, max_length=255)
-    identifier: str | None = Field(default=None, max_length=512)
+    description: str | None = Field(default=None, max_length=5000)
     type: AssetType = AssetType.WEBSITE
+    status: AssetStatus = AssetStatus.PENDING
+    environment: AssetEnvironment = AssetEnvironment.PRODUCTION
+    criticality: AssetCriticality = AssetCriticality.MEDIUM
+    owner: str | None = Field(default=None, max_length=255)
+    metadata: dict[str, str] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
     parent_id: str | None = Field(
         default=None,
         description=(
@@ -36,9 +53,14 @@ class CreateAssetRequest(BaseSchema):
 
 class UpdateAssetRequest(BaseSchema):
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    identifier: str | None = Field(default=None, max_length=512)
+    description: str | None = Field(default=None, max_length=5000)
     type: AssetType | None = None
     status: AssetStatus | None = None
+    environment: AssetEnvironment | None = None
+    criticality: AssetCriticality | None = None
+    owner: str | None = Field(default=None, max_length=255)
+    metadata: dict[str, str] | None = None
+    tags: list[str] | None = None
     parent_id: str | None = None
 
 
@@ -57,5 +79,7 @@ class ScanTargetContext(BaseSchema):
     identifier: str
     asset_type: AssetType
     parent_id: str | None = None
+    environment: AssetEnvironment
+    criticality: AssetCriticality
     metadata: dict = Field(default_factory=dict)
     related_targets: list[RelatedScanTarget] = Field(default_factory=list)

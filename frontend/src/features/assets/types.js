@@ -1,5 +1,7 @@
 /** @typedef {'website'|'domain'|'public_ip'|'server'|'windows_server'|'docker_host'|'cloud_account'|'kubernetes_cluster'|'api_endpoint'|'mobile_application'|'git_repository'|'email_domain'|'s3_bucket'|'azure_subscription'} AssetType */
-/** @typedef {'active'|'inactive'|'archived'} AssetStatus */
+/** @typedef {'pending'|'active'|'archived'|'deleted'} AssetStatus */
+/** @typedef {'production'|'staging'|'development'|'testing'} AssetEnvironment */
+/** @typedef {'critical'|'high'|'medium'|'low'} AssetCriticality */
 
 /** Child asset type → required parent asset type. */
 export const CHILD_PARENT_TYPES = {
@@ -28,7 +30,11 @@ export const ROOT_ASSET_TYPES = [
 
 export const ASSET_TYPES = [...ROOT_ASSET_TYPES, ...CHILD_ASSET_TYPES];
 
-export const ASSET_STATUSES = ["active", "inactive", "archived"];
+export const ASSET_STATUSES = ["pending", "active", "archived", "deleted"];
+
+export const ASSET_ENVIRONMENTS = ["production", "staging", "development", "testing"];
+
+export const ASSET_CRITICALITIES = ["critical", "high", "medium", "low"];
 
 export const ASSET_TYPE_LABELS = {
   website: "Website",
@@ -45,6 +51,45 @@ export const ASSET_TYPE_LABELS = {
   email_domain: "Email Domain",
   s3_bucket: "S3 Bucket",
   azure_subscription: "Azure Subscription",
+};
+
+export const ASSET_STATUS_LABELS = {
+  pending: "Pending",
+  active: "Active",
+  archived: "Archived",
+  deleted: "Deleted",
+};
+
+export const ASSET_ENVIRONMENT_LABELS = {
+  production: "Production",
+  staging: "Staging",
+  development: "Development",
+  testing: "Testing",
+};
+
+export const ASSET_CRITICALITY_LABELS = {
+  critical: "Critical",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
+/** Primary metadata key per asset type (stored in asset_metadata). */
+export const PRIMARY_METADATA_KEYS = {
+  website: "url",
+  domain: "domain",
+  public_ip: "address",
+  server: "hostname",
+  windows_server: "hostname",
+  docker_host: "hostname",
+  cloud_account: "account_id",
+  kubernetes_cluster: "cluster",
+  api_endpoint: "endpoint",
+  mobile_application: "bundle_id",
+  git_repository: "repository",
+  email_domain: "email_domain",
+  s3_bucket: "bucket",
+  azure_subscription: "subscription_id",
 };
 
 /** Grouped options for the asset type selector. */
@@ -67,13 +112,13 @@ export const ASSET_TYPE_GROUPS = [
   },
 ];
 
-export const IDENTIFIER_PLACEHOLDERS = {
+export const METADATA_PLACEHOLDERS = {
   website: "https://example.com",
   domain: "example.com",
   public_ip: "203.0.113.10",
-  server: "host.example.com",
-  windows_server: "win-host.example.com",
-  docker_host: "docker.example.com",
+  server: "prod-server",
+  windows_server: "win-host",
+  docker_host: "docker-host",
   cloud_account: "123456789012",
   kubernetes_cluster: "prod-cluster",
   api_endpoint: "https://api.example.com/v1",
@@ -83,3 +128,21 @@ export const IDENTIFIER_PLACEHOLDERS = {
   s3_bucket: "my-app-bucket",
   azure_subscription: "00000000-0000-0000-0000-000000000000",
 };
+
+/** @deprecated Use PRIMARY_METADATA_KEYS */
+export const IDENTIFIER_PLACEHOLDERS = METADATA_PLACEHOLDERS;
+
+export function getPrimaryMetadataValue(asset) {
+  const key = PRIMARY_METADATA_KEYS[asset.type];
+  if (key && asset.metadata?.[key]) return asset.metadata[key];
+  return null;
+}
+
+export function buildMetadataPayload(type, primaryValue, extraMetadata = {}) {
+  const payload = { ...extraMetadata };
+  const key = PRIMARY_METADATA_KEYS[type];
+  if (key && primaryValue?.trim()) {
+    payload[key] = primaryValue.trim();
+  }
+  return payload;
+}

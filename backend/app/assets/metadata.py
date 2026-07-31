@@ -1,17 +1,17 @@
-"""Asset metadata — enrichment data keyed by asset type."""
+"""Asset metadata — type-specific key/value storage and scan resolution."""
 
 from dataclasses import dataclass, field
 
 from app.assets.enums import AssetType
-from app.assets.models import Asset
+from app.assets.models import Asset, AssetMetadataEntry
 
-_IDENTIFIER_KEYS: dict[AssetType, str] = {
+PRIMARY_METADATA_KEYS: dict[AssetType, str] = {
     AssetType.WEBSITE: "url",
     AssetType.DOMAIN: "domain",
     AssetType.PUBLIC_IP: "address",
-    AssetType.SERVER: "host",
-    AssetType.WINDOWS_SERVER: "host",
-    AssetType.DOCKER_HOST: "host",
+    AssetType.SERVER: "hostname",
+    AssetType.WINDOWS_SERVER: "hostname",
+    AssetType.DOCKER_HOST: "hostname",
     AssetType.CLOUD_ACCOUNT: "account_id",
     AssetType.KUBERNETES_CLUSTER: "cluster",
     AssetType.API_ENDPOINT: "endpoint",
@@ -35,43 +35,70 @@ class AssetMetadata:
         return self.data.get(key, default)
 
 
-def build_asset_metadata(asset: Asset, *, children: list[Asset] | None = None) -> dict:
+def metadata_to_dict(entries: list[AssetMetadataEntry]) -> dict[str, str]:
+    return {entry.key: entry.value for entry in entries}
+
+
+def resolve_primary_value(asset: Asset, metadata: dict[str, str]) -> str:
+    """Return the primary scan identifier from metadata, falling back to name."""
+    primary_key = PRIMARY_METADATA_KEYS.get(asset.type)
+    if primary_key and metadata.get(primary_key):
+        return metadata[primary_key]
+    return asset.name
+
+
+def build_asset_metadata(
+    asset: Asset,
+    *,
+    metadata: dict[str, str],
+    children: list[Asset] | None = None,
+    child_metadata: dict[str, dict[str, str]] | None = None,
+) -> dict:
     """Build a metadata payload for scan and enrichment consumers."""
-    identifier = asset.identifier or asset.name
-    metadata: dict = {
+    identifier = resolve_primary_value(asset, metadata)
+    payload: dict = {
         "asset_type": asset.type.value,
         "identifier": identifier,
         "status": asset.status.value,
+        "environment": asset.environment.value,
+        "criticality": asset.criticality.value,
+        "metadata": metadata,
     }
 
-    key = _IDENTIFIER_KEYS.get(asset.type)
-    if key:
-        metadata[key] = identifier
+    primary_key = PRIMARY_METADATA_KEYS.get(asset.type)
+    if primary_key and primary_key in metadata:
+        payload[primary_key] = metadata[primary_key]
 
     if asset.parent_id:
-        metadata["parent_id"] = str(asset.parent_id)
+        payload["parent_id"] = str(asset.parent_id)
+
+    if asset.owner:
+        payload["owner"] = asset.owner
 
     if children:
-        metadata["children"] = [
+        child_metadata = child_metadata or {}
+        payload["children"] = [
             {
                 "asset_id": str(child.id),
                 "type": child.type.value,
-                "identifier": child.identifier or child.name,
+                "identifier": resolve_primary_value(child, child_metadata.get(str(child.id), {})),
             }
             for child in children
         ]
 
         if asset.type == AssetType.WEBSITE:
-            metadata["public_ips"] = [
-                item for item in metadata["children"] if item["type"] == AssetType.PUBLIC_IP.value
+            payload["public_ips"] = [
+                item for item in payload["children"] if item["type"] == AssetType.PUBLIC_IP.value
             ]
         if asset.type == AssetType.DOMAIN:
-            metadata["email_domains"] = [
-                item for item in metadata["children"] if item["type"] == AssetType.EMAIL_DOMAIN.value
+            payload["email_domains"] = [
+                item
+                for item in payload["children"]
+                if item["type"] == AssetType.EMAIL_DOMAIN.value
             ]
         if asset.type == AssetType.CLOUD_ACCOUNT:
-            metadata["s3_buckets"] = [
-                item for item in metadata["children"] if item["type"] == AssetType.S3_BUCKET.value
+            payload["s3_buckets"] = [
+                item for item in payload["children"] if item["type"] == AssetType.S3_BUCKET.value
             ]
 
-    return metadata
+    return payload

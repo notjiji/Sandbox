@@ -30,7 +30,10 @@ class RiskService:
         for finding in open_findings:
             severity = finding.severity.value
             setattr(breakdown, severity, getattr(breakdown, severity) + 1)
-            payload.append({"severity": severity})
+            item = {"severity": severity}
+            if finding.asset and finding.asset.criticality:
+                item["criticality"] = finding.asset.criticality.value
+            payload.append(item)
 
         score = self._calculator.score_findings(payload)
         return ProjectRiskResponse(

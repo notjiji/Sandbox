@@ -23,11 +23,20 @@ import ProjectNav from "@/features/projects/components/ProjectNav";
 import { assetsApi } from "../api";
 import { useProjectAssets } from "../hooks";
 import {
+  ASSET_CRITICALITIES,
+  ASSET_CRITICALITY_LABELS,
+  ASSET_ENVIRONMENTS,
+  ASSET_ENVIRONMENT_LABELS,
+  ASSET_STATUSES,
+  ASSET_STATUS_LABELS,
   ASSET_TYPE_GROUPS,
   ASSET_TYPE_LABELS,
   CHILD_ASSET_TYPES,
   CHILD_PARENT_TYPES,
-  IDENTIFIER_PLACEHOLDERS,
+  METADATA_PLACEHOLDERS,
+  PRIMARY_METADATA_KEYS,
+  buildMetadataPayload,
+  getPrimaryMetadataValue,
 } from "../types";
 
 const TYPE_ICONS = {
@@ -47,16 +56,24 @@ const TYPE_ICONS = {
   azure_subscription: Cloud,
 };
 
+const EMPTY_FORM = {
+  name: "",
+  description: "",
+  primary_value: "",
+  type: "website",
+  status: "pending",
+  environment: "production",
+  criticality: "medium",
+  owner: "",
+  tags: "",
+  parent_id: "",
+};
+
 export default function Assets() {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
   const { assets, loading, error, reload } = useProjectAssets(projectId);
-  const [form, setForm] = useState({
-    name: "",
-    identifier: "",
-    type: "website",
-    parent_id: "",
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState("");
   const [success, setSuccess] = useState("");
@@ -64,6 +81,7 @@ export default function Assets() {
 
   const isChildType = CHILD_ASSET_TYPES.includes(form.type);
   const requiredParentType = CHILD_PARENT_TYPES[form.type];
+  const primaryMetadataKey = PRIMARY_METADATA_KEYS[form.type];
 
   const parentOptions = useMemo(
     () => assets.filter((asset) => asset.type === requiredParentType),
@@ -98,14 +116,25 @@ export default function Assets() {
     setSuccess("");
     setErrors({});
     try {
+      const tags = form.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
       await assetsApi.create(projectId, {
         name: form.name.trim(),
-        identifier: form.identifier.trim() || null,
+        description: form.description.trim() || null,
         type: form.type,
+        status: form.status,
+        environment: form.environment,
+        criticality: form.criticality,
+        owner: form.owner.trim() || null,
+        metadata: buildMetadataPayload(form.type, form.primary_value),
+        tags,
         parent_id: isChildType ? form.parent_id : null,
       });
       setSuccess("Asset created.");
-      setForm({ name: "", identifier: "", type: "website", parent_id: "" });
+      setForm(EMPTY_FORM);
       await reload();
     } catch (err) {
       setAlert(err instanceof ApiError ? err.message : "Unable to create asset.");
@@ -117,6 +146,8 @@ export default function Assets() {
   const renderAsset = (asset, depth = 0) => {
     const Icon = TYPE_ICONS[asset.type] ?? Globe;
     const children = assets.filter((item) => item.parent_id === asset.id);
+    const primaryValue = getPrimaryMetadataValue(asset);
+    const canScan = asset.status === "active";
 
     return (
       <li key={asset.id}>
@@ -130,16 +161,40 @@ export default function Assets() {
               <p className="font-medium text-brand-100">{asset.name}</p>
               <p className="text-sm text-brand-500">
                 {ASSET_TYPE_LABELS[asset.type] ?? asset.type}
-                {asset.identifier ? ` · ${asset.identifier}` : ""}
+                {primaryValue ? ` · ${primaryValue}` : ""}
               </p>
+              <p className="mt-1 text-xs text-brand-600">
+                {ASSET_STATUS_LABELS[asset.status] ?? asset.status}
+                {" · "}
+                {ASSET_ENVIRONMENT_LABELS[asset.environment] ?? asset.environment}
+                {" · "}
+                {ASSET_CRITICALITY_LABELS[asset.criticality] ?? asset.criticality}
+                {asset.owner ? ` · ${asset.owner}` : ""}
+              </p>
+              {asset.tags?.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {asset.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-brand-900/60 px-2 py-0.5 text-xs text-brand-400"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-          <Link
-            to={`/projects/${projectId}/assets/${asset.id}/scans`}
-            className="link-glow text-sm"
-          >
-            Scans
-          </Link>
+          {canScan ? (
+            <Link
+              to={`/projects/${projectId}/assets/${asset.id}/scans`}
+              className="link-glow text-sm"
+            >
+              Scans
+            </Link>
+          ) : (
+            <span className="text-xs text-brand-600">Activate to scan</span>
+          )}
         </div>
         {children.length > 0 && (
           <ul className="mt-2 space-y-2">
@@ -165,7 +220,7 @@ export default function Assets() {
             <p className="text-brand-500">Loading...</p>
           ) : rootAssets.length === 0 ? (
             <p className="text-brand-500">
-              No assets yet. Add websites, domains, servers, cloud accounts, and more — then attach
+              No assets yet. Register websites, servers, cloud accounts, and more — then attach
               child assets such as public IPs, email domains, or S3 buckets.
             </p>
           ) : (
@@ -240,16 +295,102 @@ export default function Assets() {
             />
             <FormError message={errors.name} />
           </div>
+
           <div>
-            <label htmlFor="identifier" className="terminal-text mb-2 block">identifier</label>
-            <input
-              id="identifier"
-              value={form.identifier}
-              onChange={(e) => setForm((prev) => ({ ...prev, identifier: e.target.value }))}
-              className="input-field"
-              placeholder={IDENTIFIER_PLACEHOLDERS[form.type] ?? "example.com"}
+            <label htmlFor="description" className="terminal-text mb-2 block">description</label>
+            <textarea
+              id="description"
+              value={form.description}
+              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+              className="input-field min-h-20"
             />
           </div>
+
+          <div>
+            <label htmlFor="primary_value" className="terminal-text mb-2 block">
+              {primaryMetadataKey ?? "metadata"}
+            </label>
+            <input
+              id="primary_value"
+              value={form.primary_value}
+              onChange={(e) => setForm((prev) => ({ ...prev, primary_value: e.target.value }))}
+              className="input-field"
+              placeholder={METADATA_PLACEHOLDERS[form.type] ?? "example.com"}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="status" className="terminal-text mb-2 block">status</label>
+              <select
+                id="status"
+                value={form.status}
+                onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
+                className="input-field"
+              >
+                {ASSET_STATUSES.filter((status) => status !== "deleted").map((status) => (
+                  <option key={status} value={status}>
+                    {ASSET_STATUS_LABELS[status]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="environment" className="terminal-text mb-2 block">environment</label>
+              <select
+                id="environment"
+                value={form.environment}
+                onChange={(e) => setForm((prev) => ({ ...prev, environment: e.target.value }))}
+                className="input-field"
+              >
+                {ASSET_ENVIRONMENTS.map((environment) => (
+                  <option key={environment} value={environment}>
+                    {ASSET_ENVIRONMENT_LABELS[environment]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="criticality" className="terminal-text mb-2 block">criticality</label>
+              <select
+                id="criticality"
+                value={form.criticality}
+                onChange={(e) => setForm((prev) => ({ ...prev, criticality: e.target.value }))}
+                className="input-field"
+              >
+                {ASSET_CRITICALITIES.map((criticality) => (
+                  <option key={criticality} value={criticality}>
+                    {ASSET_CRITICALITY_LABELS[criticality]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="owner" className="terminal-text mb-2 block">owner</label>
+              <input
+                id="owner"
+                value={form.owner}
+                onChange={(e) => setForm((prev) => ({ ...prev, owner: e.target.value }))}
+                className="input-field"
+                placeholder="Infrastructure Team"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="tags" className="terminal-text mb-2 block">tags</label>
+            <input
+              id="tags"
+              value={form.tags}
+              onChange={(e) => setForm((prev) => ({ ...prev, tags: e.target.value }))}
+              className="input-field"
+              placeholder="customer-facing, api, linux"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={creating}

@@ -63,7 +63,9 @@ def create_asset_scan(
     asset_id: uuid.UUID,
     body: CreateAssetScanRequest,
 ) -> ScanSummary:
-    _require_asset(db, membership, project_id=project_id, asset_id=asset_id)
+    asset_service.require_scannable_asset(
+        db, membership, project_id=project_id, asset_id=asset_id
+    )
     scan = create_scan(
         db,
         project_id=project_id,
@@ -108,7 +110,9 @@ def run_asset_scan(
     asset_id: uuid.UUID,
     scan_id: uuid.UUID,
 ) -> ScanSummary:
-    asset_service.get_for_project(db, membership, project_id=project_id, asset_id=asset_id)
+    asset_service.require_scannable_asset(
+        db, membership, project_id=project_id, asset_id=asset_id
+    )
     scan = get_scan_for_asset(db, project_id=project_id, asset_id=asset_id, scan_id=scan_id)
     if not scan:
         raise NotFoundError("Scan")

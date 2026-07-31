@@ -1,12 +1,14 @@
 import uuid
 
-from app.assets.enums import AssetType, CHILD_ASSET_TYPES, CHILD_PARENT_MAP, ROOT_ASSET_TYPES
+from app.assets.enums import AssetStatus, AssetType, CHILD_ASSET_TYPES, CHILD_PARENT_MAP, ROOT_ASSET_TYPES
+from app.assets.models import Asset
 from app.assets.schemas import CreateAssetRequest, UpdateAssetRequest
 from app.core.exceptions import ValidationAppError
 from app.projects.validators import require_active_project
 
 __all__ = [
     "require_active_project",
+    "validate_asset_scannable",
     "validate_create_payload",
     "validate_hierarchy",
     "validate_parent_type",
@@ -47,6 +49,11 @@ def validate_parent_type(child_type: AssetType, parent_type: AssetType) -> None:
         raise ValidationAppError(
             f"{child_type.value} assets must belong to a {expected.value.replace('_', ' ')}"
         )
+
+
+def validate_asset_scannable(asset: Asset) -> None:
+    if asset.status != AssetStatus.ACTIVE:
+        raise ValidationAppError("Only active assets can be scanned")
 
 
 def parse_parent_id(parent_id: str | None) -> uuid.UUID | None:

@@ -11,15 +11,17 @@ from app.assets.enums import (
     ROOT_ASSET_TYPES,
 )
 from app.assets.events import AssetAuditAction
-from app.assets.metadata import build_asset_metadata
+from app.assets.metadata import build_asset_metadata, metadata_to_dict, resolve_primary_value
 from app.assets.models import Asset
 from app.assets.repositories.asset_repository import (
     create_asset,
-    delete_asset,
     get_asset_by_id,
     list_assets_for_project,
     list_child_assets,
+    replace_tags,
+    soft_delete_asset,
     update_asset,
+    upsert_metadata_entries,
 )
 from app.assets.schemas import (
     AssetListResponse,
@@ -32,6 +34,7 @@ from app.assets.schemas import (
 from app.assets.validators import (
     parse_parent_id,
     require_active_project,
+    validate_asset_scannable,
     validate_create_payload,
     validate_hierarchy,
     validate_parent_type,
@@ -47,14 +50,22 @@ class AssetService:
     """Owns everything related to digital assets within a project."""
 
     def to_summary(self, asset: Asset, *, children_count: int = 0) -> AssetSummary:
+        metadata = metadata_to_dict(asset.metadata_entries)
+        tags = [entry.tag for entry in asset.tags]
         return AssetSummary(
             id=str(asset.id),
+            organization_id=str(asset.organization_id),
             project_id=str(asset.project_id),
             parent_id=str(asset.parent_id) if asset.parent_id else None,
             name=asset.name,
-            identifier=asset.identifier,
+            description=asset.description,
             type=asset.type,
             status=asset.status,
+            environment=asset.environment,
+            criticality=asset.criticality,
+            owner=asset.owner,
+            metadata=metadata,
+            tags=tags,
             created_by=str(asset.created_by) if asset.created_by else None,
             children_count=children_count,
         )
@@ -102,18 +113,25 @@ class AssetService:
         body: CreateAssetRequest,
     ) -> AssetSummary:
         validate_create_payload(body)
-        require_active_project(db, membership, project_id)
+        project = require_active_project(db, membership, project_id)
         parent_id = self._resolve_parent(db, project_id=project_id, body=body)
 
         asset = create_asset(
             db,
+            organization_id=project.organization_id,
             project_id=project_id,
             parent_id=parent_id,
             name=body.name,
-            identifier=body.identifier,
+            description=body.description,
             type=body.type,
+            status=body.status,
+            environment=body.environment,
+            criticality=body.criticality,
+            owner=body.owner,
             created_by=membership.user_id,
         )
+        upsert_metadata_entries(db, asset_id=asset.id, metadata=body.metadata)
+        replace_tags(db, asset_id=asset.id, tags=body.tags)
         self._record_event(
             db,
             membership,
@@ -122,8 +140,10 @@ class AssetService:
             details={"project_id": str(project_id), "name": asset.name, "type": asset.type.value},
         )
         db.commit()
-        db.refresh(asset)
-        return self.to_summary(asset)
+        reloaded = get_asset_by_id(db, project_id=project_id, asset_id=asset.id)
+        if not reloaded:
+            raise NotFoundError("Asset")
+        return self.to_summary(reloaded)
 
     def update_for_project(
         self,
@@ -159,12 +179,19 @@ class AssetService:
             db,
             asset,
             name=body.name,
-            identifier=body.identifier,
+            description=body.description,
             type=body.type,
             status=body.status,
+            environment=body.environment,
+            criticality=body.criticality,
+            owner=body.owner,
             parent_id=parent_uuid,
             clear_parent=clear_parent,
         )
+        if body.metadata is not None:
+            upsert_metadata_entries(db, asset_id=asset.id, metadata=body.metadata)
+        if body.tags is not None:
+            replace_tags(db, asset_id=asset.id, tags=body.tags)
         self._record_event(
             db,
             membership,
@@ -173,8 +200,10 @@ class AssetService:
             details=body.model_dump(exclude_none=True),
         )
         db.commit()
-        db.refresh(asset)
-        return self.to_summary(asset)
+        reloaded = get_asset_by_id(db, project_id=project_id, asset_id=asset.id)
+        if not reloaded:
+            raise NotFoundError("Asset")
+        return self.to_summary(reloaded)
 
     def delete_for_project(
         self,
@@ -185,7 +214,7 @@ class AssetService:
         asset_id: uuid.UUID,
     ) -> None:
         asset = self._get_asset_entity(db, membership, project_id=project_id, asset_id=asset_id)
-        delete_asset(db, asset)
+        soft_delete_asset(db, asset)
         self._record_event(
             db,
             membership,
@@ -205,17 +234,27 @@ class AssetService:
         asset = get_asset_by_id(db, project_id=project_id, asset_id=asset_id)
         if not asset:
             raise NotFoundError("Asset")
+        validate_asset_scannable(asset)
 
         children = (
             list_child_assets(db, parent_id=asset.id)
             if asset.type in PARENT_ASSET_TYPES
             else []
         )
-        metadata = build_asset_metadata(asset, children=children)
+        metadata = metadata_to_dict(asset.metadata_entries)
+        child_metadata = {
+            str(child.id): metadata_to_dict(child.metadata_entries) for child in children
+        }
+        scan_metadata = build_asset_metadata(
+            asset,
+            metadata=metadata,
+            children=children,
+            child_metadata=child_metadata,
+        )
         related = [
             RelatedScanTarget(
                 asset_id=str(child.id),
-                identifier=child.identifier or child.name,
+                identifier=resolve_primary_value(child, child_metadata[str(child.id)]),
                 asset_type=child.type,
             )
             for child in children
@@ -225,10 +264,12 @@ class AssetService:
             asset_id=str(asset.id),
             project_id=str(asset.project_id),
             name=asset.name,
-            identifier=asset.identifier or asset.name,
+            identifier=resolve_primary_value(asset, metadata),
             asset_type=asset.type,
             parent_id=str(asset.parent_id) if asset.parent_id else None,
-            metadata=metadata,
+            environment=asset.environment,
+            criticality=asset.criticality,
+            metadata=scan_metadata,
             related_targets=related,
         )
 
@@ -257,6 +298,18 @@ class AssetService:
                 )
             )
         return targets
+
+    def require_scannable_asset(
+        self,
+        db: Session,
+        membership: OrganizationMember,
+        *,
+        project_id: uuid.UUID,
+        asset_id: uuid.UUID,
+    ) -> Asset:
+        asset = self._get_asset_entity(db, membership, project_id=project_id, asset_id=asset_id)
+        validate_asset_scannable(asset)
+        return asset
 
     def _get_asset_entity(
         self,
