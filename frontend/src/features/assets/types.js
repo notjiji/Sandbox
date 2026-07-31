@@ -74,6 +74,17 @@ export const ASSET_CRITICALITY_LABELS = {
   low: "Low",
 };
 
+export const SERVER_CONNECTION_TYPES = ["ssh", "rdp", "winrm", "agent", "snmp", "other"];
+
+export const SERVER_CONNECTION_TYPE_LABELS = {
+  ssh: "SSH",
+  rdp: "RDP",
+  winrm: "WinRM",
+  agent: "Agent",
+  snmp: "SNMP",
+  other: "Other",
+};
+
 /** Primary metadata key per asset type (stored in asset_metadata). */
 export const PRIMARY_METADATA_KEYS = {
   website: "url",

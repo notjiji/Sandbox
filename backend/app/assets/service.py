@@ -34,6 +34,7 @@ from app.assets.schemas import (
 from app.assets.validators import (
     parse_parent_id,
     require_active_project,
+    validate_asset_metadata_for_update,
     validate_asset_scannable,
     validate_create_payload,
     validate_hierarchy,
@@ -156,6 +157,11 @@ class AssetService:
     ) -> AssetSummary:
         validate_update_payload(body)
         asset = self._get_asset_entity(db, membership, project_id=project_id, asset_id=asset_id)
+        validate_asset_metadata_for_update(
+            body,
+            asset_type=asset.type,
+            existing_metadata=metadata_to_dict(asset.metadata_entries),
+        )
 
         next_type = body.type or asset.type
         next_parent_id = body.parent_id if body.parent_id is not None else (

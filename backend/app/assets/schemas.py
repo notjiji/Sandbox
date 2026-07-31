@@ -42,6 +42,10 @@ class CreateAssetRequest(BaseSchema):
     owner: str | None = Field(default=None, max_length=255)
     metadata: dict[str, str] = Field(default_factory=dict)
     tags: list[str] = Field(default_factory=list)
+    allow_private_ip: bool = Field(
+        default=False,
+        description="Allow private/reserved IPv4 addresses for public_ip assets",
+    )
     parent_id: str | None = Field(
         default=None,
         description=(
@@ -61,6 +65,10 @@ class UpdateAssetRequest(BaseSchema):
     owner: str | None = Field(default=None, max_length=255)
     metadata: dict[str, str] | None = None
     tags: list[str] | None = None
+    allow_private_ip: bool | None = Field(
+        default=None,
+        description="Allow private/reserved IPv4 addresses for public_ip assets",
+    )
     parent_id: str | None = None
 
 

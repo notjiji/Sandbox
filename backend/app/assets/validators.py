@@ -3,11 +3,13 @@ import uuid
 from app.assets.enums import AssetStatus, AssetType, CHILD_ASSET_TYPES, CHILD_PARENT_MAP, ROOT_ASSET_TYPES
 from app.assets.models import Asset
 from app.assets.schemas import CreateAssetRequest, UpdateAssetRequest
+from app.assets.type_validators import validate_asset_metadata
 from app.core.exceptions import ValidationAppError
 from app.projects.validators import require_active_project
 
 __all__ = [
     "require_active_project",
+    "validate_asset_metadata_for_update",
     "validate_asset_scannable",
     "validate_create_payload",
     "validate_hierarchy",
@@ -25,6 +27,22 @@ def validate_create_payload(body: CreateAssetRequest) -> None:
     if not body.name.strip():
         raise ValidationAppError("Asset name is required")
     validate_hierarchy(body.type, body.parent_id)
+    validate_asset_metadata(body.type, body.metadata, allow_private=body.allow_private_ip)
+
+
+def validate_asset_metadata_for_update(
+    body: UpdateAssetRequest,
+    *,
+    asset_type: AssetType,
+    existing_metadata: dict[str, str],
+) -> None:
+    if body.metadata is None and body.type is None:
+        return
+
+    next_type = body.type or asset_type
+    merged = {**existing_metadata, **(body.metadata or {})}
+    allow_private = bool(body.allow_private_ip)
+    validate_asset_metadata(next_type, merged, allow_private=allow_private)
 
 
 def validate_hierarchy(asset_type: AssetType, parent_id: str | None) -> None:
