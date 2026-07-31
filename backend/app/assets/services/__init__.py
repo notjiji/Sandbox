@@ -1,6 +1,7 @@
 """Asset domain services."""
 
-from app.assets.services.asset_service import (
+from app.assets.service import (
+    asset_service,
     create_project_asset,
     delete_project_asset,
     get_project_asset,
@@ -9,6 +10,7 @@ from app.assets.services.asset_service import (
 )
 
 __all__ = [
+    "asset_service",
     "create_project_asset",
     "delete_project_asset",
     "get_project_asset",

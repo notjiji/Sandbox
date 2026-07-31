@@ -2,11 +2,10 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.assets.repositories.asset_repository import get_asset_by_id
+from app.assets.service import asset_service
 from app.core.exceptions import NotFoundError, ValidationAppError
 from app.core.scan_engine.orchestrator import scan_orchestrator
 from app.members.models import OrganizationMember
-from app.projects.validators import require_active_project
 from app.scans.enums import ScanStatus
 from app.scans.events import ScanAuditAction
 from app.scans.models import Scan
@@ -39,12 +38,8 @@ def _require_asset(
     *,
     project_id: uuid.UUID,
     asset_id: uuid.UUID,
-):
-    require_active_project(db, membership, project_id)
-    asset = get_asset_by_id(db, project_id=project_id, asset_id=asset_id)
-    if not asset:
-        raise NotFoundError("Asset")
-    return asset
+) -> None:
+    asset_service.get_for_project(db, membership, project_id=project_id, asset_id=asset_id)
 
 
 def list_asset_scans(
@@ -113,7 +108,7 @@ def run_asset_scan(
     asset_id: uuid.UUID,
     scan_id: uuid.UUID,
 ) -> ScanSummary:
-    asset = _require_asset(db, membership, project_id=project_id, asset_id=asset_id)
+    asset_service.get_for_project(db, membership, project_id=project_id, asset_id=asset_id)
     scan = get_scan_for_asset(db, project_id=project_id, asset_id=asset_id, scan_id=scan_id)
     if not scan:
         raise NotFoundError("Scan")
@@ -131,7 +126,7 @@ def run_asset_scan(
     )
     db.flush()
 
-    scan_orchestrator.execute(db, scan=scan, asset=asset)
+    scan_orchestrator.execute(db, scan=scan, project_id=project_id, asset_id=asset_id)
     db.commit()
     db.refresh(scan)
     return to_scan_summary(scan)

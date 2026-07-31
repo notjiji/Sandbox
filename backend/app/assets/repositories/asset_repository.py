@@ -2,13 +2,23 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.assets.models import Asset, AssetStatus, AssetType
+from app.assets.enums import AssetStatus, AssetType
+from app.assets.models import Asset
 
 
 def list_assets_for_project(db: Session, *, project_id: uuid.UUID) -> list[Asset]:
     return (
         db.query(Asset)
         .filter(Asset.project_id == project_id)
+        .order_by(Asset.parent_id.asc().nullsfirst(), Asset.created_at.asc())
+        .all()
+    )
+
+
+def list_child_assets(db: Session, *, parent_id: uuid.UUID) -> list[Asset]:
+    return (
+        db.query(Asset)
+        .filter(Asset.parent_id == parent_id)
         .order_by(Asset.created_at.asc())
         .all()
     )
@@ -33,11 +43,13 @@ def create_asset(
     project_id: uuid.UUID,
     name: str,
     identifier: str | None = None,
-    type: AssetType = AssetType.HOST,
+    type: AssetType = AssetType.WEBSITE,
+    parent_id: uuid.UUID | None = None,
     created_by: uuid.UUID | None = None,
 ) -> Asset:
     asset = Asset(
         project_id=project_id,
+        parent_id=parent_id,
         name=name,
         identifier=identifier,
         type=type,
@@ -57,6 +69,8 @@ def update_asset(
     identifier: str | None = None,
     type: AssetType | None = None,
     status: AssetStatus | None = None,
+    parent_id: uuid.UUID | None = None,
+    clear_parent: bool = False,
 ) -> Asset:
     if name is not None:
         asset.name = name
@@ -66,6 +80,10 @@ def update_asset(
         asset.type = type
     if status is not None:
         asset.status = status
+    if clear_parent:
+        asset.parent_id = None
+    elif parent_id is not None:
+        asset.parent_id = parent_id
     db.add(asset)
     db.flush()
     return asset

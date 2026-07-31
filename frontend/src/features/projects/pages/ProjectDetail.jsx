@@ -13,7 +13,7 @@ const sections = [
   {
     key: "assets",
     title: "Assets",
-    description: "Manage scan targets — hosts, domains, IPs, and applications.",
+    description: "Websites, domains, servers, and their public IPs.",
     icon: Globe,
   },
   {
