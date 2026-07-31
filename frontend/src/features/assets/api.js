@@ -29,4 +29,6 @@ export const assetsApi = {
     apiRequest(`${base(projectId)}/${assetId}`, { method: "DELETE", auth: true }),
   auditHistory: (projectId, assetId) =>
     apiRequest(`${base(projectId)}/${assetId}/audit-history`, { auth: true }),
+  children: (projectId, assetId, params) =>
+    apiRequest(`${base(projectId)}/${assetId}/children${toQuery(params)}`, { auth: true }),
 };

@@ -2,6 +2,7 @@
 
 
 def test_assets_module_imports() -> None:
+    from app.assets.adapter import asset_adapter
     from app.assets.enums import AssetCriticality, AssetEnvironment, AssetStatus, AssetType, ROOT_ASSET_TYPES
     from app.assets.service import asset_service
 
@@ -15,6 +16,8 @@ def test_assets_module_imports() -> None:
     assert callable(asset_service.list_for_project)
     assert callable(asset_service.get_scan_target)
     assert callable(asset_service.resolve_plugin_targets)
+    assert callable(asset_adapter.adapt)
+    assert callable(asset_adapter.to_plugin_targets)
 
 
 def test_asset_hierarchy_validation() -> None:
@@ -231,3 +234,36 @@ def test_archive_restore_validation() -> None:
         raise AssertionError("expected ValidationAppError")
     except ValidationAppError:
         pass
+
+
+def test_asset_adapter_to_plugin_targets() -> None:
+    from app.assets.adapter import AssetAdapter
+    from app.assets.enums import AssetCriticality, AssetEnvironment, AssetType
+    from app.assets.schemas import NormalizedScanTarget, RelatedScanTarget
+
+    normalized = NormalizedScanTarget(
+        asset_id="00000000-0000-4000-8000-000000000001",
+        project_id="00000000-0000-4000-8000-000000000002",
+        name="Example Site",
+        identifier="https://example.com",
+        asset_type=AssetType.WEBSITE,
+        environment=AssetEnvironment.PRODUCTION,
+        criticality=AssetCriticality.HIGH,
+        related_targets=[
+            RelatedScanTarget(
+                asset_id="00000000-0000-4000-8000-000000000003",
+                identifier="203.0.113.10",
+                asset_type=AssetType.PUBLIC_IP,
+            )
+        ],
+    )
+
+    targets = AssetAdapter().to_plugin_targets(normalized)
+
+    assert len(targets) == 2
+    assert targets[0].asset_id == normalized.asset_id
+    assert targets[0].identifier == "https://example.com"
+    assert targets[0].asset_type == "website"
+    assert targets[1].asset_id == "00000000-0000-4000-8000-000000000003"
+    assert targets[1].identifier == "203.0.113.10"
+    assert targets[1].asset_type == "public_ip"

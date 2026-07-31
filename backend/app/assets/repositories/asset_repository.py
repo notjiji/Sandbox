@@ -16,6 +16,7 @@ def _asset_query(db: Session, *, include_deleted: bool = False):
     query = db.query(Asset).options(
         joinedload(Asset.metadata_entries),
         joinedload(Asset.tags),
+        joinedload(Asset.parent),
     )
     if not include_deleted:
         query = query.filter(Asset.deleted_at.is_(None))
@@ -75,8 +76,15 @@ def list_assets_for_project(
     criticality: AssetCriticality | None = None,
     environment: AssetEnvironment | None = None,
     search: str | None = None,
+    roots_only: bool = False,
+    parent_id: uuid.UUID | None = None,
 ) -> tuple[list[Asset], int]:
     query = db.query(Asset).filter(Asset.project_id == project_id)
+    if parent_id is not None:
+        query = query.filter(Asset.parent_id == parent_id)
+    elif roots_only:
+        query = query.filter(Asset.parent_id.is_(None))
+
     query = _apply_list_filters(
         query,
         status=status,
@@ -88,12 +96,20 @@ def list_assets_for_project(
 
     total = query.with_entities(func.count(func.distinct(Asset.id))).scalar() or 0
     offset = (page - 1) * limit
+    if parent_id is not None or roots_only:
+        order_by = (Asset.created_at.asc(),)
+    else:
+        order_by = (
+            func.coalesce(Asset.parent_id, Asset.id),
+            Asset.parent_id.asc().nullsfirst(),
+            Asset.created_at.asc(),
+        )
     asset_ids = [
         row[0]
         for row in (
             query.with_entities(Asset.id)
             .distinct()
-            .order_by(Asset.parent_id.asc().nullsfirst(), Asset.created_at.asc())
+            .order_by(*order_by)
             .offset(offset)
             .limit(limit)
             .all()
@@ -112,13 +128,28 @@ def list_assets_for_project(
     return assets, total
 
 
-def list_child_assets(db: Session, *, parent_id: uuid.UUID) -> list[Asset]:
-    return (
-        _asset_query(db)
-        .filter(Asset.parent_id == parent_id)
-        .order_by(Asset.created_at.asc())
-        .all()
+def list_child_assets(
+    db: Session,
+    *,
+    parent_id: uuid.UUID,
+    status: AssetStatus | None = None,
+    asset_type: AssetType | None = None,
+    criticality: AssetCriticality | None = None,
+    environment: AssetEnvironment | None = None,
+    search: str | None = None,
+) -> list[Asset]:
+    query = _asset_query(db, include_deleted=status == AssetStatus.DELETED).filter(
+        Asset.parent_id == parent_id
     )
+    query = _apply_list_filters(
+        query,
+        status=status,
+        asset_type=asset_type,
+        criticality=criticality,
+        environment=environment,
+        search=search,
+    )
+    return query.order_by(Asset.created_at.asc()).all()
 
 
 def get_asset_by_id(

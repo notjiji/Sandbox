@@ -8,7 +8,17 @@ from app.api.deps import require_permission
 from app.assets.enums import AssetCriticality, AssetEnvironment, AssetStatus, AssetType
 from app.assets.permissions import ASSET_CREATE, ASSET_DELETE, ASSET_READ, ASSET_UPDATE
 from app.assets.schemas import AssetListQuery, CreateAssetRequest, UpdateAssetRequest
-from app.assets.services import asset_service
+from app.assets.services import (
+    archive_project_asset,
+    create_project_asset,
+    delete_project_asset,
+    get_project_asset,
+    list_asset_audit_history,
+    list_project_asset_children,
+    list_project_assets,
+    restore_project_asset,
+    update_project_asset,
+)
 from app.core.database import get_db
 from app.core.responses import success_response
 from app.members.models import OrganizationMember
@@ -29,10 +39,12 @@ def list_assets(
     criticality: AssetCriticality | None = None,
     environment: AssetEnvironment | None = None,
     search: str | None = Query(None, max_length=255),
+    roots_only: bool = Query(False),
+    parent_id: str | None = None,
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
 ) -> JSONResponse:
-    result = asset_service.list_for_project(
+    result = list_project_assets(
         db,
         membership,
         project_id=project_id,
@@ -44,6 +56,8 @@ def list_assets(
             criticality=criticality,
             environment=environment,
             search=search,
+            roots_only=roots_only,
+            parent_id=parent_id,
         ),
     )
     return success_response(data=result.model_dump(mode="json"))
@@ -56,8 +70,36 @@ def create_asset(
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(ASSET_CREATE)),
 ) -> JSONResponse:
-    asset = asset_service.create_project_asset(db, membership, project_id=project_id, body=body)
+    asset = create_project_asset(db, membership, project_id=project_id, body=body)
     return success_response(data=asset.model_dump(mode="json"), status_code=201)
+
+
+@router.get("/{asset_id}/children")
+def list_asset_children(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    status: AssetStatus | None = None,
+    asset_type: AssetType | None = Query(None, alias="type"),
+    criticality: AssetCriticality | None = None,
+    environment: AssetEnvironment | None = None,
+    search: str | None = Query(None, max_length=255),
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    result = list_project_asset_children(
+        db,
+        membership,
+        project_id=project_id,
+        parent_id=asset_id,
+        query=AssetListQuery(
+            status=status,
+            type=asset_type,
+            criticality=criticality,
+            environment=environment,
+            search=search,
+        ),
+    )
+    return success_response(data=result.model_dump(mode="json"))
 
 
 @router.get("/{asset_id}/audit-history")
@@ -67,7 +109,7 @@ def list_asset_audit_history(
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
 ) -> JSONResponse:
-    result = asset_service.list_audit_history(
+    result = list_asset_audit_history(
         db, membership, project_id=project_id, asset_id=asset_id
     )
     return success_response(data=result.model_dump(mode="json"))
@@ -80,7 +122,7 @@ def get_asset(
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
 ) -> JSONResponse:
-    asset = asset_service.get_project_asset(
+    asset = get_project_asset(
         db, membership, project_id=project_id, asset_id=asset_id
     )
     return success_response(data=asset.model_dump(mode="json"))
@@ -94,7 +136,7 @@ def update_asset(
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(ASSET_UPDATE)),
 ) -> JSONResponse:
-    asset = asset_service.update_project_asset(
+    asset = update_project_asset(
         db, membership, project_id=project_id, asset_id=asset_id, body=body
     )
     return success_response(data=asset.model_dump(mode="json"))
@@ -107,7 +149,7 @@ def archive_asset(
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(ASSET_UPDATE)),
 ) -> JSONResponse:
-    asset = asset_service.archive_project_asset(
+    asset = archive_project_asset(
         db, membership, project_id=project_id, asset_id=asset_id
     )
     return success_response(data=asset.model_dump(mode="json"))
@@ -120,7 +162,7 @@ def restore_asset(
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(ASSET_UPDATE)),
 ) -> JSONResponse:
-    asset = asset_service.restore_project_asset(
+    asset = restore_project_asset(
         db, membership, project_id=project_id, asset_id=asset_id
     )
     return success_response(data=asset.model_dump(mode="json"))
@@ -133,7 +175,7 @@ def delete_asset(
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(ASSET_DELETE)),
 ) -> JSONResponse:
-    asset_service.delete_project_asset(
+    delete_project_asset(
         db, membership, project_id=project_id, asset_id=asset_id
     )
     return success_response(data={"message": "Asset deleted successfully"})

@@ -14,6 +14,7 @@ class AssetSummary(BaseSchema):
     organization_id: str
     project_id: str
     parent_id: str | None = None
+    parent_name: str | None = None
     name: str
     description: str | None = None
     type: AssetType
@@ -42,6 +43,19 @@ class AssetListQuery(BaseSchema):
     criticality: AssetCriticality | None = None
     environment: AssetEnvironment | None = None
     search: str | None = Field(default=None, max_length=255)
+    roots_only: bool = Field(
+        default=False,
+        description="When true, paginate only root assets (parent_id is null)",
+    )
+    parent_id: str | None = Field(
+        default=None,
+        description="Return direct children of the given parent asset",
+    )
+
+
+class AssetChildrenResponse(BaseSchema):
+    items: list[AssetSummary]
+    total: int
 
 
 class CreateAssetRequest(BaseSchema):
@@ -90,8 +104,8 @@ class RelatedScanTarget(BaseSchema):
     asset_type: AssetType
 
 
-class ScanTargetContext(BaseSchema):
-    """Scan-ready view of an asset — consumed by the Scan Engine."""
+class NormalizedScanTarget(BaseSchema):
+    """Normalized scan target — asset-type agnostic view consumed by the Scan Engine."""
 
     asset_id: str
     project_id: str
@@ -103,3 +117,7 @@ class ScanTargetContext(BaseSchema):
     criticality: AssetCriticality
     metadata: dict = Field(default_factory=dict)
     related_targets: list[RelatedScanTarget] = Field(default_factory=list)
+
+
+# Backward-compatible alias
+ScanTargetContext = NormalizedScanTarget

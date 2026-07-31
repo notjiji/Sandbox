@@ -4,7 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.assets.service import asset_service
+from app.assets.adapter import asset_adapter
 from app.core.logging import get_logger
 from app.core.scan_engine.dispatcher import ScanDispatcher
 from app.core.scan_engine.normalizer import ScanNormalizer
@@ -42,9 +42,8 @@ class ScanOrchestrator:
             return scan
 
         self._loader.load_all()
-        targets = asset_service.resolve_plugin_targets(
-            db, project_id=project_id, asset_id=asset_id
-        )
+        normalized = asset_adapter.adapt(db, project_id=project_id, asset_id=asset_id)
+        targets = asset_adapter.to_plugin_targets(normalized)
 
         try:
             for target in targets:

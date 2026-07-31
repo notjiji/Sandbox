@@ -11,7 +11,8 @@ from app.assets.enums import (
     ROOT_ASSET_TYPES,
 )
 from app.assets.events import AssetAuditAction
-from app.assets.metadata import build_asset_metadata, metadata_to_dict, resolve_primary_value
+from app.assets.adapter import asset_adapter
+from app.assets.metadata import metadata_to_dict
 from app.assets.models import Asset
 from app.assets.repositories.asset_repository import (
     archive_asset,
@@ -26,12 +27,12 @@ from app.assets.repositories.asset_repository import (
     upsert_metadata_entries,
 )
 from app.assets.schemas import (
+    AssetChildrenResponse,
     AssetListQuery,
     AssetListResponse,
     AssetSummary,
     CreateAssetRequest,
-    RelatedScanTarget,
-    ScanTargetContext,
+    NormalizedScanTarget,
     UpdateAssetRequest,
 )
 from app.assets.validators import (
@@ -66,6 +67,7 @@ class AssetService:
             organization_id=str(asset.organization_id),
             project_id=str(asset.project_id),
             parent_id=str(asset.parent_id) if asset.parent_id else None,
+            parent_name=asset.parent.name if asset.parent else None,
             name=asset.name,
             description=asset.description,
             type=asset.type,
@@ -89,6 +91,7 @@ class AssetService:
     ) -> AssetListResponse:
         require_active_project(db, membership, project_id)
         params = query or AssetListQuery()
+        parent_uuid = parse_parent_id(params.parent_id) if params.parent_id else None
         assets, total = list_assets_for_project(
             db,
             project_id=project_id,
@@ -99,6 +102,8 @@ class AssetService:
             criticality=params.criticality,
             environment=params.environment,
             search=params.search,
+            roots_only=params.roots_only,
+            parent_id=parent_uuid,
         )
         child_counts = {
             asset.id: len(list_child_assets(db, parent_id=asset.id))
@@ -115,6 +120,33 @@ class AssetService:
             page=params.page,
             limit=params.limit,
         )
+
+    def list_children_for_project(
+        self,
+        db: Session,
+        membership: OrganizationMember,
+        *,
+        project_id: uuid.UUID,
+        parent_id: uuid.UUID,
+        query: AssetListQuery | None = None,
+    ) -> AssetChildrenResponse:
+        require_active_project(db, membership, project_id)
+        parent = get_asset_by_id(db, project_id=project_id, asset_id=parent_id)
+        if not parent:
+            raise NotFoundError("Asset")
+
+        params = query or AssetListQuery()
+        children = list_child_assets(
+            db,
+            parent_id=parent_id,
+            status=params.status,
+            asset_type=params.type,
+            criticality=params.criticality,
+            environment=params.environment,
+            search=params.search,
+        )
+        items = [self.to_summary(child) for child in children]
+        return AssetChildrenResponse(items=items, total=len(items))
 
     def get_for_project(
         self,
@@ -357,49 +389,9 @@ class AssetService:
         *,
         project_id: uuid.UUID,
         asset_id: uuid.UUID,
-    ) -> ScanTargetContext:
+    ) -> NormalizedScanTarget:
         """Return scan-ready asset information for the Scan Engine."""
-        asset = get_asset_by_id(db, project_id=project_id, asset_id=asset_id)
-        if not asset:
-            raise NotFoundError("Asset")
-        validate_asset_scannable(asset)
-
-        children = (
-            list_child_assets(db, parent_id=asset.id)
-            if asset.type in PARENT_ASSET_TYPES
-            else []
-        )
-        metadata = metadata_to_dict(asset.metadata_entries)
-        child_metadata = {
-            str(child.id): metadata_to_dict(child.metadata_entries) for child in children
-        }
-        scan_metadata = build_asset_metadata(
-            asset,
-            metadata=metadata,
-            children=children,
-            child_metadata=child_metadata,
-        )
-        related = [
-            RelatedScanTarget(
-                asset_id=str(child.id),
-                identifier=resolve_primary_value(child, child_metadata[str(child.id)]),
-                asset_type=child.type,
-            )
-            for child in children
-        ]
-
-        return ScanTargetContext(
-            asset_id=str(asset.id),
-            project_id=str(asset.project_id),
-            name=asset.name,
-            identifier=resolve_primary_value(asset, metadata),
-            asset_type=asset.type,
-            parent_id=str(asset.parent_id) if asset.parent_id else None,
-            environment=asset.environment,
-            criticality=asset.criticality,
-            metadata=scan_metadata,
-            related_targets=related,
-        )
+        return asset_adapter.adapt(db, project_id=project_id, asset_id=asset_id)
 
     def resolve_plugin_targets(
         self,
@@ -409,23 +401,7 @@ class AssetService:
         asset_id: uuid.UUID,
     ) -> list[ScanTarget]:
         """Translate asset domain data into plugin scan targets."""
-        context = self.get_scan_target(db, project_id=project_id, asset_id=asset_id)
-        targets = [
-            ScanTarget(
-                asset_id=context.asset_id,
-                identifier=context.identifier,
-                asset_type=context.asset_type.value,
-            )
-        ]
-        for related in context.related_targets:
-            targets.append(
-                ScanTarget(
-                    asset_id=related.asset_id,
-                    identifier=related.identifier,
-                    asset_type=related.asset_type.value,
-                )
-            )
-        return targets
+        return asset_adapter.resolve_targets(db, project_id=project_id, asset_id=asset_id)
 
     def require_scannable_asset(
         self,
@@ -519,6 +495,7 @@ asset_service = AssetService()
 
 # Backward-compatible function aliases for existing imports.
 list_project_assets = asset_service.list_for_project
+list_project_asset_children = asset_service.list_children_for_project
 get_project_asset = asset_service.get_for_project
 create_project_asset = asset_service.create_for_project
 update_project_asset = asset_service.update_for_project

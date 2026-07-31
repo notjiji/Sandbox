@@ -12,6 +12,7 @@ function buildQuery(filters = {}) {
   if (filters.status) query.status = filters.status;
   if (filters.environment) query.environment = filters.environment;
   if (filters.criticality) query.criticality = filters.criticality;
+  if (filters.roots_only) query.roots_only = true;
   return query;
 }
 
@@ -37,6 +38,7 @@ export function useProjectAssets(projectId, filters = {}) {
       filters.criticality,
       filters.page,
       filters.limit,
+      filters.roots_only,
     ],
   );
 
