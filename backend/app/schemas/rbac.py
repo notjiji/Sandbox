@@ -1,6 +1,6 @@
 from app.core.permissions import Permission
 from app.core.rbac import ROLE_DESCRIPTIONS, get_permissions_for_role
-from app.models.organization_member import OrganizationRole
+from app.members.enums import OrganizationRole
 from app.schemas.base import BaseSchema
 
 

@@ -9,10 +9,12 @@ from app.core.exceptions import ForbiddenError, NotFoundError, UnauthorizedError
 from app.core.permissions import Permission
 from app.core.rbac import has_all_permissions, has_any_permission, has_permission
 from app.core.security import decode_access_token
-from app.models.organization_member import MemberStatus, OrganizationMember
-from app.models.user import User
-from app.repositories.organization import get_membership, get_organization_by_id
-from app.repositories.user import get_user_by_id
+from app.members.enums import MemberStatus
+from app.members.models import OrganizationMember
+from app.members.repository import get_membership
+from app.users.models import User
+from app.organizations.repository import get_organization_by_id
+from app.users.repository import get_user_by_id
 
 
 def get_current_user(

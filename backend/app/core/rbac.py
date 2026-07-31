@@ -6,7 +6,7 @@ from app.core.permissions import (
     VIEWER_PERMISSIONS,
     Permission,
 )
-from app.models.organization_member import OrganizationRole
+from app.members.enums import OrganizationRole
 
 ROLE_PERMISSIONS: dict[OrganizationRole, frozenset[Permission]] = {
     OrganizationRole.OWNER: OWNER_PERMISSIONS,
