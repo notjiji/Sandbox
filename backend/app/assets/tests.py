@@ -144,3 +144,37 @@ def test_server_metadata_validation() -> None:
         raise AssertionError("expected ValidationAppError")
     except ValidationAppError:
         pass
+
+
+def test_archive_restore_validation() -> None:
+    from datetime import datetime, timezone
+
+    from app.assets.enums import AssetStatus, AssetType
+    from app.assets.validators import validate_archivable, validate_restorable
+    from app.core.exceptions import ValidationAppError
+
+    class StubAsset:
+        deleted_at = None
+        status = AssetStatus.ACTIVE
+
+    validate_archivable(StubAsset())
+
+    archived = StubAsset()
+    archived.status = AssetStatus.ARCHIVED
+    try:
+        validate_archivable(archived)
+        raise AssertionError("expected ValidationAppError")
+    except ValidationAppError:
+        pass
+
+    deleted = StubAsset()
+    deleted.status = AssetStatus.DELETED
+    deleted.deleted_at = datetime.now(timezone.utc)
+    validate_restorable(deleted)
+
+    active = StubAsset()
+    try:
+        validate_restorable(active)
+        raise AssertionError("expected ValidationAppError")
+    except ValidationAppError:
+        pass

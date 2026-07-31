@@ -9,11 +9,13 @@ from app.projects.validators import require_active_project
 
 __all__ = [
     "require_active_project",
+    "validate_archivable",
     "validate_asset_metadata_for_update",
     "validate_asset_scannable",
     "validate_create_payload",
     "validate_hierarchy",
     "validate_parent_type",
+    "validate_restorable",
     "validate_update_payload",
 ]
 
@@ -72,6 +74,18 @@ def validate_parent_type(child_type: AssetType, parent_type: AssetType) -> None:
 def validate_asset_scannable(asset: Asset) -> None:
     if asset.status != AssetStatus.ACTIVE:
         raise ValidationAppError("Only active assets can be scanned")
+
+
+def validate_archivable(asset: Asset) -> None:
+    if asset.deleted_at is not None:
+        raise ValidationAppError("Deleted assets cannot be archived")
+    if asset.status == AssetStatus.ARCHIVED:
+        raise ValidationAppError("Asset is already archived")
+
+
+def validate_restorable(asset: Asset) -> None:
+    if asset.status not in {AssetStatus.ARCHIVED, AssetStatus.DELETED}:
+        raise ValidationAppError("Only archived or deleted assets can be restored")
 
 
 def parse_parent_id(parent_id: str | None) -> uuid.UUID | None:

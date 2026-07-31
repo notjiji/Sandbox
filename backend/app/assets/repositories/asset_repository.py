@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.assets.enums import (
@@ -11,24 +12,104 @@ from app.assets.enums import (
 from app.assets.models import Asset, AssetMetadataEntry, AssetTag
 
 
-def _asset_query(db: Session):
-    return (
-        db.query(Asset)
-        .options(
-            joinedload(Asset.metadata_entries),
-            joinedload(Asset.tags),
+def _asset_query(db: Session, *, include_deleted: bool = False):
+    query = db.query(Asset).options(
+        joinedload(Asset.metadata_entries),
+        joinedload(Asset.tags),
+    )
+    if not include_deleted:
+        query = query.filter(Asset.deleted_at.is_(None))
+    return query
+
+
+def _apply_list_filters(
+    query,
+    *,
+    status: AssetStatus | None = None,
+    asset_type: AssetType | None = None,
+    criticality: AssetCriticality | None = None,
+    environment: AssetEnvironment | None = None,
+    search: str | None = None,
+):
+    if status == AssetStatus.DELETED:
+        query = query.filter(Asset.deleted_at.isnot(None))
+    else:
+        query = query.filter(Asset.deleted_at.is_(None))
+        if status is not None:
+            query = query.filter(Asset.status == status)
+
+    if asset_type is not None:
+        query = query.filter(Asset.type == asset_type)
+    if criticality is not None:
+        query = query.filter(Asset.criticality == criticality)
+    if environment is not None:
+        query = query.filter(Asset.environment == environment)
+
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query = (
+            query.outerjoin(AssetTag)
+            .outerjoin(AssetMetadataEntry)
+            .filter(
+                or_(
+                    Asset.name.ilike(term),
+                    Asset.description.ilike(term),
+                    Asset.owner.ilike(term),
+                    AssetTag.tag.ilike(term),
+                    AssetMetadataEntry.value.ilike(term),
+                )
+            )
+            .distinct()
         )
-        .filter(Asset.deleted_at.is_(None))
+    return query
+
+
+def list_assets_for_project(
+    db: Session,
+    *,
+    project_id: uuid.UUID,
+    page: int = 1,
+    limit: int = 20,
+    status: AssetStatus | None = None,
+    asset_type: AssetType | None = None,
+    criticality: AssetCriticality | None = None,
+    environment: AssetEnvironment | None = None,
+    search: str | None = None,
+) -> tuple[list[Asset], int]:
+    query = db.query(Asset).filter(Asset.project_id == project_id)
+    query = _apply_list_filters(
+        query,
+        status=status,
+        asset_type=asset_type,
+        criticality=criticality,
+        environment=environment,
+        search=search,
     )
 
+    total = query.with_entities(func.count(func.distinct(Asset.id))).scalar() or 0
+    offset = (page - 1) * limit
+    asset_ids = [
+        row[0]
+        for row in (
+            query.with_entities(Asset.id)
+            .distinct()
+            .order_by(Asset.parent_id.asc().nullsfirst(), Asset.created_at.asc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+    ]
+    if not asset_ids:
+        return [], total
 
-def list_assets_for_project(db: Session, *, project_id: uuid.UUID) -> list[Asset]:
-    return (
-        _asset_query(db)
-        .filter(Asset.project_id == project_id)
-        .order_by(Asset.parent_id.asc().nullsfirst(), Asset.created_at.asc())
+    assets = (
+        _asset_query(db, include_deleted=status == AssetStatus.DELETED)
+        .filter(Asset.id.in_(asset_ids))
         .all()
     )
+    order = {asset_id: index for index, asset_id in enumerate(asset_ids)}
+    assets.sort(key=lambda asset: order[asset.id])
+    return assets, total
 
 
 def list_child_assets(db: Session, *, parent_id: uuid.UUID) -> list[Asset]:
@@ -45,9 +126,10 @@ def get_asset_by_id(
     *,
     project_id: uuid.UUID,
     asset_id: uuid.UUID,
+    include_deleted: bool = False,
 ) -> Asset | None:
     return (
-        _asset_query(db)
+        _asset_query(db, include_deleted=include_deleted)
         .filter(Asset.id == asset_id, Asset.project_id == project_id)
         .first()
     )
@@ -118,6 +200,21 @@ def update_asset(
         asset.parent_id = None
     elif parent_id is not None:
         asset.parent_id = parent_id
+    db.add(asset)
+    db.flush()
+    return asset
+
+
+def archive_asset(db: Session, asset: Asset) -> Asset:
+    asset.status = AssetStatus.ARCHIVED
+    db.add(asset)
+    db.flush()
+    return asset
+
+
+def restore_asset(db: Session, asset: Asset) -> Asset:
+    asset.status = AssetStatus.ACTIVE
+    asset.deleted_at = None
     db.add(asset)
     db.flush()
     return asset

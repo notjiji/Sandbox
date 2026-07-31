@@ -14,16 +14,19 @@ from app.assets.events import AssetAuditAction
 from app.assets.metadata import build_asset_metadata, metadata_to_dict, resolve_primary_value
 from app.assets.models import Asset
 from app.assets.repositories.asset_repository import (
+    archive_asset,
     create_asset,
     get_asset_by_id,
     list_assets_for_project,
     list_child_assets,
     replace_tags,
+    restore_asset,
     soft_delete_asset,
     update_asset,
     upsert_metadata_entries,
 )
 from app.assets.schemas import (
+    AssetListQuery,
     AssetListResponse,
     AssetSummary,
     CreateAssetRequest,
@@ -34,11 +37,13 @@ from app.assets.schemas import (
 from app.assets.validators import (
     parse_parent_id,
     require_active_project,
+    validate_archivable,
     validate_asset_metadata_for_update,
     validate_asset_scannable,
     validate_create_payload,
     validate_hierarchy,
     validate_parent_type,
+    validate_restorable,
     validate_update_payload,
 )
 from app.audit.service import record_audit_event
@@ -77,9 +82,21 @@ class AssetService:
         membership: OrganizationMember,
         *,
         project_id: uuid.UUID,
+        query: AssetListQuery | None = None,
     ) -> AssetListResponse:
         require_active_project(db, membership, project_id)
-        assets = list_assets_for_project(db, project_id=project_id)
+        params = query or AssetListQuery()
+        assets, total = list_assets_for_project(
+            db,
+            project_id=project_id,
+            page=params.page,
+            limit=params.limit,
+            status=params.status,
+            asset_type=params.type,
+            criticality=params.criticality,
+            environment=params.environment,
+            search=params.search,
+        )
         child_counts = {
             asset.id: len(list_child_assets(db, parent_id=asset.id))
             for asset in assets
@@ -89,7 +106,12 @@ class AssetService:
             self.to_summary(asset, children_count=child_counts.get(asset.id, 0))
             for asset in assets
         ]
-        return AssetListResponse(items=items, total=len(items))
+        return AssetListResponse(
+            items=items,
+            total=total,
+            page=params.page,
+            limit=params.limit,
+        )
 
     def get_for_project(
         self,
@@ -228,6 +250,60 @@ class AssetService:
             asset=asset,
         )
         db.commit()
+
+    def archive_for_project(
+        self,
+        db: Session,
+        membership: OrganizationMember,
+        *,
+        project_id: uuid.UUID,
+        asset_id: uuid.UUID,
+    ) -> AssetSummary:
+        asset = self._get_asset_entity(db, membership, project_id=project_id, asset_id=asset_id)
+        validate_archivable(asset)
+        archive_asset(db, asset)
+        self._record_event(
+            db,
+            membership,
+            action=AssetAuditAction.ARCHIVE,
+            asset=asset,
+        )
+        db.commit()
+        reloaded = get_asset_by_id(db, project_id=project_id, asset_id=asset.id)
+        if not reloaded:
+            raise NotFoundError("Asset")
+        return self.to_summary(reloaded)
+
+    def restore_for_project(
+        self,
+        db: Session,
+        membership: OrganizationMember,
+        *,
+        project_id: uuid.UUID,
+        asset_id: uuid.UUID,
+    ) -> AssetSummary:
+        require_active_project(db, membership, project_id)
+        asset = get_asset_by_id(
+            db,
+            project_id=project_id,
+            asset_id=asset_id,
+            include_deleted=True,
+        )
+        if not asset:
+            raise NotFoundError("Asset")
+        validate_restorable(asset)
+        restore_asset(db, asset)
+        self._record_event(
+            db,
+            membership,
+            action=AssetAuditAction.RESTORE,
+            asset=asset,
+        )
+        db.commit()
+        reloaded = get_asset_by_id(db, project_id=project_id, asset_id=asset.id)
+        if not reloaded:
+            raise NotFoundError("Asset")
+        return self.to_summary(reloaded)
 
     def get_scan_target(
         self,
@@ -395,3 +471,5 @@ get_project_asset = asset_service.get_for_project
 create_project_asset = asset_service.create_for_project
 update_project_asset = asset_service.update_for_project
 delete_project_asset = asset_service.delete_for_project
+archive_project_asset = asset_service.archive_for_project
+restore_project_asset = asset_service.restore_for_project

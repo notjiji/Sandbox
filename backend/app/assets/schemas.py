@@ -30,6 +30,18 @@ class AssetSummary(BaseSchema):
 class AssetListResponse(BaseSchema):
     items: list[AssetSummary]
     total: int
+    page: int
+    limit: int
+
+
+class AssetListQuery(BaseSchema):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+    status: AssetStatus | None = None
+    type: AssetType | None = None
+    criticality: AssetCriticality | None = None
+    environment: AssetEnvironment | None = None
+    search: str | None = Field(default=None, max_length=255)
 
 
 class CreateAssetRequest(BaseSchema):
