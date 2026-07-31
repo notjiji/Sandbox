@@ -6,7 +6,7 @@ from app.core.exceptions import ForbiddenError, NotFoundError, ValidationAppErro
 from app.members.enums import MemberStatus, OrganizationRole
 from app.members.events import MemberAuditAction
 from app.members.models import OrganizationMember
-from app.members.repository import (
+from app.members.repositories.member_repository import (
     get_membership,
     get_organization_member_by_id,
     list_organization_members,
@@ -45,7 +45,7 @@ def list_current_organization_members(
 
 def accept_invitation(db: Session, membership: OrganizationMember) -> MemberSummary:
     from app.members.services.invite_service import finalize_invite_acceptance
-    from app.organizations.invite_repository import get_pending_invite_by_email
+    from app.organizations.repositories.invite_repository import get_pending_invite_by_email
     from app.auth.schemas import normalize_email
 
     if membership.status != MemberStatus.INVITED:

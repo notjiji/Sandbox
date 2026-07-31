@@ -7,11 +7,11 @@ from app.core.exceptions import ForbiddenError, NotFoundError, ValidationAppErro
 from app.core.slug import slugify, unique_slug
 from app.members.enums import MemberStatus, OrganizationRole
 from app.members.models import OrganizationMember
-from app.members.repository import add_organization_member
+from app.members.repositories.member_repository import add_organization_member
 from app.users.models import User
 from app.organizations.events import OrganizationAuditAction
 from app.organizations.models import Organization
-from app.organizations.repository import (
+from app.organizations.repositories.organization_repository import (
     create_organization,
     deactivate_organization,
     get_organization_by_slug,
@@ -55,7 +55,7 @@ def to_organization_detail(organization: Organization) -> OrganizationDetail:
 
 
 def list_user_organizations(db: Session, user: User) -> list[OrganizationSummary]:
-    from app.members.repository import list_memberships_for_user
+    from app.members.repositories.member_repository import list_memberships_for_user
 
     memberships = list_memberships_for_user(db, user.id)
     return [to_organization_summary(membership) for membership in memberships]

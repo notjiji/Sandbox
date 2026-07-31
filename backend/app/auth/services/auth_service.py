@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.audit.events import AuditAction
 from app.audit.service import record_auth_event
 from app.auth.email import send_password_reset_email, send_verification_otp_email
-from app.auth.email_verification_repository import (
+from app.auth.repositories.email_verification_repository import (
     create_verification_otp,
     get_latest_verification_otp,
     increment_otp_attempts,
@@ -12,13 +12,13 @@ from app.auth.email_verification_repository import (
     verify_otp_code,
 )
 from app.auth.lockout import clear_login_lockout, get_lockout_status, record_failed_login
-from app.auth.password_reset_repository import (
+from app.auth.repositories.password_reset_repository import (
     create_password_reset_token,
     get_password_reset_token,
     is_password_reset_token_valid,
     mark_password_reset_token_used,
 )
-from app.auth.refresh_token_repository import (
+from app.auth.repositories.refresh_token_repository import (
     create_refresh_token_record,
     get_refresh_token_by_hash,
     is_refresh_token_valid,
@@ -54,7 +54,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.users.repository import (
+from app.users.repositories.user_repository import (
     create_user,
     get_user_by_email,
     mark_user_verified,

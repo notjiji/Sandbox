@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError
 from app.members.models import OrganizationMember
 from app.projects.models import Project
-from app.projects.repository import get_project_by_id
+from app.projects.repositories.project_repository import get_project_by_id
 
 
 def require_active_project(

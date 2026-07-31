@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.audit.events import AuditAction
 from app.audit.service import record_auth_event
-from app.auth.refresh_token_repository import (
+from app.auth.repositories.refresh_token_repository import (
     get_user_session_by_id,
     list_active_sessions_for_user,
     revoke_all_user_refresh_tokens,

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.assets.events import AssetAuditAction
 from app.assets.models import Asset
-from app.assets.repository import (
+from app.assets.repositories.asset_repository import (
     create_asset,
     delete_asset,
     get_asset_by_id,

@@ -8,7 +8,7 @@ from app.projects.validators import require_active_project
 from app.reports.enums import ReportStatus
 from app.reports.events import ReportAuditAction
 from app.reports.models import Report
-from app.reports.repository import (
+from app.reports.repositories.report_repository import (
     create_report,
     delete_report,
     get_report_by_id,

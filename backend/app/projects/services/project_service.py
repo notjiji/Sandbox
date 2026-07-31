@@ -7,7 +7,7 @@ from app.core.slug import slugify, unique_slug
 from app.members.models import OrganizationMember
 from app.projects.events import ProjectAuditAction
 from app.projects.models import Project
-from app.projects.repository import (
+from app.projects.repositories.project_repository import (
     create_project,
     deactivate_project,
     get_project_by_id,

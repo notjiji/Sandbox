@@ -9,7 +9,7 @@ celery_app = Celery(
     "sandbox",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.tasks.example"],
+    include=["app.jobs.example"],
 )
 
 celery_app.conf.update(
@@ -22,7 +22,7 @@ celery_app.conf.update(
     worker_hijack_root_logger=False,
     beat_schedule={
         "heartbeat": {
-            "task": "app.tasks.example.heartbeat",
+            "task": "app.jobs.example.heartbeat",
             "schedule": crontab(minute="*/5"),
         },
     },

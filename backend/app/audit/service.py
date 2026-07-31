@@ -2,9 +2,9 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.audit.repository import create_audit_log
+from app.audit.repositories.audit_repository import create_audit_log
 from app.core.request_context import get_request_context
-from app.users.repository import get_primary_membership
+from app.users.repositories.user_repository import get_primary_membership
 
 
 def primary_organization_id(db: Session, user_id: uuid.UUID) -> uuid.UUID | None:

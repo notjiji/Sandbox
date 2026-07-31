@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.audit.service import record_auth_event
 from app.users.events import UserAuditAction
 from app.users.models import User
-from app.users.repository import get_primary_membership, update_user_profile
+from app.users.repositories.user_repository import get_primary_membership, update_user_profile
 from app.users.schemas import UpdateUserProfileRequest, UserProfileResponse
 
 

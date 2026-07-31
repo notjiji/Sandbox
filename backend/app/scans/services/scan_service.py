@@ -2,15 +2,21 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.assets.repository import get_asset_by_id
+from app.assets.repositories.asset_repository import get_asset_by_id
 from app.core.exceptions import NotFoundError, ValidationAppError
+from app.core.scan_engine.orchestrator import scan_orchestrator
 from app.members.models import OrganizationMember
 from app.projects.validators import require_active_project
+from app.scans.enums import ScanStatus
 from app.scans.events import ScanAuditAction
 from app.scans.models import Scan
-from app.scans.enums import ScanStatus
-from app.scans.repository import create_scan, get_scan_by_id, list_scans_for_project, update_scan_status
-from app.scans.schemas import CreateScanRequest, ScanListResponse, ScanSummary
+from app.scans.repositories.scan_repository import (
+    create_scan,
+    get_scan_for_asset,
+    list_scans_for_asset,
+    update_scan_status,
+)
+from app.scans.schemas import CreateAssetScanRequest, ScanListResponse, ScanSummary
 from app.audit.service import record_audit_event
 
 
@@ -27,35 +33,42 @@ def to_scan_summary(scan: Scan) -> ScanSummary:
     )
 
 
-def list_project_scans(
+def _require_asset(
     db: Session,
     membership: OrganizationMember,
     *,
     project_id: uuid.UUID,
-) -> ScanListResponse:
+    asset_id: uuid.UUID,
+):
     require_active_project(db, membership, project_id)
-    scans = list_scans_for_project(db, project_id=project_id)
+    asset = get_asset_by_id(db, project_id=project_id, asset_id=asset_id)
+    if not asset:
+        raise NotFoundError("Asset")
+    return asset
+
+
+def list_asset_scans(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+) -> ScanListResponse:
+    _require_asset(db, membership, project_id=project_id, asset_id=asset_id)
+    scans = list_scans_for_asset(db, project_id=project_id, asset_id=asset_id)
     items = [to_scan_summary(scan) for scan in scans]
     return ScanListResponse(items=items, total=len(items))
 
 
-def create_project_scan(
+def create_asset_scan(
     db: Session,
     membership: OrganizationMember,
     *,
     project_id: uuid.UUID,
-    body: CreateScanRequest,
+    asset_id: uuid.UUID,
+    body: CreateAssetScanRequest,
 ) -> ScanSummary:
-    require_active_project(db, membership, project_id)
-    try:
-        asset_id = uuid.UUID(body.asset_id)
-    except ValueError as exc:
-        raise ValidationAppError("Invalid asset_id") from exc
-
-    asset = get_asset_by_id(db, project_id=project_id, asset_id=asset_id)
-    if not asset:
-        raise NotFoundError("Asset")
-
+    _require_asset(db, membership, project_id=project_id, asset_id=asset_id)
     scan = create_scan(
         db,
         project_id=project_id,
@@ -77,29 +90,31 @@ def create_project_scan(
     return to_scan_summary(scan)
 
 
-def get_project_scan(
+def get_asset_scan(
     db: Session,
     membership: OrganizationMember,
     *,
     project_id: uuid.UUID,
+    asset_id: uuid.UUID,
     scan_id: uuid.UUID,
 ) -> ScanSummary:
-    require_active_project(db, membership, project_id)
-    scan = get_scan_by_id(db, project_id=project_id, scan_id=scan_id)
+    _require_asset(db, membership, project_id=project_id, asset_id=asset_id)
+    scan = get_scan_for_asset(db, project_id=project_id, asset_id=asset_id, scan_id=scan_id)
     if not scan:
         raise NotFoundError("Scan")
     return to_scan_summary(scan)
 
 
-def run_project_scan(
+def run_asset_scan(
     db: Session,
     membership: OrganizationMember,
     *,
     project_id: uuid.UUID,
+    asset_id: uuid.UUID,
     scan_id: uuid.UUID,
 ) -> ScanSummary:
-    require_active_project(db, membership, project_id)
-    scan = get_scan_by_id(db, project_id=project_id, scan_id=scan_id)
+    asset = _require_asset(db, membership, project_id=project_id, asset_id=asset_id)
+    scan = get_scan_for_asset(db, project_id=project_id, asset_id=asset_id, scan_id=scan_id)
     if not scan:
         raise NotFoundError("Scan")
     if scan.status not in {ScanStatus.PENDING, ScanStatus.FAILED}:
@@ -114,20 +129,24 @@ def run_project_scan(
         resource_type="scan",
         resource_id=scan.id,
     )
+    db.flush()
+
+    scan_orchestrator.execute(db, scan=scan, asset=asset)
     db.commit()
     db.refresh(scan)
     return to_scan_summary(scan)
 
 
-def cancel_project_scan(
+def cancel_asset_scan(
     db: Session,
     membership: OrganizationMember,
     *,
     project_id: uuid.UUID,
+    asset_id: uuid.UUID,
     scan_id: uuid.UUID,
 ) -> ScanSummary:
-    require_active_project(db, membership, project_id)
-    scan = get_scan_by_id(db, project_id=project_id, scan_id=scan_id)
+    _require_asset(db, membership, project_id=project_id, asset_id=asset_id)
+    scan = get_scan_for_asset(db, project_id=project_id, asset_id=asset_id, scan_id=scan_id)
     if not scan:
         raise NotFoundError("Scan")
     if scan.status not in {ScanStatus.PENDING, ScanStatus.RUNNING}:

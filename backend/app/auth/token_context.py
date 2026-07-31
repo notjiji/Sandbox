@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.security import AccessTokenContext
 from app.members.models import OrganizationMember
 from app.users.models import User
-from app.users.repository import get_primary_membership
+from app.users.repositories.user_repository import get_primary_membership
 
 
 def build_access_token_context(db: Session, user: User) -> AccessTokenContext:

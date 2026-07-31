@@ -1,14 +1,16 @@
 import { apiRequest } from "@/shared/api/client";
 
-const base = (projectId) => `/projects/${projectId}/scans`;
+const base = (projectId, assetId) =>
+  `/projects/${projectId}/assets/${assetId}/scans`;
 
 export const scansApi = {
-  list: (projectId) => apiRequest(base(projectId), { auth: true }),
-  create: (projectId, data) =>
-    apiRequest(base(projectId), { method: "POST", body: data, auth: true }),
-  get: (projectId, scanId) => apiRequest(`${base(projectId)}/${scanId}`, { auth: true }),
-  run: (projectId, scanId) =>
-    apiRequest(`${base(projectId)}/${scanId}/run`, { method: "POST", auth: true }),
-  cancel: (projectId, scanId) =>
-    apiRequest(`${base(projectId)}/${scanId}/cancel`, { method: "POST", auth: true }),
+  list: (projectId, assetId) => apiRequest(base(projectId, assetId), { auth: true }),
+  create: (projectId, assetId, data) =>
+    apiRequest(base(projectId, assetId), { method: "POST", body: data, auth: true }),
+  get: (projectId, assetId, scanId) =>
+    apiRequest(`${base(projectId, assetId)}/${scanId}`, { auth: true }),
+  run: (projectId, assetId, scanId) =>
+    apiRequest(`${base(projectId, assetId)}/${scanId}/run`, { method: "POST", auth: true }),
+  cancel: (projectId, assetId, scanId) =>
+    apiRequest(`${base(projectId, assetId)}/${scanId}/cancel`, { method: "POST", auth: true }),
 };

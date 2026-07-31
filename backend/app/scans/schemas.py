@@ -22,6 +22,10 @@ class ScanListResponse(BaseSchema):
     total: int
 
 
+class CreateAssetScanRequest(BaseSchema):
+    scan_type: ScanType = ScanType.FULL
+
+
 class CreateScanRequest(BaseSchema):
     asset_id: str = Field(min_length=1)
     scan_type: ScanType = ScanType.FULL

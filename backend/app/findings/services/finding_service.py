@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError, ValidationAppError
 from app.findings.events import FindingAuditAction
 from app.findings.models import Finding
-from app.findings.repository import get_finding_by_id, list_findings_for_project, update_finding
+from app.findings.repositories.finding_repository import get_finding_by_id, list_findings_for_project, update_finding
 from app.findings.schemas import FindingListResponse, FindingSummary, UpdateFindingRequest
 from app.members.models import OrganizationMember
 from app.projects.validators import require_active_project

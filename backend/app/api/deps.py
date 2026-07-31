@@ -11,10 +11,10 @@ from app.core.rbac import has_all_permissions, has_any_permission, has_permissio
 from app.core.security import decode_access_token
 from app.members.enums import MemberStatus
 from app.members.models import OrganizationMember
-from app.members.repository import get_membership
+from app.members.repositories.member_repository import get_membership
 from app.users.models import User
-from app.organizations.repository import get_organization_by_id
-from app.users.repository import get_user_by_id
+from app.organizations.repositories.organization_repository import get_organization_by_id
+from app.users.repositories.user_repository import get_user_by_id
 
 
 def get_current_user(

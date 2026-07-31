@@ -12,7 +12,7 @@ from app.core.security import (
 from app.members.enums import MemberStatus, OrganizationRole
 from app.members.events import MemberAuditAction
 from app.members.models import OrganizationMember
-from app.members.repository import (
+from app.members.repositories.member_repository import (
     add_organization_member,
     get_membership,
     get_organization_member_by_id,
@@ -29,8 +29,8 @@ from app.auth.schemas import normalize_email
 from app.audit.service import record_audit_event
 from app.members.email import send_organization_invite_email
 from app.users.models import User
-from app.users.repository import get_user_by_email
-from app.organizations.invite_repository import (
+from app.users.repositories.user_repository import get_user_by_email
+from app.organizations.repositories.invite_repository import (
     create_organization_invite,
     get_invite_by_id,
     get_invite_by_token_hash,
