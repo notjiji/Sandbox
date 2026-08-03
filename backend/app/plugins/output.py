@@ -5,6 +5,7 @@ from enum import Enum
 
 from pydantic import Field
 
+from app.findings.enums import FindingSeverity
 from app.schemas.base import BaseSchema
 
 
@@ -15,27 +16,28 @@ class PluginOutputStatus(str, Enum):
 
 
 class PluginFindingStatus(str, Enum):
-    """Check outcome reported by the scanner — not a risk score."""
-
     FAILED = "failed"
     PASSED = "passed"
     WARNING = "warning"
 
 
 class PluginFinding(BaseSchema):
-    """What a scanner reports. Severity and score are assigned by the Risk Engine."""
+    """Normalized finding every plugin returns — Risk Engine assigns score and severity."""
 
     plugin: str
     code: str = Field(description="Stable finding code, e.g. HTTP_NO_CSP")
+    title: str | None = None
     status: PluginFindingStatus = PluginFindingStatus.FAILED
     evidence: str | None = None
+    severity: FindingSeverity | None = Field(
+        default=None,
+        description="Optional hint only — Risk Engine applies rule severity",
+    )
     raw_data: dict = Field(default_factory=dict)
     detected_at: datetime | None = None
 
 
 class PluginOutput(BaseSchema):
-    """Exact structure returned by every scanner plugin — no exceptions."""
-
     plugin: str
     status: PluginOutputStatus
     duration: float = Field(ge=0.0)
@@ -83,17 +85,20 @@ def report_finding(
     *,
     plugin: str,
     code: str,
+    title: str | None = None,
     status: PluginFindingStatus = PluginFindingStatus.FAILED,
     evidence: str | None = None,
+    severity: FindingSeverity | None = None,
     raw_data: dict | None = None,
     detected_at: datetime | None = None,
 ) -> PluginFinding:
-    """Build a plugin finding — scanners report codes, not scores."""
     return PluginFinding(
         plugin=plugin,
         code=code,
+        title=title,
         status=status,
         evidence=evidence,
+        severity=severity,
         raw_data=raw_data or {},
         detected_at=detected_at or datetime.now(UTC),
     )

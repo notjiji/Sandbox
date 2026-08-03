@@ -1,5 +1,6 @@
 import time
 
+from app.findings.enums import FindingSeverity
 from app.plugins.base import ScanTarget, ScannerPlugin
 from app.plugins.config import PluginConfig
 from app.plugins.output import PluginOutput, PluginFindingStatus, report_finding
@@ -19,15 +20,15 @@ class WhoisPlugin(ScannerPlugin):
             report_finding(
                 plugin=self.name,
                 code="WHOIS_EXPIRING_SOON",
+                title="Domain Expiring Soon",
                 status=PluginFindingStatus.WARNING,
-                evidence="Domain registration expires in 21 days.",
-                raw_data={"registrar": "Example Registrar", "expires": "2026-08-24"},
+                evidence="Registration expires in 21 days",
+                severity=FindingSeverity.LOW,
             ),
         ]
-        metadata = {"registrar": "Example Registrar", "expires": "2026-08-24"}
         return PluginOutput.completed(
             plugin=self.name,
             duration=round(time.perf_counter() - started, 2),
             findings=findings,
-            metadata=metadata,
+            metadata={"expires": "2026-08-24"},
         )

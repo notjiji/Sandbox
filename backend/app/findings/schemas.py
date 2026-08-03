@@ -14,6 +14,7 @@ class FindingSummary(BaseSchema):
     plugin: str | None = None
     finding_code: str | None = None
     check_status: str | None = None
+    recommendation_id: str | None = None
     title: str
     description: str | None = None
     severity: FindingSeverity

@@ -1,5 +1,6 @@
 import time
 
+from app.findings.enums import FindingSeverity
 from app.plugins.base import ScanTarget, ScannerPlugin
 from app.plugins.config import PluginConfig
 from app.plugins.output import PluginOutput, PluginFindingStatus, report_finding
@@ -19,21 +20,15 @@ class SslPlugin(ScannerPlugin):
             report_finding(
                 plugin=self.name,
                 code="SSL_TLS10_ENABLED",
+                title="TLS 1.0 Enabled",
                 status=PluginFindingStatus.FAILED,
-                evidence="TLS 1.0 cipher suite accepted during handshake.",
-                raw_data={"tls_versions": ["TLSv1.0", "TLSv1.2", "TLSv1.3"]},
+                evidence="TLS 1.0 cipher suite accepted",
+                severity=FindingSeverity.HIGH,
             ),
         ]
-        metadata = {
-            "certificate": asset.identifier,
-            "issuer": "Let's Encrypt",
-            "expires": "2026-12-31T23:59:59Z",
-            "cipher": "TLS_AES_256_GCM_SHA384",
-            "tls_versions": ["TLSv1.2", "TLSv1.3"],
-        }
         return PluginOutput.completed(
             plugin=self.name,
             duration=round(time.perf_counter() - started, 2),
             findings=findings,
-            metadata=metadata,
+            metadata={"tls_versions": ["TLSv1.0", "TLSv1.2", "TLSv1.3"]},
         )

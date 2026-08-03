@@ -7,6 +7,16 @@ from app.findings.enums import FindingSeverity, FindingStatus
 from app.findings.models import Finding
 
 
+def list_findings_for_asset(db: Session, *, asset_id: uuid.UUID) -> list[Finding]:
+    return (
+        db.query(Finding)
+        .options(joinedload(Finding.asset))
+        .filter(Finding.asset_id == asset_id)
+        .order_by(Finding.risk_score.desc(), Finding.created_at.desc())
+        .all()
+    )
+
+
 def create_finding(
     db: Session,
     *,
@@ -18,6 +28,7 @@ def create_finding(
     finding_code: str | None = None,
     check_status: str | None = None,
     risk_score: float = 0.0,
+    recommendation_id: str | None = None,
     description: str | None = None,
     severity: FindingSeverity = FindingSeverity.MEDIUM,
     status: FindingStatus = FindingStatus.OPEN,
@@ -39,6 +50,7 @@ def create_finding(
         description=description,
         severity=severity,
         risk_score=risk_score,
+        recommendation_id=recommendation_id,
         status=status,
         evidence=evidence,
         recommendation=recommendation,

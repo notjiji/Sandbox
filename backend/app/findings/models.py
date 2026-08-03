@@ -46,6 +46,7 @@ class Finding(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         default=FindingStatus.OPEN,
     )
+    recommendation_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     evidence: Mapped[str | None] = mapped_column(Text, nullable=True)
     recommendation: Mapped[str | None] = mapped_column(Text, nullable=True)
     references: Mapped[list | None] = mapped_column(JSONB, nullable=True)

@@ -73,7 +73,7 @@ def test_plugin_output_schema() -> None:
     payload = output.model_dump()
     assert payload["plugin"] == "ssl"
     assert payload["findings"][0]["code"] == "SSL_EXPIRED"
-    assert "severity" not in payload["findings"][0]
+    assert "score" not in payload["findings"][0]
 
 
 def test_profile_resolves_quick_scan_plugins() -> None:

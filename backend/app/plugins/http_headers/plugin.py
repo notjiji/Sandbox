@@ -1,5 +1,6 @@
 import time
 
+from app.findings.enums import FindingSeverity
 from app.plugins.base import ScanTarget, ScannerPlugin
 from app.plugins.config import PluginConfig
 from app.plugins.output import PluginOutput, PluginFindingStatus, report_finding
@@ -19,26 +20,23 @@ class HttpHeadersPlugin(ScannerPlugin):
             report_finding(
                 plugin=self.name,
                 code="HTTP_NO_CSP",
+                title="Missing Content Security Policy",
                 status=PluginFindingStatus.FAILED,
-                evidence="No Content-Security-Policy header in response.",
-                raw_data={"status_code": 200, "headers": {"server": "nginx"}},
+                evidence="Header not present",
+                severity=FindingSeverity.MEDIUM,
             ),
             report_finding(
                 plugin=self.name,
                 code="HTTP_NO_HSTS",
+                title="Missing Strict Transport Security",
                 status=PluginFindingStatus.FAILED,
-                evidence="No Strict-Transport-Security header in response.",
-                raw_data={"status_code": 200, "headers": {"server": "nginx"}},
+                evidence="HSTS header not present",
+                severity=FindingSeverity.HIGH,
             ),
         ]
-        metadata = {
-            "status_code": 200,
-            "headers": {"server": "nginx", "x-frame-options": "SAMEORIGIN"},
-            "redirect_count": 0,
-        }
         return PluginOutput.completed(
             plugin=self.name,
             duration=round(time.perf_counter() - started, 2),
             findings=findings,
-            metadata=metadata,
+            metadata={"status_code": 200, "headers": {"server": "nginx"}},
         )

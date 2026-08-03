@@ -21,6 +21,7 @@ def to_finding_summary(finding: Finding) -> FindingSummary:
         plugin=finding.plugin,
         finding_code=finding.finding_code,
         check_status=finding.check_status,
+        recommendation_id=finding.recommendation_id,
         title=finding.title,
         description=finding.description,
         severity=finding.severity,
@@ -102,6 +103,11 @@ def update_project_finding(
     db.refresh(finding)
     from app.core.risk_engine.engine import risk_engine
 
+    from app.projects.models import Project
+
     risk_engine.calculate_project_risk(db, project_id=project_id, store=True)
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project:
+        risk_engine.calculate_organization_risk(db, organization_id=project.organization_id, store=True)
     db.commit()
     return to_finding_summary(finding)

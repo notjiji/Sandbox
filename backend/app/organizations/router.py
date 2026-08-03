@@ -16,8 +16,10 @@ from app.organizations.services.organization_service import (
     list_user_organizations,
     update_current_organization,
 )
+from app.risk.organization_router import router as org_risk_router
 
 router = APIRouter()
+router.include_router(org_risk_router, prefix="/risk", tags=["organization-risk"])
 
 
 @router.get("/me")

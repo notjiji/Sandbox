@@ -1,5 +1,6 @@
 import time
 
+from app.findings.enums import FindingSeverity
 from app.plugins.base import ScanTarget, ScannerPlugin
 from app.plugins.config import PluginConfig
 from app.plugins.output import PluginOutput, PluginFindingStatus, report_finding
@@ -19,15 +20,15 @@ class PortsPlugin(ScannerPlugin):
             report_finding(
                 plugin=self.name,
                 code="PORT_TELNET_OPEN",
+                title="Telnet Port Open",
                 status=PluginFindingStatus.FAILED,
-                evidence="TCP port 23 is open and accepting connections.",
-                raw_data={"open_ports": [22, 23, 80, 443]},
+                evidence="TCP port 23 is open",
+                severity=FindingSeverity.CRITICAL,
             ),
         ]
-        metadata = {"open_ports": [22, 23, 80, 443], "filtered_ports": [8080]}
         return PluginOutput.completed(
             plugin=self.name,
             duration=round(time.perf_counter() - started, 2),
             findings=findings,
-            metadata=metadata,
+            metadata={"open_ports": [22, 23, 80, 443]},
         )

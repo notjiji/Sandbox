@@ -214,8 +214,10 @@ class ScanOrchestrator:
                     description=resolved.description,
                     severity=resolved.severity,
                     risk_score=resolved.risk_score,
+                    recommendation_id=resolved.recommendation_id,
                     status=FindingStatus.OPEN,
                     evidence=resolved.evidence,
+                    recommendation=resolved.recommendation_text,
                     raw_data=resolved.raw_data,
                     detected_at=resolved.detected_at,
                 )
