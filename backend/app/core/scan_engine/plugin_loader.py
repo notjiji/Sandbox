@@ -1,39 +1,29 @@
-"""Loads scanner plugins from app.plugins.* into the plugin registry."""
+"""Loads scanner plugins from the central registry."""
 
 from dataclasses import dataclass
 
 from app.core.plugin_registry import registry
-from app.plugins.exceptions import PluginNotFoundError
-from app.plugins.manager import manager
+from app.plugins.base import ScannerPlugin
+from app.plugins.builtin import discover_plugins
+from app.scans.enums import ScanType
 
 
 @dataclass(frozen=True)
-class EnabledPluginSet:
-    enabled: list[str]
-    skipped: list[str]
+class PluginSelection:
+    enabled: list[ScannerPlugin]
+    disabled: list[ScannerPlugin]
 
 
 class PluginLoader:
-    def load_all(self) -> list[str]:
-        """Discover and register built-in plugins. Returns registered names."""
-        from app.plugins import discover_plugins
+    def ensure_loaded(self) -> None:
+        """Discover and register built-in plugins if not already loaded."""
+        if registry.list_names():
+            return
+        discover_plugins(registry)
 
-        return discover_plugins(registry)
-
-    def load_enabled(self, plugin_names: list[str]) -> EnabledPluginSet:
-        """Register plugins and return enabled vs skipped names for this scan."""
-        self.load_all()
-
-        enabled: list[str] = []
-        skipped: list[str] = []
-        for name in plugin_names:
-            try:
-                plugin = manager.get_plugin(name)
-            except PluginNotFoundError:
-                skipped.append(name)
-                continue
-            if getattr(plugin, "enabled", True):
-                enabled.append(name)
-            else:
-                skipped.append(name)
-        return EnabledPluginSet(enabled=enabled, skipped=skipped)
+    def select_for_scan(self, scan_type: ScanType) -> PluginSelection:
+        """Ask the registry for all plugins applicable to this scan type."""
+        self.ensure_loaded()
+        enabled = registry.get_enabled_plugins(scan_type=scan_type)
+        disabled = registry.get_disabled_plugins()
+        return PluginSelection(enabled=enabled, disabled=disabled)

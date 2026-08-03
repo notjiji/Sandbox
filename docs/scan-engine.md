@@ -50,7 +50,7 @@ flowchart TB
 
     subgraph ScanEngine["Scan Engine (ORM-free)"]
         ORCH["ScanOrchestrator"]
-        LOAD["PluginLoader.load_enabled()"]
+        LOAD["PluginLoader.select_for_scan()"]
         DISP["ScanDispatcher"]
         NORMF["ScanNormalizer"]
         COMB["Result Combiner"]
@@ -102,7 +102,7 @@ The orchestrator owns the full plugin pipeline:
 flowchart TD
     START([execute scan]) --> A
 
-    A["1. Load enabled plugins\nPluginLoader.load_enabled(scan_type)"]
+    A["1. Load enabled plugins\nPluginLoader.select_for_scan() → Registry"]
     A --> B{Any plugins\nconfigured?}
     B -->|No| FAIL1["Scan → FAILED"]
     B -->|Yes| C
@@ -197,41 +197,92 @@ Parent assets expand into multiple plugin targets:
 
 ---
 
-## 4. Plugin Loading and Status
+## 4. Base Plugin Interface
+
+Every scanner plugin inherits the same interface. Plugins receive a normalized `ScanTarget` (the plugin-facing asset contract):
+
+```python
+class ScannerPlugin(ABC):
+    name: str                  # slug, e.g. "ssl"
+    description: str           # human label, e.g. "SSL Scanner"
+    version: str
+    supported_assets: list[str]
+    supported_scan_types: list[str]
+    enabled: bool = True
+
+    async def scan(self, asset: ScanTarget) -> ScanResult:
+        ...
+```
+
+Example implementation:
+
+```python
+class SslPlugin(ScannerPlugin):
+    name = "ssl"
+    description = "SSL Scanner"
+    version = "0.1.0"
+    supported_assets = ["website", "domain", "api_endpoint", "email_domain"]
+    supported_scan_types = [ScanType.FULL.value]
+
+    async def scan(self, asset: ScanTarget) -> ScanResult:
+        ...
+```
+
+Built-in plugins are registered in one place — no string import paths scattered across the codebase:
+
+```python
+# app/plugins/builtin.py
+BUILTIN_PLUGIN_CLASSES = [
+    HttpHeadersPlugin,
+    SslPlugin,
+    DnsPlugin,
+    WhoisPlugin,
+    PortsPlugin,
+]
+```
+
+---
+
+## 5. Plugin Registry
+
+Instead of hardcoding plugin lists in the orchestrator, the **registry** is the single source of truth:
 
 ```mermaid
 flowchart TB
-    MAP["SCAN_TYPE_PLUGINS\nfull → dns, ssl, whois...\nquick → dns, http_headers"]
-    MAP --> LOADER["PluginLoader.load_enabled()"]
+    BUILTIN["BUILTIN_PLUGIN_CLASSES\n[HttpHeadersPlugin, SslPlugin, DnsPlugin, ...]"]
+    BUILTIN --> DISCOVER["discover_plugins(registry)"]
+    DISCOVER --> REG["PluginRegistry"]
 
-    LOADER --> REG["Plugin Registry\n(built-in plugins)"]
-    REG --> CHECK{enabled\nand registered?}
+    ORCH["ScanOrchestrator"] --> LOADER["PluginLoader.select_for_scan()"]
+    LOADER --> ASK["registry.get_enabled_plugins(scan_type)"]
+    ASK --> REG
 
-    CHECK -->|Yes| ENABLED["enabled[]"]
-    CHECK -->|No| SKIPPED["skipped[]\n→ status SKIPPED"]
+    REG --> CHECK{enabled?}
+    CHECK -->|Yes| FILTER["Filter by scan_type\n+ supported_assets"]
+    CHECK -->|No| SKIP["Record SKIPPED"]
 
-    ENABLED --> RUN["Run per target"]
+    FILTER --> RUN["Run plugin.scan(asset)"]
     RUN --> SPR[("scan_plugin_runs")]
-
-    subgraph SPRCols["Each row tracks"]
-        R1["scan_id"]
-        R2["asset_id (target)"]
-        R3["plugin_name"]
-        R4["status: pending | running | completed | failed | skipped"]
-        R5["error_message, findings_count"]
-    end
-
-    SPR --- SPRCols
 ```
 
-### Scan type → plugin map
+The orchestrator simply asks:
 
-| Scan type | Plugins |
-|-----------|---------|
-| `full` | `http_headers`, `ssl`, `dns`, `whois`, `ports` |
-| `quick` | `http_headers`, `dns` |
+```
+Registry → give me all enabled plugins for this scan type
+         → filter by supported_assets per target
+```
 
-Plugins can be disabled via `ScannerPlugin.enabled = False`. Disabled or unregistered plugins are recorded as **SKIPPED** (once per scan on the primary target).
+### Built-in plugins
+
+| Plugin | Description | Scan types | Supported assets |
+|--------|-------------|------------|------------------|
+| `http_headers` | HTTP Headers Scanner | full, quick | website, api_endpoint |
+| `ssl` | SSL Scanner | full | website, domain, api_endpoint, email_domain |
+| `dns` | DNS Scanner | full, quick | website, domain, public_ip, email_domain |
+| `whois` | WHOIS Scanner | full | domain, email_domain |
+| `ports` | Port Scanner | full | public_ip, server, windows_server, docker_host |
+
+Plugins can be disabled via `ScannerPlugin.enabled = False`. Disabled plugins are recorded as **SKIPPED** (once per scan on the primary target).
 
 ### Plugin run statuses
 
@@ -241,11 +292,17 @@ Plugins can be disabled via `ScannerPlugin.enabled = False`. Disabled or unregis
 | `running` | Plugin execution in progress |
 | `completed` | Plugin finished successfully |
 | `failed` | Plugin error or returned failure |
-| `skipped` | Disabled or not registered |
+| `skipped` | Disabled |
+
+### Adding a new plugin
+
+1. Create `app/plugins/my_scanner/plugin.py` implementing `ScannerPlugin`
+2. Add the class to `BUILTIN_PLUGIN_CLASSES` in `app/plugins/builtin.py`
+3. No orchestrator changes required — the registry picks it up automatically
 
 ---
 
-## 5. Data Written Per Scan Run
+## 6. Data Written Per Scan Run
 
 ```mermaid
 erDiagram
@@ -289,7 +346,7 @@ erDiagram
 
 ---
 
-## 6. Asset List Tree View
+## 7. Asset List Tree View
 
 The frontend asset list supports an expandable tree so pagination applies to **root assets only**, avoiding split parent/child pages.
 
@@ -337,12 +394,13 @@ Tree view auto-disables when **searching** or filtering by **child asset types**
 | File | Role |
 |------|------|
 | `backend/app/core/scan_engine/orchestrator.py` | `ScanOrchestrator` — pipeline entry point |
-| `backend/app/core/scan_engine/plugin_loader.py` | Load and filter enabled plugins |
-| `backend/app/core/scan_engine/dispatcher.py` | Invoke plugins, catch exceptions |
 | `backend/app/core/scan_engine/normalizer.py` | Raw findings → normalized dicts |
 | `backend/app/core/scan_engine/result_combiner.py` | Combine findings, resolve scan status |
-| `backend/app/core/scan_engine/types.py` | `PluginExecutionRecord`, `CombinedScanResults` |
-| `backend/app/core/scan_engine/plugin_map.py` | Scan type → plugin names |
+| `backend/app/plugins/base.py` | `ScannerPlugin` interface, `ScanTarget`, `ScanResult` |
+| `backend/app/plugins/builtin.py` | `BUILTIN_PLUGIN_CLASSES` — single registration list |
+| `backend/app/plugins/registry.py` | `PluginRegistry.get_enabled_plugins()` |
+| `backend/app/core/scan_engine/plugin_loader.py` | `PluginLoader.select_for_scan()` |
+| `backend/app/core/scan_engine/dispatcher.py` | Invoke async plugins, catch exceptions |
 
 ### Scans and plugins
 
@@ -351,7 +409,6 @@ Tree view auto-disables when **searching** or filtering by **child asset types**
 | `backend/app/scans/services/scan_service.py` | Create, run, get scans |
 | `backend/app/scans/models.py` | `Scan`, `ScanPluginRun` |
 | `backend/app/scans/repositories/scan_plugin_repository.py` | Plugin run persistence |
-| `backend/app/plugins/base.py` | `ScanTarget`, `ScanResult`, `ScannerPlugin` |
 
 ### Frontend
 
@@ -375,8 +432,9 @@ Tree view auto-disables when **searching** or filtering by **child asset types**
 2. **Asset Adapter is the scan boundary** — ORM loading and hierarchy resolution live in one place.
 3. **Plugin failures are isolated** — one bad plugin does not abort the entire scan.
 4. **Status is observable** — every plugin run is recorded for debugging and UI.
-5. **New asset types** — add metadata/adapter logic; plugins and orchestrator stay unchanged.
-6. **Tree list pagination** — roots paginate cleanly; children load on demand.
+5. **New plugins** — add a class + register in `BUILTIN_PLUGIN_CLASSES`; no orchestrator changes.
+6. **New asset types** — add metadata/adapter logic; plugins declare `supported_assets`.
+7. **Tree list pagination** — roots paginate cleanly; children load on demand.
 
 ---
 

@@ -1,24 +1,33 @@
-"""Routes scan work to the correct plugin(s) via the plugin registry."""
+"""Routes scan work to scanner plugins via the registry."""
+
+import asyncio
+import inspect
 
 from app.core.logging import get_logger
-from app.plugins.base import ScanResult, ScanTarget
+from app.plugins.base import ScanResult, ScanTarget, ScannerPlugin
 from app.plugins.exceptions import PluginNotFoundError
-from app.plugins.manager import manager
 
 logger = get_logger("sandbox.scan_engine.dispatcher")
 
 
 class ScanDispatcher:
-    def dispatch(self, *, plugin_name: str, target: ScanTarget) -> ScanResult:
+    def dispatch(self, *, plugin: ScannerPlugin, asset: ScanTarget) -> ScanResult:
         try:
-            plugin = manager.get_plugin(plugin_name)
-            return plugin.scan(target)
+            if not plugin.supports_asset(asset.asset_type):
+                return ScanResult(
+                    success=False,
+                    metadata={"error": f"Plugin does not support asset type: {asset.asset_type}"},
+                )
+            result = plugin.scan(asset)
+            if inspect.isawaitable(result):
+                return asyncio.run(result)
+            return result
         except PluginNotFoundError as exc:
-            logger.warning("plugin not found", extra={"plugin": plugin_name})
+            logger.warning("plugin not found", extra={"plugin": plugin.name})
             return ScanResult(success=False, metadata={"error": str(exc)})
         except Exception as exc:
             logger.exception(
                 "plugin execution raised",
-                extra={"plugin": plugin_name, "asset_id": target.asset_id},
+                extra={"plugin": plugin.name, "asset_id": asset.asset_id},
             )
             return ScanResult(success=False, metadata={"error": str(exc)})

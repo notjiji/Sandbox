@@ -9,12 +9,11 @@ from app.core.logging import get_logger
 from app.core.scan_engine.dispatcher import ScanDispatcher
 from app.core.scan_engine.normalizer import ScanNormalizer
 from app.core.scan_engine.plugin_loader import PluginLoader
-from app.core.scan_engine.plugin_map import SCAN_TYPE_PLUGINS
 from app.core.scan_engine.result_combiner import combine_normalized_findings, resolve_scan_status
 from app.core.scan_engine.types import CombinedScanResults, PluginExecutionRecord
 from app.findings.enums import FindingSeverity, FindingStatus
 from app.findings.repositories.finding_repository import create_finding
-from app.plugins.base import ScanTarget
+from app.plugins.base import ScanTarget, ScannerPlugin
 from app.scans.enums import PluginRunStatus, ScanStatus
 from app.scans.models import Scan
 from app.scans.repositories.scan_plugin_repository import (
@@ -27,16 +26,7 @@ logger = get_logger("sandbox.scan_engine")
 
 
 class ScanOrchestrator:
-    """Entry point for running scans through the engine pipeline.
-
-    Responsibilities:
-    - Load enabled plugins for the scan type
-    - Pass normalized scan targets to each plugin
-    - Run plugins and catch failures without aborting the whole scan
-    - Persist per-plugin execution status
-    - Combine normalized findings across plugins and targets
-    - Delegate raw output normalization to ScanNormalizer
-    """
+    """Entry point for running scans through the engine pipeline."""
 
     def __init__(self) -> None:
         self._loader = PluginLoader()
@@ -51,10 +41,9 @@ class ScanOrchestrator:
         project_id: uuid.UUID,
         asset_id: uuid.UUID,
     ) -> Scan:
-        configured_plugins = SCAN_TYPE_PLUGINS.get(scan.scan_type, [])
-        plugin_set = self._loader.load_enabled(configured_plugins)
+        selection = self._loader.select_for_scan(scan.scan_type)
 
-        if not plugin_set.enabled and not plugin_set.skipped:
+        if not selection.enabled and not selection.disabled:
             update_scan_status(db, scan, status=ScanStatus.FAILED)
             return scan
 
@@ -70,28 +59,31 @@ class ScanOrchestrator:
             return scan
 
         records: list[PluginExecutionRecord] = []
-
         primary_target = targets[0] if targets else None
-        for plugin_name in plugin_set.skipped:
+
+        for plugin in selection.disabled:
             if primary_target is not None:
                 records.append(
                     self._record_skipped_plugin(
                         db,
                         scan=scan,
                         target=primary_target,
-                        plugin_name=plugin_name,
-                        reason="Plugin is disabled or not registered",
+                        plugin=plugin,
+                        reason="Plugin is disabled",
                     )
                 )
 
         for target in targets:
-            for plugin_name in plugin_set.enabled:
+            target_plugins = [
+                plugin for plugin in selection.enabled if plugin.supports_asset(target.asset_type)
+            ]
+            for plugin in target_plugins:
                 records.append(
                     self._run_plugin(
                         db,
                         scan=scan,
                         target=target,
-                        plugin_name=plugin_name,
+                        plugin=plugin,
                     )
                 )
 
@@ -118,18 +110,18 @@ class ScanOrchestrator:
         *,
         scan: Scan,
         target: ScanTarget,
-        plugin_name: str,
+        plugin: ScannerPlugin,
     ) -> PluginExecutionRecord:
         asset_id = uuid.UUID(target.asset_id)
         plugin_run = create_plugin_run(
             db,
             scan_id=scan.id,
             asset_id=asset_id,
-            plugin_name=plugin_name,
+            plugin_name=plugin.name,
             status=PluginRunStatus.RUNNING,
         )
 
-        result = self._dispatcher.dispatch(plugin_name=plugin_name, target=target)
+        result = self._dispatcher.dispatch(plugin=plugin, asset=target)
         if not result.success:
             error_message = str(result.metadata.get("error", "Plugin returned failure"))
             complete_plugin_run(
@@ -140,7 +132,7 @@ class ScanOrchestrator:
                 metadata=result.metadata or None,
             )
             return PluginExecutionRecord(
-                plugin_name=plugin_name,
+                plugin_name=plugin.name,
                 target=target,
                 status=PluginRunStatus.FAILED,
                 error_message=error_message,
@@ -148,7 +140,7 @@ class ScanOrchestrator:
             )
 
         normalized_findings = self._normalizer.normalize_findings(
-            plugin_name=plugin_name,
+            plugin_name=plugin.name,
             raw_findings=result.findings,
         )
         complete_plugin_run(
@@ -159,7 +151,7 @@ class ScanOrchestrator:
             metadata=result.metadata or None,
         )
         return PluginExecutionRecord(
-            plugin_name=plugin_name,
+            plugin_name=plugin.name,
             target=target,
             status=PluginRunStatus.COMPLETED,
             raw_findings=result.findings,
@@ -173,14 +165,14 @@ class ScanOrchestrator:
         *,
         scan: Scan,
         target: ScanTarget,
-        plugin_name: str,
+        plugin: ScannerPlugin,
         reason: str,
     ) -> PluginExecutionRecord:
         plugin_run = create_plugin_run(
             db,
             scan_id=scan.id,
             asset_id=uuid.UUID(target.asset_id),
-            plugin_name=plugin_name,
+            plugin_name=plugin.name,
             status=PluginRunStatus.SKIPPED,
         )
         complete_plugin_run(
@@ -190,7 +182,7 @@ class ScanOrchestrator:
             error_message=reason,
         )
         return PluginExecutionRecord(
-            plugin_name=plugin_name,
+            plugin_name=plugin.name,
             target=target,
             status=PluginRunStatus.SKIPPED,
             error_message=reason,
