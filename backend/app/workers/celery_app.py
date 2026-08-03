@@ -9,7 +9,7 @@ celery_app = Celery(
     "sandbox",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.jobs.example"],
+    include=["app.jobs.example", "app.jobs.scans"],
 )
 
 celery_app.conf.update(

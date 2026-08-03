@@ -9,6 +9,7 @@ class ScanType(str, enum.Enum):
 
 class ScanStatus(str, enum.Enum):
     PENDING = "pending"
+    QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"

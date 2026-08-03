@@ -43,6 +43,8 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str = "http://localhost"
 
+    SCAN_RUN_INLINE: bool | None = None
+
     RESEND_API_KEY: str = ""
     RESEND_FROM: str = "Sandbox <onboarding@resend.dev>"
 
@@ -67,6 +69,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_settings(self) -> "Settings":
+        if self.SCAN_RUN_INLINE is None:
+            object.__setattr__(self, "SCAN_RUN_INLINE", self.ENVIRONMENT == "development")
+
         if self.ENVIRONMENT != "production":
             return self
 

@@ -337,7 +337,44 @@ Plugins can be disabled via `PluginConfig.enabled = False`. Disabled plugins are
 
 ---
 
-## 7. Data Written Per Scan Run
+## 7. Scan Lifecycle
+
+Every scan moves through explicit states. Each transition is validated and timestamped on the `scans` row.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: create scan
+    Pending --> Queued: POST /run
+    Pending --> Cancelled: cancel
+    Queued --> Running: worker picks up
+    Queued --> Cancelled: cancel
+    Running --> Completed: plugins succeed
+    Running --> Failed: all plugins fail / fatal error
+    Running --> Cancelled: cancel
+    Failed --> Queued: retry
+    Completed --> [*]
+    Cancelled --> [*]
+    Failed --> [*]
+```
+
+| Status | Meaning | Timestamp column |
+|--------|---------|------------------|
+| `pending` | Created, waiting to be started | `pending_at` |
+| `queued` | Accepted for execution | `queued_at` |
+| `running` | Plugins executing | `running_at` |
+| `completed` | At least one plugin succeeded | `completed_at` |
+| `failed` | No plugins succeeded / fatal error | `failed_at` |
+| `cancelled` | Stopped before completion | `cancelled_at` |
+
+- `POST /run` transitions **pending → queued**, then enqueues `app.jobs.scans.execute_scan` (Celery).
+- In development, `SCAN_RUN_INLINE=true` (default) runs the queued scan immediately in-process after queuing.
+- The API returns a `lifecycle` object on every scan with all transition timestamps.
+
+Apply migration `017` for the `queued` status and lifecycle timestamp columns.
+
+---
+
+## 8. Data Written Per Scan Run
 
 ```mermaid
 erDiagram
@@ -351,8 +388,12 @@ erDiagram
         enum status
         enum scan_type
         jsonb selected_plugins
-        timestamp started_at
+        timestamp pending_at
+        timestamp queued_at
+        timestamp running_at
         timestamp completed_at
+        timestamp failed_at
+        timestamp cancelled_at
     }
 
     SCAN_PLUGIN_RUN {
@@ -443,6 +484,9 @@ Tree view auto-disables when **searching** or filtering by **child asset types**
 
 | File | Role |
 |------|------|
+| `backend/app/scans/lifecycle.py` | Valid transitions + timestamp stamping |
+| `backend/app/scans/services/scan_executor.py` | Queued → running → completed/failed |
+| `backend/app/jobs/scans.py` | Celery task for async scan execution |
 | `backend/app/scans/profiles.py` | Quick / Full / Custom profile → plugin mappings |
 | `backend/app/scans/services/scan_service.py` | Create, run, get scans |
 | `backend/app/scans/models.py` | `Scan`, `ScanPluginRun` |
@@ -461,7 +505,8 @@ Tree view auto-disables when **searching** or filtering by **child asset types**
 | Revision | Description |
 |----------|-------------|
 | `014_scan_plugin_runs.py` | `scan_plugin_runs` table + `plugin_run_status` enum |
-| `015_finding_schema_expansion.py` | Expanded finding fields + plugin run duration |
+| `016_scan_profiles.py` | `custom` scan type + `selected_plugins` column |
+| `017_scan_lifecycle.py` | `queued` status + lifecycle timestamp columns |
 
 ---
 

@@ -3,13 +3,14 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.assets.service import asset_service
+from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationAppError
-from app.core.scan_engine.orchestrator import scan_orchestrator
 from app.members.models import OrganizationMember
 from app.plugins.builtin import discover_plugins
 from app.plugins.registry import registry
 from app.scans.enums import ScanStatus, ScanType
 from app.scans.events import ScanAuditAction
+from app.scans.lifecycle import lifecycle_timestamps, transition_scan_status
 from app.scans.models import Scan
 from app.scans.profiles import list_scan_profiles, resolve_profile_plugins
 from app.scans.repositories.scan_plugin_repository import list_plugin_runs_for_scan
@@ -17,16 +18,17 @@ from app.scans.repositories.scan_repository import (
     create_scan,
     get_scan_for_asset,
     list_scans_for_asset,
-    update_scan_status,
 )
 from app.scans.schemas import (
     CreateAssetScanRequest,
+    ScanLifecycleTimestamps,
     ScanListResponse,
     ScanPluginRunSummary,
     ScanProfileListResponse,
     ScanProfileSummary,
     ScanSummary,
 )
+from app.scans.services.scan_executor import run_queued_scan as _run_queued_scan
 from app.audit.service import record_audit_event
 
 
@@ -88,8 +90,7 @@ def to_scan_summary(scan: Scan, *, include_plugin_runs: bool = False) -> ScanSum
         selected_plugins=selected_plugins,
         profile_plugins=_profile_plugins_for_scan(scan),
         created_by=str(scan.created_by) if scan.created_by else None,
-        started_at=scan.started_at,
-        completed_at=scan.completed_at,
+        lifecycle=ScanLifecycleTimestamps(**lifecycle_timestamps(scan)),
         plugin_runs=plugin_runs,
     )
 
@@ -198,7 +199,8 @@ def run_asset_scan(
     if scan.status not in {ScanStatus.PENDING, ScanStatus.FAILED}:
         raise ValidationAppError("Scan cannot be started in its current state")
 
-    update_scan_status(db, scan, status=ScanStatus.RUNNING)
+    transition_scan_status(scan, status=ScanStatus.QUEUED)
+    db.add(scan)
     record_audit_event(
         db,
         action=ScanAuditAction.RUN,
@@ -207,14 +209,30 @@ def run_asset_scan(
         resource_type="scan",
         resource_id=scan.id,
     )
-    db.flush()
-
-    scan_orchestrator.execute(db, scan=scan, project_id=project_id, asset_id=asset_id)
-    db.refresh(scan)
-    scan.plugin_runs = list_plugin_runs_for_scan(db, scan_id=scan.id)
     db.commit()
     db.refresh(scan)
-    return to_scan_summary(scan, include_plugin_runs=True)
+
+    settings = get_settings()
+    if settings.SCAN_RUN_INLINE:
+        _run_queued_scan(
+            db,
+            scan_id=scan.id,
+            project_id=project_id,
+            asset_id=asset_id,
+        )
+        db.commit()
+        db.refresh(scan)
+        scan.plugin_runs = list_plugin_runs_for_scan(db, scan_id=scan.id)
+    else:
+        from app.jobs.scans import execute_scan
+
+        execute_scan.delay(
+            scan_id=str(scan.id),
+            project_id=str(project_id),
+            asset_id=str(asset_id),
+        )
+
+    return to_scan_summary(scan, include_plugin_runs=bool(settings.SCAN_RUN_INLINE))
 
 
 def cancel_asset_scan(
@@ -229,10 +247,11 @@ def cancel_asset_scan(
     scan = get_scan_for_asset(db, project_id=project_id, asset_id=asset_id, scan_id=scan_id)
     if not scan:
         raise NotFoundError("Scan")
-    if scan.status not in {ScanStatus.PENDING, ScanStatus.RUNNING}:
+    if scan.status not in {ScanStatus.PENDING, ScanStatus.QUEUED, ScanStatus.RUNNING}:
         raise ValidationAppError("Scan cannot be cancelled in its current state")
 
-    update_scan_status(db, scan, status=ScanStatus.CANCELLED)
+    transition_scan_status(scan, status=ScanStatus.CANCELLED)
+    db.add(scan)
     record_audit_event(
         db,
         action=ScanAuditAction.CANCEL,

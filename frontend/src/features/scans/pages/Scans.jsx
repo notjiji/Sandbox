@@ -16,6 +16,8 @@ function statusClass(status) {
       return "text-brand-300";
     case "running":
       return "text-yellow-400";
+    case "queued":
+      return "text-blue-400";
     case "failed":
       return "text-red-400";
     case "cancelled":
@@ -89,6 +91,20 @@ export default function Scans() {
     };
   }, [projectId, assetId]);
 
+  const hasActiveScans = scans.some(
+    (scan) => scan.status === "queued" || scan.status === "running"
+  );
+
+  useEffect(() => {
+    if (!hasActiveScans) return undefined;
+
+    const interval = setInterval(() => {
+      loadData().catch(() => {});
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [hasActiveScans, projectId, assetId]);
+
   const togglePlugin = (pluginName) => {
     setSelectedPlugins((current) =>
       current.includes(pluginName)
@@ -126,7 +142,7 @@ export default function Scans() {
     setSuccess("");
     try {
       await scansApi.run(projectId, assetId, scanId);
-      setSuccess("Scan completed.");
+      setSuccess("Scan started.");
       await loadData();
     } catch (error) {
       setAlert(error instanceof ApiError ? error.message : "Unable to run scan.");
@@ -270,7 +286,7 @@ export default function Scans() {
                       Run
                     </button>
                   )}
-                  {scan.status === "running" && (
+                  {(scan.status === "pending" || scan.status === "queued" || scan.status === "running") && (
                     <button
                       type="button"
                       disabled={actionId === scan.id}

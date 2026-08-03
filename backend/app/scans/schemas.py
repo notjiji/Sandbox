@@ -19,6 +19,15 @@ class ScanPluginRunSummary(BaseSchema):
     completed_at: datetime | None = None
 
 
+class ScanLifecycleTimestamps(BaseSchema):
+    pending_at: datetime | None = None
+    queued_at: datetime | None = None
+    running_at: datetime | None = None
+    completed_at: datetime | None = None
+    failed_at: datetime | None = None
+    cancelled_at: datetime | None = None
+
+
 class ScanSummary(BaseSchema):
     id: str
     project_id: str
@@ -28,8 +37,7 @@ class ScanSummary(BaseSchema):
     selected_plugins: list[str] = Field(default_factory=list)
     profile_plugins: list[str] = Field(default_factory=list)
     created_by: str | None = None
-    started_at: datetime | None = None
-    completed_at: datetime | None = None
+    lifecycle: ScanLifecycleTimestamps = Field(default_factory=ScanLifecycleTimestamps)
     plugin_runs: list[ScanPluginRunSummary] = Field(default_factory=list)
 
 

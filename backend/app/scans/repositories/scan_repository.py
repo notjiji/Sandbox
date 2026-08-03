@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.scans.enums import ScanStatus, ScanType
+from app.scans.lifecycle import transition_scan_status
 from app.scans.models import Scan
 
 
@@ -35,6 +36,14 @@ def get_scan_for_asset(
     )
 
 
+def get_scan_by_id(
+    db: Session,
+    *,
+    scan_id: uuid.UUID,
+) -> Scan | None:
+    return db.query(Scan).filter(Scan.id == scan_id).first()
+
+
 def list_scans_for_project(db: Session, *, project_id: uuid.UUID) -> list[Scan]:
     return (
         db.query(Scan)
@@ -44,7 +53,7 @@ def list_scans_for_project(db: Session, *, project_id: uuid.UUID) -> list[Scan]:
     )
 
 
-def get_scan_by_id(
+def get_scan_by_id_for_project(
     db: Session,
     *,
     project_id: uuid.UUID,
@@ -66,12 +75,14 @@ def create_scan(
     selected_plugins: list[str] | None = None,
     created_by: uuid.UUID | None = None,
 ) -> Scan:
+    now = datetime.now(UTC)
     scan = Scan(
         project_id=project_id,
         asset_id=asset_id,
         scan_type=scan_type,
         selected_plugins=selected_plugins,
         status=ScanStatus.PENDING,
+        pending_at=now,
         created_by=created_by,
     )
     db.add(scan)
@@ -80,11 +91,7 @@ def create_scan(
 
 
 def update_scan_status(db: Session, scan: Scan, *, status: ScanStatus) -> Scan:
-    scan.status = status
-    if status == ScanStatus.RUNNING and scan.started_at is None:
-        scan.started_at = datetime.now(UTC)
-    if status in {ScanStatus.COMPLETED, ScanStatus.FAILED, ScanStatus.CANCELLED}:
-        scan.completed_at = datetime.now(UTC)
+    transition_scan_status(scan, status=status)
     db.add(scan)
     db.flush()
     return scan
