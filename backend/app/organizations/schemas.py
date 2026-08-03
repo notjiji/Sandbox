@@ -1,7 +1,7 @@
 from pydantic import Field, field_validator
 
 from app.members.enums import MemberStatus, OrganizationRole
-from app.schemas.base import BaseSchema
+from app.shared.schemas.base import BaseSchema
 
 
 class OrganizationSummary(BaseSchema):

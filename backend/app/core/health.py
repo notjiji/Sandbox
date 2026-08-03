@@ -6,7 +6,7 @@ from app.core.database import engine
 from app.core.rate_limit import limiter
 from app.core.redis import get_redis_client
 from app.core.version import API_VERSION
-from app.schemas.health import HealthResponse
+from app.shared.schemas.health import HealthResponse
 
 router = APIRouter()
 

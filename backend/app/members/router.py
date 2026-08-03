@@ -29,7 +29,7 @@ from app.members.services.member_service import (
     update_member,
 )
 from app.users.models import User
-from app.schemas.rbac import build_roles_list_response
+from app.members.schemas import build_roles_list_response
 
 router = APIRouter()
 

@@ -7,7 +7,7 @@ from app.core.password import (
     PASSWORD_MIN_LENGTH,
     validate_password_strength,
 )
-from app.schemas.base import BaseSchema
+from app.shared.schemas.base import BaseSchema
 
 
 def normalize_email(value: str) -> str:

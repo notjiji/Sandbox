@@ -1,6 +1,6 @@
 """Asset domain services."""
 
-from app.assets.service import (
+from app.assets.services.asset_service import (
     archive_project_asset,
     asset_service,
     create_project_asset,

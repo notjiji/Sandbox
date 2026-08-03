@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app.schemas.base import BaseSchema
+from app.shared.schemas.base import BaseSchema
 
 
 class AuditLogSummary(BaseSchema):

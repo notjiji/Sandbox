@@ -4,7 +4,7 @@
 def test_assets_module_imports() -> None:
     from app.assets.adapter import asset_adapter
     from app.assets.enums import AssetCriticality, AssetEnvironment, AssetStatus, AssetType, ROOT_ASSET_TYPES
-    from app.assets.service import asset_service
+    from app.assets.services.asset_service import asset_service
 
     assert AssetType.WEBSITE.value == "website"
     assert AssetType.PUBLIC_IP.value == "public_ip"

@@ -6,7 +6,7 @@ from enum import Enum
 from pydantic import Field
 
 from app.findings.enums import FindingSeverity
-from app.schemas.base import BaseSchema
+from app.shared.schemas.base import BaseSchema
 
 
 class PluginOutputStatus(str, Enum):

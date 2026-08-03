@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.assets.service import asset_service
+from app.assets.services.asset_service import asset_service
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationAppError
 from app.members.models import OrganizationMember

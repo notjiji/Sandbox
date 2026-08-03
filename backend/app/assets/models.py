@@ -11,7 +11,7 @@ from app.assets.enums import (
     AssetStatus,
     AssetType,
 )
-from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):

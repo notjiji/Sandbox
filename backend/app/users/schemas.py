@@ -1,6 +1,6 @@
 from pydantic import Field, field_validator
 
-from app.schemas.base import BaseSchema
+from app.shared.schemas.base import BaseSchema
 
 
 class UserProfileResponse(BaseSchema):

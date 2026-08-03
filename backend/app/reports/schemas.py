@@ -1,7 +1,7 @@
 from pydantic import Field
 
 from app.reports.enums import ReportStatus
-from app.schemas.base import BaseSchema
+from app.shared.schemas.base import BaseSchema
 
 
 class ReportSummary(BaseSchema):

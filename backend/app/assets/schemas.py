@@ -6,7 +6,7 @@ from app.assets.enums import (
     AssetStatus,
     AssetType,
 )
-from app.schemas.base import BaseSchema
+from app.shared.schemas.base import BaseSchema
 
 
 class AssetSummary(BaseSchema):

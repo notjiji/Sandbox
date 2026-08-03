@@ -4,7 +4,7 @@ from sqlalchemy import Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from app.reports.enums import ReportStatus
 
 

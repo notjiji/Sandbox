@@ -2,7 +2,7 @@ from typing import Any
 
 from fastapi.responses import JSONResponse
 
-from app.schemas.responses import ErrorDetail, ErrorResponse, SuccessResponse
+from app.shared.schemas.responses import ErrorDetail, ErrorResponse, SuccessResponse
 
 
 def success_response(data: Any = None, status_code: int = 200) -> JSONResponse:

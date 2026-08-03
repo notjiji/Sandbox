@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.findings.enums import FindingSeverity, FindingStatus
-from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class Finding(Base, UUIDPrimaryKeyMixin, TimestampMixin):
