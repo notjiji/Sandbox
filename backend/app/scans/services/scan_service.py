@@ -9,17 +9,34 @@ from app.members.models import OrganizationMember
 from app.scans.enums import ScanStatus
 from app.scans.events import ScanAuditAction
 from app.scans.models import Scan
+from app.scans.repositories.scan_plugin_repository import list_plugin_runs_for_scan
 from app.scans.repositories.scan_repository import (
     create_scan,
     get_scan_for_asset,
     list_scans_for_asset,
     update_scan_status,
 )
-from app.scans.schemas import CreateAssetScanRequest, ScanListResponse, ScanSummary
+from app.scans.schemas import CreateAssetScanRequest, ScanListResponse, ScanPluginRunSummary, ScanSummary
 from app.audit.service import record_audit_event
 
 
-def to_scan_summary(scan: Scan) -> ScanSummary:
+def to_plugin_run_summary(plugin_run) -> ScanPluginRunSummary:
+    return ScanPluginRunSummary(
+        id=str(plugin_run.id),
+        asset_id=str(plugin_run.asset_id),
+        plugin_name=plugin_run.plugin_name,
+        status=plugin_run.status,
+        error_message=plugin_run.error_message,
+        findings_count=plugin_run.findings_count,
+        started_at=plugin_run.started_at,
+        completed_at=plugin_run.completed_at,
+    )
+
+
+def to_scan_summary(scan: Scan, *, include_plugin_runs: bool = False) -> ScanSummary:
+    plugin_runs = []
+    if include_plugin_runs and hasattr(scan, "plugin_runs"):
+        plugin_runs = [to_plugin_run_summary(run) for run in scan.plugin_runs]
     return ScanSummary(
         id=str(scan.id),
         project_id=str(scan.project_id),
@@ -29,6 +46,7 @@ def to_scan_summary(scan: Scan) -> ScanSummary:
         created_by=str(scan.created_by) if scan.created_by else None,
         started_at=scan.started_at,
         completed_at=scan.completed_at,
+        plugin_runs=plugin_runs,
     )
 
 
@@ -99,7 +117,8 @@ def get_asset_scan(
     scan = get_scan_for_asset(db, project_id=project_id, asset_id=asset_id, scan_id=scan_id)
     if not scan:
         raise NotFoundError("Scan")
-    return to_scan_summary(scan)
+    scan.plugin_runs = list_plugin_runs_for_scan(db, scan_id=scan.id)
+    return to_scan_summary(scan, include_plugin_runs=True)
 
 
 def run_asset_scan(
@@ -131,9 +150,11 @@ def run_asset_scan(
     db.flush()
 
     scan_orchestrator.execute(db, scan=scan, project_id=project_id, asset_id=asset_id)
+    db.refresh(scan)
+    scan.plugin_runs = list_plugin_runs_for_scan(db, scan_id=scan.id)
     db.commit()
     db.refresh(scan)
-    return to_scan_summary(scan)
+    return to_scan_summary(scan, include_plugin_runs=True)
 
 
 def cancel_asset_scan(

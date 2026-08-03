@@ -2,8 +2,19 @@ from datetime import datetime
 
 from pydantic import Field
 
-from app.scans.enums import ScanStatus, ScanType
+from app.scans.enums import PluginRunStatus, ScanStatus, ScanType
 from app.schemas.base import BaseSchema
+
+
+class ScanPluginRunSummary(BaseSchema):
+    id: str
+    asset_id: str
+    plugin_name: str
+    status: PluginRunStatus
+    error_message: str | None = None
+    findings_count: int = 0
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 class ScanSummary(BaseSchema):
@@ -15,6 +26,7 @@ class ScanSummary(BaseSchema):
     created_by: str | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
+    plugin_runs: list[ScanPluginRunSummary] = Field(default_factory=list)
 
 
 class ScanListResponse(BaseSchema):

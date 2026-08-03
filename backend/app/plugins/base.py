@@ -21,6 +21,7 @@ class ScannerPlugin(ABC):
 
     name: str
     version: str
+    enabled: bool = True
 
     @abstractmethod
     def scan(self, target: ScanTarget) -> ScanResult:

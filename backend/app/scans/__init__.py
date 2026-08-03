@@ -1,6 +1,6 @@
 """Scans feature module."""
 
-from app.scans.enums import ScanStatus, ScanType
-from app.scans.models import Scan
+from app.scans.enums import ScanStatus, ScanType, PluginRunStatus
+from app.scans.models import Scan, ScanPluginRun
 
-__all__ = ["Scan", "ScanStatus", "ScanType"]
+__all__ = ["Scan", "ScanPluginRun", "ScanStatus", "ScanType", "PluginRunStatus"]

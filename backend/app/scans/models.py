@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy import DateTime, Enum, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
-from app.scans.enums import ScanStatus, ScanType
+from app.scans.enums import ScanStatus, ScanType, PluginRunStatus
 
 
 class Scan(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -46,3 +46,39 @@ class Scan(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     asset: Mapped["Asset"] = relationship("Asset", back_populates="scans")
     creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])
     findings: Mapped[list["Finding"]] = relationship("Finding", back_populates="scan")
+    plugin_runs: Mapped[list["ScanPluginRun"]] = relationship(
+        "ScanPluginRun",
+        back_populates="scan",
+        cascade="all, delete-orphan",
+    )
+
+
+class ScanPluginRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "scan_plugin_runs"
+
+    scan_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scans.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    asset_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    plugin_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[PluginRunStatus] = mapped_column(
+        Enum(PluginRunStatus, name="plugin_run_status", native_enum=True),
+        nullable=False,
+        default=PluginRunStatus.PENDING,
+    )
+    error_message: Mapped[str | None] = mapped_column(nullable=True)
+    findings_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    metadata_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    scan: Mapped["Scan"] = relationship("Scan", back_populates="plugin_runs")
+    asset: Mapped["Asset"] = relationship("Asset")
