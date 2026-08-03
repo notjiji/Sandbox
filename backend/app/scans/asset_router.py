@@ -15,6 +15,18 @@ from app.scans.services import scan_service
 router = APIRouter()
 
 
+@router.get("/profiles")
+def list_scan_profiles(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.SCAN_READ)),
+) -> JSONResponse:
+    _ = project_id, asset_id, db, membership
+    result = scan_service.list_scan_profile_options()
+    return success_response(data=result.model_dump(mode="json"))
+
+
 @router.get("")
 def list_scans(
     project_id: uuid.UUID,

@@ -11,7 +11,7 @@ class SslPlugin(ScannerPlugin):
     name = "ssl"
     description = "SSL Scanner"
     supported_assets = ["website", "domain", "api_endpoint", "email_domain"]
-    supported_scan_types = [ScanType.FULL.value]
+    supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
     default_config = PluginConfig(enabled=True, timeout=45.0, retries=2, parallel=False, version="0.1.0")
 
     async def scan(self, asset: ScanTarget) -> PluginOutput:

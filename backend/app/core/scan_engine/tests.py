@@ -77,16 +77,37 @@ def test_plugin_output_schema() -> None:
     assert payload["metadata"]["issuer"] == "Let's Encrypt"
 
 
-def test_registry_returns_enabled_plugins_for_scan_type() -> None:
+def test_profile_resolves_quick_scan_plugins() -> None:
+    from types import SimpleNamespace
+
     from app.core.scan_engine.plugin_loader import PluginLoader
     from app.plugins.registry import registry
     from app.scans.enums import ScanType
 
     registry._plugins.clear()
     try:
-        selection = PluginLoader().select_for_scan(ScanType.QUICK)
+        scan = SimpleNamespace(scan_type=ScanType.QUICK, selected_plugins=None)
+        selection = PluginLoader().select_for_scan(scan)
         enabled_names = {plugin.name for plugin in selection.enabled}
-        assert enabled_names == {"http_headers", "dns"}
+        assert enabled_names == {"http_headers", "ssl", "dns"}
+    finally:
+        registry._plugins.clear()
+        PluginLoader().ensure_loaded()
+
+
+def test_profile_resolves_custom_scan_plugins() -> None:
+    from types import SimpleNamespace
+
+    from app.core.scan_engine.plugin_loader import PluginLoader
+    from app.plugins.registry import registry
+    from app.scans.enums import ScanType
+
+    registry._plugins.clear()
+    try:
+        scan = SimpleNamespace(scan_type=ScanType.CUSTOM, selected_plugins=["dns", "whois"])
+        selection = PluginLoader().select_for_scan(scan)
+        enabled_names = {plugin.name for plugin in selection.enabled}
+        assert enabled_names == {"dns", "whois"}
     finally:
         registry._plugins.clear()
         PluginLoader().ensure_loaded()

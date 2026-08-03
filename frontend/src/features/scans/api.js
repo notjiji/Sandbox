@@ -5,6 +5,8 @@ const base = (projectId, assetId) =>
 
 export const scansApi = {
   list: (projectId, assetId) => apiRequest(base(projectId, assetId), { auth: true }),
+  profiles: (projectId, assetId) =>
+    apiRequest(`${base(projectId, assetId)}/profiles`, { auth: true }),
   create: (projectId, assetId, data) =>
     apiRequest(base(projectId, assetId), { method: "POST", body: data, auth: true }),
   get: (projectId, assetId, scanId) =>

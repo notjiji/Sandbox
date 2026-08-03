@@ -2,8 +2,9 @@ import enum
 
 
 class ScanType(str, enum.Enum):
-    FULL = "full"
     QUICK = "quick"
+    FULL = "full"
+    CUSTOM = "custom"
 
 
 class ScanStatus(str, enum.Enum):

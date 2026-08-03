@@ -63,12 +63,14 @@ def create_scan(
     project_id: uuid.UUID,
     asset_id: uuid.UUID,
     scan_type: ScanType = ScanType.FULL,
+    selected_plugins: list[str] | None = None,
     created_by: uuid.UUID | None = None,
 ) -> Scan:
     scan = Scan(
         project_id=project_id,
         asset_id=asset_id,
         scan_type=scan_type,
+        selected_plugins=selected_plugins,
         status=ScanStatus.PENDING,
         created_by=created_by,
     )

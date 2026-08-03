@@ -25,14 +25,34 @@ class PluginRegistry:
         *,
         scan_type: ScanType | None = None,
         asset_type: str | None = None,
+        plugin_names: list[str] | None = None,
     ) -> list[ScannerPlugin]:
-        """Return enabled plugins, optionally filtered by scan and asset type."""
-        plugins = [plugin for plugin in self.all() if plugin.enabled]
-        if scan_type is not None:
-            plugins = [plugin for plugin in plugins if plugin.supports_scan_type(scan_type)]
+        """Return enabled plugins, filtered by profile names, scan type, or asset type."""
+        if plugin_names is not None:
+            plugins = [
+                plugin
+                for name in plugin_names
+                if (plugin := self.get(name)) is not None and plugin.config.enabled
+            ]
+        else:
+            plugins = [plugin for plugin in self.all() if plugin.config.enabled]
+            if scan_type is not None:
+                plugins = [plugin for plugin in plugins if plugin.supports_scan_type(scan_type)]
         if asset_type is not None:
             plugins = [plugin for plugin in plugins if plugin.supports_asset(asset_type)]
         return plugins
+
+    def resolve_plugin_names(self, plugin_names: list[str]) -> tuple[list[ScannerPlugin], list[str]]:
+        """Resolve plugin slugs; return (found enabled, missing or disabled)."""
+        found: list[ScannerPlugin] = []
+        missing: list[str] = []
+        for name in plugin_names:
+            plugin = self.get(name)
+            if plugin is None or not plugin.config.enabled:
+                missing.append(name)
+            else:
+                found.append(plugin)
+        return found, missing
 
     def get_disabled_plugins(self) -> list[ScannerPlugin]:
         return [plugin for plugin in self.all() if not plugin.config.enabled]

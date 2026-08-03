@@ -25,6 +25,8 @@ class ScanSummary(BaseSchema):
     asset_id: str
     status: ScanStatus
     scan_type: ScanType
+    selected_plugins: list[str] = Field(default_factory=list)
+    profile_plugins: list[str] = Field(default_factory=list)
     created_by: str | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
@@ -38,6 +40,21 @@ class ScanListResponse(BaseSchema):
 
 class CreateAssetScanRequest(BaseSchema):
     scan_type: ScanType = ScanType.FULL
+    plugins: list[str] | None = Field(
+        default=None,
+        description="Required when scan_type is custom — plugin slugs to run",
+    )
+
+
+class ScanProfileSummary(BaseSchema):
+    profile: ScanType
+    label: str
+    description: str
+    plugins: list[str]
+
+
+class ScanProfileListResponse(BaseSchema):
+    items: list[ScanProfileSummary]
 
 
 class CreateScanRequest(BaseSchema):

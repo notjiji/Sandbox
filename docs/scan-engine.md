@@ -243,7 +243,42 @@ BUILTIN_PLUGIN_CLASSES = [
 
 ---
 
-## 5. Plugin Registry
+## 5. Scan Profiles
+
+Instead of always running every scanner, scans use **reusable profiles** that define which plugins to execute. This improves usability and performance.
+
+| Profile | Plugins |
+|---------|---------|
+| **Quick Scan** | `http_headers`, `ssl`, `dns` |
+| **Full Scan** | `http_headers`, `ssl`, `dns`, `whois`, `ports` |
+| **Custom Scan** | User-selected plugins (stored on the scan as `selected_plugins`) |
+
+```mermaid
+flowchart TB
+    CREATE["POST /assets/{id}/scans\n{ scan_type, plugins? }"]
+    CREATE --> PROFILE["resolve_profile_plugins()"]
+    PROFILE --> QUICK["quick → http_headers, ssl, dns"]
+    PROFILE --> FULL["full → all 5 plugins"]
+    PROFILE --> CUSTOM["custom → user plugins[]"]
+
+    RUN["POST /scans/{id}/run"] --> LOADER["PluginLoader.select_for_scan(scan)"]
+    LOADER --> REG["registry.resolve_plugin_names()"]
+    REG --> EXEC["Run enabled plugins for asset targets"]
+```
+
+- `GET /projects/{id}/assets/{id}/scans/profiles` — list profiles with labels, descriptions, and plugin slugs
+- Custom scans require `plugins: string[]` in the create request
+- Profile plugin lists live in `backend/app/scans/profiles.py`
+
+Apply migration `016` for the `custom` scan type and `selected_plugins` column:
+
+```bash
+alembic upgrade head
+```
+
+---
+
+## 6. Plugin Registry
 
 Instead of hardcoding plugin lists in the orchestrator, the **registry** is the single source of truth:
 
@@ -253,22 +288,22 @@ flowchart TB
     BUILTIN --> DISCOVER["discover_plugins(registry)"]
     DISCOVER --> REG["PluginRegistry"]
 
-    ORCH["ScanOrchestrator"] --> LOADER["PluginLoader.select_for_scan()"]
-    LOADER --> ASK["registry.get_enabled_plugins(scan_type)"]
+    ORCH["ScanOrchestrator"] --> LOADER["PluginLoader.select_for_scan(scan)"]
+    LOADER --> ASK["resolve_profile_plugins() → registry.resolve_plugin_names()"]
     ASK --> REG
 
     REG --> CHECK{enabled?}
-    CHECK -->|Yes| FILTER["Filter by scan_type\n+ supported_assets"]
-    CHECK -->|No| SKIP["Record SKIPPED"]
+    CHECK -->|Yes| FILTER["Filter by supported_assets per target"]
+    CHECK -->|No| SKIP["Excluded from profile or disabled"]
 
     FILTER --> RUN["Run plugin.scan(asset)"]
     RUN --> SPR[("scan_plugin_runs")]
 ```
 
-The orchestrator simply asks:
+The orchestrator resolves plugins from the scan profile:
 
 ```
-Registry → give me all enabled plugins for this scan type
+Profile → plugin slugs → Registry → enabled ScannerPlugin instances
          → filter by supported_assets per target
 ```
 
@@ -277,12 +312,12 @@ Registry → give me all enabled plugins for this scan type
 | Plugin | Description | Scan types | Supported assets |
 |--------|-------------|------------|------------------|
 | `http_headers` | HTTP Headers Scanner | full, quick | website, api_endpoint |
-| `ssl` | SSL Scanner | full | website, domain, api_endpoint, email_domain |
+| `ssl` | SSL Scanner | full, quick | website, domain, api_endpoint, email_domain |
 | `dns` | DNS Scanner | full, quick | website, domain, public_ip, email_domain |
 | `whois` | WHOIS Scanner | full | domain, email_domain |
 | `ports` | Port Scanner | full | public_ip, server, windows_server, docker_host |
 
-Plugins can be disabled via `ScannerPlugin.enabled = False`. Disabled plugins are recorded as **SKIPPED** (once per scan on the primary target).
+Plugins can be disabled via `PluginConfig.enabled = False`. Disabled plugins are excluded from profile resolution.
 
 ### Plugin run statuses
 
@@ -302,7 +337,7 @@ Plugins can be disabled via `ScannerPlugin.enabled = False`. Disabled plugins ar
 
 ---
 
-## 6. Data Written Per Scan Run
+## 7. Data Written Per Scan Run
 
 ```mermaid
 erDiagram
@@ -315,6 +350,7 @@ erDiagram
         uuid id
         enum status
         enum scan_type
+        jsonb selected_plugins
         timestamp started_at
         timestamp completed_at
     }
@@ -407,6 +443,7 @@ Tree view auto-disables when **searching** or filtering by **child asset types**
 
 | File | Role |
 |------|------|
+| `backend/app/scans/profiles.py` | Quick / Full / Custom profile → plugin mappings |
 | `backend/app/scans/services/scan_service.py` | Create, run, get scans |
 | `backend/app/scans/models.py` | `Scan`, `ScanPluginRun` |
 | `backend/app/scans/repositories/scan_plugin_repository.py` | Plugin run persistence |

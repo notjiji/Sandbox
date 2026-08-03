@@ -25,26 +25,47 @@ function statusClass(status) {
   }
 }
 
+function profileLabel(scanType) {
+  switch (scanType) {
+    case "quick":
+      return "Quick Scan";
+    case "full":
+      return "Full Scan";
+    case "custom":
+      return "Custom Scan";
+    default:
+      return `${scanType} scan`;
+  }
+}
+
 export default function Scans() {
   const { projectId, assetId } = useParams();
   const [project, setProject] = useState(null);
   const [asset, setAsset] = useState(null);
   const [scans, setScans] = useState([]);
+  const [profiles, setProfiles] = useState([]);
+  const [selectedProfile, setSelectedProfile] = useState("full");
+  const [selectedPlugins, setSelectedPlugins] = useState([]);
   const [alert, setAlert] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [actionId, setActionId] = useState(null);
 
+  const customProfile = profiles.find((profile) => profile.profile === "custom");
+  const availablePlugins = customProfile?.plugins ?? [];
+
   const loadData = async () => {
-    const [projectResponse, assetResponse, scansResponse] = await Promise.all([
+    const [projectResponse, assetResponse, scansResponse, profilesResponse] = await Promise.all([
       projectsApi.get(projectId),
       assetsApi.get(projectId, assetId),
       scansApi.list(projectId, assetId),
+      scansApi.profiles(projectId, assetId),
     ]);
     setProject(projectResponse?.data ?? null);
     setAsset(assetResponse?.data ?? null);
     setScans(scansResponse?.data?.items ?? []);
+    setProfiles(profilesResponse?.data?.items ?? []);
   };
 
   useEffect(() => {
@@ -68,12 +89,28 @@ export default function Scans() {
     };
   }, [projectId, assetId]);
 
+  const togglePlugin = (pluginName) => {
+    setSelectedPlugins((current) =>
+      current.includes(pluginName)
+        ? current.filter((name) => name !== pluginName)
+        : [...current, pluginName]
+    );
+  };
+
   const handleCreate = async () => {
     setCreating(true);
     setAlert("");
     setSuccess("");
     try {
-      await scansApi.create(projectId, assetId, { scan_type: "full" });
+      const payload = { scan_type: selectedProfile };
+      if (selectedProfile === "custom") {
+        if (selectedPlugins.length === 0) {
+          setAlert("Select at least one plugin for a custom scan.");
+          return;
+        }
+        payload.plugins = selectedPlugins;
+      }
+      await scansApi.create(projectId, assetId, payload);
       setSuccess("Scan created.");
       await loadData();
     } catch (error) {
@@ -113,6 +150,8 @@ export default function Scans() {
     }
   };
 
+  const activeProfile = profiles.find((profile) => profile.profile === selectedProfile);
+
   return (
     <DashboardShell
       title="Scans"
@@ -122,7 +161,71 @@ export default function Scans() {
       {success && <FormAlert message={success} variant="success" />}
       <ProjectNav projectName={project?.name} assetName={asset?.name} active="scans" />
 
-      <div className="mb-4">
+      <div className="mb-4 space-y-4 rounded-lg border border-brand-800/50 p-4">
+        <div>
+          <p className="mb-2 text-sm font-medium text-brand-200">Scan profile</p>
+          <div className="flex flex-wrap gap-2">
+            {profiles.map((profile) => (
+              <button
+                key={profile.profile}
+                type="button"
+                onClick={() => setSelectedProfile(profile.profile)}
+                className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                  selectedProfile === profile.profile
+                    ? "border-brand-400 bg-brand-800/60 text-brand-100"
+                    : "border-brand-800/50 text-brand-400 hover:border-brand-700"
+                }`}
+              >
+                {profile.label}
+              </button>
+            ))}
+          </div>
+          {activeProfile && (
+            <p className="mt-2 text-sm text-brand-500">{activeProfile.description}</p>
+          )}
+        </div>
+
+        {selectedProfile !== "custom" && activeProfile && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-brand-200">Plugins</p>
+            <div className="flex flex-wrap gap-2">
+              {activeProfile.plugins.map((plugin) => (
+                <span
+                  key={plugin}
+                  className="rounded-md border border-brand-800/50 px-2 py-1 text-xs uppercase tracking-wide text-brand-300"
+                >
+                  {plugin.replace("_", " ")}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedProfile === "custom" && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-brand-200">Select plugins</p>
+            <div className="flex flex-wrap gap-2">
+              {availablePlugins.map((plugin) => {
+                const selected = selectedPlugins.includes(plugin);
+                return (
+                  <button
+                    key={plugin}
+                    type="button"
+                    onClick={() => togglePlugin(plugin)}
+                    className={`rounded-md border px-3 py-1.5 text-xs uppercase tracking-wide transition-colors ${
+                      selected
+                        ? "border-brand-400 bg-brand-800/60 text-brand-100"
+                        : "border-brand-800/50 text-brand-400 hover:border-brand-700"
+                    }`}
+                  >
+                    {plugin.replace("_", " ")}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <button
           type="button"
           disabled={creating}
@@ -130,7 +233,7 @@ export default function Scans() {
           className="btn-primary inline-flex items-center gap-2 text-sm"
         >
           <Plus size={16} />
-          {creating ? "Creating..." : "New full scan"}
+          {creating ? "Creating..." : `New ${profileLabel(selectedProfile).toLowerCase()}`}
         </button>
       </div>
 
@@ -148,7 +251,10 @@ export default function Scans() {
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand-800/50 px-4 py-3"
               >
                 <div>
-                  <p className="font-medium text-brand-100">{scan.scan_type} scan</p>
+                  <p className="font-medium text-brand-100">{profileLabel(scan.scan_type)}</p>
+                  <p className="text-xs text-brand-500">
+                    {(scan.profile_plugins ?? []).join(", ") || "No plugins"}
+                  </p>
                   <p className={`text-sm capitalize ${statusClass(scan.status)}`}>{scan.status}</p>
                 </div>
                 <div className="flex items-center gap-2">

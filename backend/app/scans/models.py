@@ -29,6 +29,7 @@ class Scan(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         default=ScanType.FULL,
     )
+    selected_plugins: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[ScanStatus] = mapped_column(
         Enum(ScanStatus, name="scan_status", native_enum=True),
         nullable=False,

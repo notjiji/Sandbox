@@ -42,9 +42,9 @@ class ScanOrchestrator:
         project_id: uuid.UUID,
         asset_id: uuid.UUID,
     ) -> Scan:
-        selection = self._loader.select_for_scan(scan.scan_type)
+        selection = self._loader.select_for_scan(scan)
 
-        if not selection.enabled and not selection.disabled:
+        if not selection.enabled:
             update_scan_status(db, scan, status=ScanStatus.FAILED)
             return scan
 
@@ -60,19 +60,6 @@ class ScanOrchestrator:
             return scan
 
         records: list[PluginExecutionRecord] = []
-        primary_target = targets[0] if targets else None
-
-        for plugin in selection.disabled:
-            if primary_target is not None:
-                records.append(
-                    self._record_skipped_plugin(
-                        db,
-                        scan=scan,
-                        target=primary_target,
-                        plugin=plugin,
-                        reason="Plugin is disabled",
-                    )
-                )
 
         for target in targets:
             target_plugins = [

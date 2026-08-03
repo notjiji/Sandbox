@@ -6,9 +6,12 @@ from app.assets.service import asset_service
 from app.core.exceptions import NotFoundError, ValidationAppError
 from app.core.scan_engine.orchestrator import scan_orchestrator
 from app.members.models import OrganizationMember
-from app.scans.enums import ScanStatus
+from app.plugins.builtin import discover_plugins
+from app.plugins.registry import registry
+from app.scans.enums import ScanStatus, ScanType
 from app.scans.events import ScanAuditAction
 from app.scans.models import Scan
+from app.scans.profiles import list_scan_profiles, resolve_profile_plugins
 from app.scans.repositories.scan_plugin_repository import list_plugin_runs_for_scan
 from app.scans.repositories.scan_repository import (
     create_scan,
@@ -16,8 +19,44 @@ from app.scans.repositories.scan_repository import (
     list_scans_for_asset,
     update_scan_status,
 )
-from app.scans.schemas import CreateAssetScanRequest, ScanListResponse, ScanPluginRunSummary, ScanSummary
+from app.scans.schemas import (
+    CreateAssetScanRequest,
+    ScanListResponse,
+    ScanPluginRunSummary,
+    ScanProfileListResponse,
+    ScanProfileSummary,
+    ScanSummary,
+)
 from app.audit.service import record_audit_event
+
+
+def _ensure_plugins_loaded() -> None:
+    if not registry.list_names():
+        discover_plugins(registry)
+
+
+def _validate_create_scan(body: CreateAssetScanRequest) -> list[str] | None:
+    if body.scan_type == ScanType.CUSTOM:
+        if not body.plugins:
+            raise ValidationAppError("Custom scans require at least one plugin")
+        selected = resolve_profile_plugins(body.scan_type, body.plugins)
+        _ensure_plugins_loaded()
+        _, missing = registry.resolve_plugin_names(selected)
+        if missing:
+            raise ValidationAppError(f"Unknown or disabled plugin(s): {', '.join(missing)}")
+        return selected
+
+    if body.plugins:
+        raise ValidationAppError("plugins may only be set for custom scans")
+    resolve_profile_plugins(body.scan_type)
+    return None
+
+
+def _profile_plugins_for_scan(scan: Scan) -> list[str]:
+    try:
+        return resolve_profile_plugins(scan.scan_type, scan.selected_plugins)
+    except ValidationAppError:
+        return list(scan.selected_plugins or [])
 
 
 def to_plugin_run_summary(plugin_run) -> ScanPluginRunSummary:
@@ -39,12 +78,15 @@ def to_scan_summary(scan: Scan, *, include_plugin_runs: bool = False) -> ScanSum
     plugin_runs = []
     if include_plugin_runs and hasattr(scan, "plugin_runs"):
         plugin_runs = [to_plugin_run_summary(run) for run in scan.plugin_runs]
+    selected_plugins = list(scan.selected_plugins or [])
     return ScanSummary(
         id=str(scan.id),
         project_id=str(scan.project_id),
         asset_id=str(scan.asset_id),
         status=scan.status,
         scan_type=scan.scan_type,
+        selected_plugins=selected_plugins,
+        profile_plugins=_profile_plugins_for_scan(scan),
         created_by=str(scan.created_by) if scan.created_by else None,
         started_at=scan.started_at,
         completed_at=scan.completed_at,
@@ -60,6 +102,15 @@ def _require_asset(
     asset_id: uuid.UUID,
 ) -> None:
     asset_service.get_for_project(db, membership, project_id=project_id, asset_id=asset_id)
+
+
+def list_scan_profile_options() -> ScanProfileListResponse:
+    _ensure_plugins_loaded()
+    items = [
+        ScanProfileSummary(**profile)
+        for profile in list_scan_profiles(available_plugins=registry.list_names())
+    ]
+    return ScanProfileListResponse(items=items)
 
 
 def list_asset_scans(
@@ -86,11 +137,13 @@ def create_asset_scan(
     asset_service.require_scannable_asset(
         db, membership, project_id=project_id, asset_id=asset_id
     )
+    selected_plugins = _validate_create_scan(body)
     scan = create_scan(
         db,
         project_id=project_id,
         asset_id=asset_id,
         scan_type=body.scan_type,
+        selected_plugins=selected_plugins,
         created_by=membership.user_id,
     )
     record_audit_event(
@@ -100,7 +153,12 @@ def create_asset_scan(
         organization_id=membership.organization_id,
         resource_type="scan",
         resource_id=scan.id,
-        details={"project_id": str(project_id), "asset_id": str(asset_id)},
+        details={
+            "project_id": str(project_id),
+            "asset_id": str(asset_id),
+            "scan_type": body.scan_type.value,
+            "plugins": selected_plugins or _profile_plugins_for_scan(scan),
+        },
     )
     db.commit()
     db.refresh(scan)
