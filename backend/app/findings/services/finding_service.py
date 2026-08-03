@@ -19,9 +19,12 @@ def to_finding_summary(finding: Finding) -> FindingSummary:
         scan_id=str(finding.scan_id),
         asset_id=str(finding.asset_id),
         plugin=finding.plugin,
+        finding_code=finding.finding_code,
+        check_status=finding.check_status,
         title=finding.title,
         description=finding.description,
         severity=finding.severity,
+        risk_score=float(finding.risk_score or 0.0),
         status=finding.status,
         evidence=finding.evidence,
         recommendation=finding.recommendation,
@@ -97,4 +100,8 @@ def update_project_finding(
     )
     db.commit()
     db.refresh(finding)
+    from app.core.risk_engine.engine import risk_engine
+
+    risk_engine.calculate_project_risk(db, project_id=project_id, store=True)
+    db.commit()
     return to_finding_summary(finding)

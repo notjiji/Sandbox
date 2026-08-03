@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
+from app.core.risk_engine.engine import risk_engine
 from app.core.scan_engine.orchestrator import scan_orchestrator
 from app.scans.enums import ScanStatus
 from app.scans.lifecycle import transition_scan_status
@@ -45,6 +46,7 @@ def run_queued_scan(
 
     try:
         scan_orchestrator.execute(db, scan=scan, project_id=project_id, asset_id=asset_id)
+        risk_engine.calculate_project_risk(db, project_id=project_id, store=True)
     except Exception:
         logger.exception("scan orchestration raised", extra={"scan_id": str(scan_id)})
         db.refresh(scan)

@@ -1,5 +1,5 @@
-"""Risk scoring engine — consumes normalized findings, produces risk scores."""
+"""Risk scoring engine — consumes normalized findings, applies rules, produces risk scores."""
 
-from app.core.risk_engine.calculator import RiskCalculator
+from app.core.risk_engine.engine import RiskEngine, risk_engine
 
-__all__ = ["RiskCalculator"]
+__all__ = ["RiskEngine", "risk_engine"]

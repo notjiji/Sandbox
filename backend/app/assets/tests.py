@@ -125,9 +125,9 @@ def test_risk_criticality_multiplier() -> None:
     from app.risk.calculator import RiskCalculator
 
     calculator = RiskCalculator()
-    base = calculator.score_findings([{"severity": "medium"}])
+    base = calculator.score_findings([{"risk_score": 15}])
     weighted = calculator.score_findings(
-        [{"severity": "medium", "criticality": "critical"}]
+        [{"risk_score": 15, "criticality": "critical"}]
     )
     assert weighted > base
 

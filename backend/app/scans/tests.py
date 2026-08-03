@@ -23,6 +23,6 @@ def test_risk_calculator_scores_findings() -> None:
 
     calculator = RiskCalculator()
     score = calculator.score_findings(
-        [{"severity": "critical"}, {"severity": "low"}, {"severity": "info"}]
+        [{"risk_score": 10}, {"risk_score": 25}, {"risk_score": 5}]
     )
-    assert score == 11.25
+    assert score == 40.0

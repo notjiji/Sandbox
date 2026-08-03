@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.assets.adapter import asset_adapter
 from app.core.logging import get_logger
+from app.core.risk_engine.engine import risk_engine
 from app.core.scan_engine.dispatcher import ScanDispatcher
 from app.core.scan_engine.normalizer import ScanNormalizer
 from app.core.scan_engine.plugin_loader import PluginLoader
@@ -198,22 +199,25 @@ class ScanOrchestrator:
                 continue
             asset_id = uuid.UUID(record.target.asset_id)
             for finding in record.normalized_findings:
+                resolved = risk_engine.resolve_finding(db, plugin_finding=finding)
+                if resolved is None:
+                    continue
                 create_finding(
                     db,
                     project_id=scan.project_id,
                     scan_id=scan.id,
                     asset_id=asset_id,
                     plugin=finding.plugin,
-                    title=finding.title,
-                    description=finding.description,
-                    severity=finding.severity,
+                    finding_code=resolved.finding_code,
+                    check_status=resolved.check_status,
+                    title=resolved.title,
+                    description=resolved.description,
+                    severity=resolved.severity,
+                    risk_score=resolved.risk_score,
                     status=FindingStatus.OPEN,
-                    evidence=finding.evidence,
-                    recommendation=finding.recommendation,
-                    references=finding.references,
-                    raw_data=finding.raw_data,
-                    confidence=finding.confidence,
-                    detected_at=finding.detected_at,
+                    evidence=resolved.evidence,
+                    raw_data=resolved.raw_data,
+                    detected_at=resolved.detected_at,
                 )
 
 

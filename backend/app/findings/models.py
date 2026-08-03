@@ -31,6 +31,8 @@ class Finding(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     plugin: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    finding_code: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    check_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     title: Mapped[str] = mapped_column(String(512), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     severity: Mapped[FindingSeverity] = mapped_column(
@@ -38,6 +40,7 @@ class Finding(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         default=FindingSeverity.MEDIUM,
     )
+    risk_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     status: Mapped[FindingStatus] = mapped_column(
         Enum(FindingStatus, name="finding_status", native_enum=True),
         nullable=False,

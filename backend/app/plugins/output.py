@@ -5,7 +5,6 @@ from enum import Enum
 
 from pydantic import Field
 
-from app.findings.enums import FindingSeverity
 from app.schemas.base import BaseSchema
 
 
@@ -15,18 +14,22 @@ class PluginOutputStatus(str, Enum):
     SKIPPED = "skipped"
 
 
+class PluginFindingStatus(str, Enum):
+    """Check outcome reported by the scanner — not a risk score."""
+
+    FAILED = "failed"
+    PASSED = "passed"
+    WARNING = "warning"
+
+
 class PluginFinding(BaseSchema):
-    """Normalized finding every plugin must produce before returning."""
+    """What a scanner reports. Severity and score are assigned by the Risk Engine."""
 
     plugin: str
-    title: str
-    description: str | None = None
-    severity: FindingSeverity = FindingSeverity.INFO
+    code: str = Field(description="Stable finding code, e.g. HTTP_NO_CSP")
+    status: PluginFindingStatus = PluginFindingStatus.FAILED
     evidence: str | None = None
-    recommendation: str | None = None
-    references: list[str] = Field(default_factory=list)
     raw_data: dict = Field(default_factory=dict)
-    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     detected_at: datetime | None = None
 
 
@@ -76,28 +79,21 @@ class PluginOutput(BaseSchema):
         )
 
 
-def make_finding(
+def report_finding(
     *,
     plugin: str,
-    title: str,
-    severity: FindingSeverity = FindingSeverity.INFO,
-    description: str | None = None,
+    code: str,
+    status: PluginFindingStatus = PluginFindingStatus.FAILED,
     evidence: str | None = None,
-    recommendation: str | None = None,
-    references: list[str] | None = None,
     raw_data: dict | None = None,
-    confidence: float | None = None,
     detected_at: datetime | None = None,
 ) -> PluginFinding:
+    """Build a plugin finding — scanners report codes, not scores."""
     return PluginFinding(
         plugin=plugin,
-        title=title,
-        description=description,
-        severity=severity,
+        code=code,
+        status=status,
         evidence=evidence,
-        recommendation=recommendation,
-        references=references or [],
         raw_data=raw_data or {},
-        confidence=confidence,
         detected_at=detected_at or datetime.now(UTC),
     )

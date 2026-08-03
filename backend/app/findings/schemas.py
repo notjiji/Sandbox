@@ -12,9 +12,12 @@ class FindingSummary(BaseSchema):
     scan_id: str
     asset_id: str
     plugin: str | None = None
+    finding_code: str | None = None
+    check_status: str | None = None
     title: str
     description: str | None = None
     severity: FindingSeverity
+    risk_score: float = 0.0
     status: FindingStatus
     evidence: str | None = None
     recommendation: str | None = None

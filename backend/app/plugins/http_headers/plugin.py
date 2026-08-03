@@ -1,9 +1,8 @@
 import time
 
-from app.findings.enums import FindingSeverity
 from app.plugins.base import ScanTarget, ScannerPlugin
 from app.plugins.config import PluginConfig
-from app.plugins.output import PluginOutput, make_finding
+from app.plugins.output import PluginOutput, PluginFindingStatus, report_finding
 from app.scans.enums import ScanType
 
 
@@ -17,17 +16,20 @@ class HttpHeadersPlugin(ScannerPlugin):
     async def scan(self, asset: ScanTarget) -> PluginOutput:
         started = time.perf_counter()
         findings = [
-            make_finding(
+            report_finding(
                 plugin=self.name,
-                title=f"HTTP headers reviewed for {asset.identifier}",
-                description="Baseline header check completed.",
-                severity=FindingSeverity.INFO,
-                evidence="Simulated response headers captured.",
-                recommendation="Review security headers such as CSP and HSTS.",
-                references=["https://owasp.org/www-project-secure-headers/"],
-                raw_data={"status_code": 200, "headers": {"server": "nginx"}, "redirect_count": 0},
-                confidence=0.9,
-            )
+                code="HTTP_NO_CSP",
+                status=PluginFindingStatus.FAILED,
+                evidence="No Content-Security-Policy header in response.",
+                raw_data={"status_code": 200, "headers": {"server": "nginx"}},
+            ),
+            report_finding(
+                plugin=self.name,
+                code="HTTP_NO_HSTS",
+                status=PluginFindingStatus.FAILED,
+                evidence="No Strict-Transport-Security header in response.",
+                raw_data={"status_code": 200, "headers": {"server": "nginx"}},
+            ),
         ]
         metadata = {
             "status_code": 200,

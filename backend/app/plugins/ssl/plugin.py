@@ -1,9 +1,8 @@
 import time
 
-from app.findings.enums import FindingSeverity
 from app.plugins.base import ScanTarget, ScannerPlugin
 from app.plugins.config import PluginConfig
-from app.plugins.output import PluginOutput, make_finding
+from app.plugins.output import PluginOutput, PluginFindingStatus, report_finding
 from app.scans.enums import ScanType
 
 
@@ -17,17 +16,13 @@ class SslPlugin(ScannerPlugin):
     async def scan(self, asset: ScanTarget) -> PluginOutput:
         started = time.perf_counter()
         findings = [
-            make_finding(
+            report_finding(
                 plugin=self.name,
-                title=f"TLS configuration reviewed for {asset.identifier}",
-                description="Certificate and protocol check completed.",
-                severity=FindingSeverity.LOW,
-                evidence="Simulated certificate chain validated.",
-                recommendation="Disable legacy TLS versions and enforce modern cipher suites.",
-                references=["https://wiki.mozilla.org/Security/Server_Side_TLS"],
-                raw_data={"tls_versions": ["TLSv1.2", "TLSv1.3"], "cipher": "TLS_AES_256_GCM_SHA384"},
-                confidence=0.85,
-            )
+                code="SSL_TLS10_ENABLED",
+                status=PluginFindingStatus.FAILED,
+                evidence="TLS 1.0 cipher suite accepted during handshake.",
+                raw_data={"tls_versions": ["TLSv1.0", "TLSv1.2", "TLSv1.3"]},
+            ),
         ]
         metadata = {
             "certificate": asset.identifier,

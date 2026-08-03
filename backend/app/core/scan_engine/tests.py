@@ -5,12 +5,11 @@ def test_resolve_scan_status_completed_when_any_plugin_succeeds() -> None:
     from app.core.scan_engine.result_combiner import resolve_scan_status
     from app.core.scan_engine.types import PluginExecutionRecord
     from app.plugins.base import ScanTarget
-    from app.plugins.output import PluginFinding
-    from app.findings.enums import FindingSeverity
+    from app.plugins.output import PluginFinding, PluginFindingStatus
     from app.scans.enums import PluginRunStatus, ScanStatus
 
     target = ScanTarget(asset_id="00000000-0000-4000-8000-000000000001", identifier="example.com", asset_type="website")
-    finding = PluginFinding(plugin="ssl", title="ok", severity=FindingSeverity.INFO)
+    finding = PluginFinding(plugin="ssl", code="SSL_TLS10_ENABLED", status=PluginFindingStatus.FAILED)
     records = [
         PluginExecutionRecord(
             plugin_name="dns",
@@ -33,8 +32,7 @@ def test_combine_normalized_findings() -> None:
     from app.core.scan_engine.result_combiner import combine_normalized_findings
     from app.core.scan_engine.types import PluginExecutionRecord
     from app.plugins.base import ScanTarget
-    from app.plugins.output import PluginFinding
-    from app.findings.enums import FindingSeverity
+    from app.plugins.output import PluginFinding, PluginFindingStatus
     from app.scans.enums import PluginRunStatus
 
     target = ScanTarget(asset_id="00000000-0000-4000-8000-000000000001", identifier="example.com", asset_type="website")
@@ -43,15 +41,17 @@ def test_combine_normalized_findings() -> None:
             plugin_name="dns",
             target=target,
             status=PluginRunStatus.COMPLETED,
-            normalized_findings=[PluginFinding(plugin="dns", title="a", severity=FindingSeverity.INFO)],
+            normalized_findings=[
+                PluginFinding(plugin="dns", code="DNS_MISSING_SPF", status=PluginFindingStatus.FAILED)
+            ],
         ),
         PluginExecutionRecord(
             plugin_name="ssl",
             target=target,
             status=PluginRunStatus.COMPLETED,
             normalized_findings=[
-                PluginFinding(plugin="ssl", title="b", severity=FindingSeverity.LOW),
-                PluginFinding(plugin="ssl", title="c", severity=FindingSeverity.MEDIUM),
+                PluginFinding(plugin="ssl", code="SSL_TLS10_ENABLED", status=PluginFindingStatus.FAILED),
+                PluginFinding(plugin="ssl", code="SSL_EXPIRED", status=PluginFindingStatus.FAILED),
             ],
         ),
     ]
@@ -61,20 +61,19 @@ def test_combine_normalized_findings() -> None:
 
 
 def test_plugin_output_schema() -> None:
-    from app.plugins.output import PluginOutput, PluginOutputStatus
+    from app.plugins.output import PluginOutput, PluginOutputStatus, report_finding
 
     output = PluginOutput(
         plugin="ssl",
         status=PluginOutputStatus.COMPLETED,
         duration=1.42,
-        findings=[],
+        findings=[report_finding(plugin="ssl", code="SSL_EXPIRED", evidence="cert expired")],
         metadata={"issuer": "Let's Encrypt"},
     )
     payload = output.model_dump()
     assert payload["plugin"] == "ssl"
-    assert payload["duration"] == 1.42
-    assert payload["findings"] == []
-    assert payload["metadata"]["issuer"] == "Let's Encrypt"
+    assert payload["findings"][0]["code"] == "SSL_EXPIRED"
+    assert "severity" not in payload["findings"][0]
 
 
 def test_profile_resolves_quick_scan_plugins() -> None:

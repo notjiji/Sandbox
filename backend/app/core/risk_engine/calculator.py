@@ -1,6 +1,5 @@
-"""Calculates project/asset risk from findings using configured weights."""
+"""Calculates project/asset risk from rule-based finding scores."""
 
+from app.risk.calculator import RiskCalculator
 
-class RiskCalculator:
-    def score(self, *, findings: list[dict]) -> float:
-        raise NotImplementedError("Risk scoring not implemented yet")
+__all__ = ["RiskCalculator"]

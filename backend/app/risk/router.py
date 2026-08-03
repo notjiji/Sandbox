@@ -17,8 +17,11 @@ router = APIRouter()
 @router.get("")
 def get_project_risk(
     project_id: uuid.UUID,
+    refresh: bool = False,
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(Permission.FINDING_READ)),
 ) -> JSONResponse:
-    result = risk_service.calculate_project_risk(db, membership, project_id=project_id)
+    result = risk_service.calculate_project_risk(
+        db, membership, project_id=project_id, refresh=refresh
+    )
     return success_response(data=result.model_dump(mode="json"))
