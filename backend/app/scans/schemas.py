@@ -13,6 +13,8 @@ class ScanPluginRunSummary(BaseSchema):
     status: PluginRunStatus
     error_message: str | None = None
     findings_count: int = 0
+    duration_seconds: float | None = None
+    metadata: dict = Field(default_factory=dict)
     started_at: datetime | None = None
     completed_at: datetime | None = None
 

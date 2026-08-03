@@ -76,6 +76,7 @@ class ScanPluginRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     error_message: Mapped[str | None] = mapped_column(nullable=True)
     findings_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    duration_seconds: Mapped[float | None] = mapped_column(nullable=True)
     metadata_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

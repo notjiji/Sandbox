@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
+from app.plugins.config import PluginConfig
+from app.plugins.output import PluginOutput
 from app.scans.enums import ScanType
 
 
@@ -13,22 +15,26 @@ class ScanTarget:
     asset_type: str
 
 
-@dataclass
-class ScanResult:
-    success: bool
-    findings: list[dict] = field(default_factory=list)
-    metadata: dict = field(default_factory=dict)
-
-
 class ScannerPlugin(ABC):
     """Base interface every scanner plugin must implement."""
 
     name: str
     description: str
-    version: str
     supported_assets: list[str]
     supported_scan_types: list[str]
-    enabled: bool = True
+    default_config: PluginConfig
+
+    @property
+    def config(self) -> PluginConfig:
+        return self.default_config
+
+    @property
+    def enabled(self) -> bool:
+        return self.config.enabled
+
+    @property
+    def version(self) -> str:
+        return self.config.version
 
     def supports_asset(self, asset_type: str) -> bool:
         if not self.supported_assets:
@@ -39,5 +45,5 @@ class ScannerPlugin(ABC):
         return scan_type.value in self.supported_scan_types
 
     @abstractmethod
-    async def scan(self, asset: ScanTarget) -> ScanResult:
-        """Execute a scan against the normalized asset target."""
+    async def scan(self, asset: ScanTarget) -> PluginOutput:
+        """Execute a scan and return the standard plugin output structure."""

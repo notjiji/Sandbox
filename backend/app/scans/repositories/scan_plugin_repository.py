@@ -35,11 +35,13 @@ def complete_plugin_run(
     *,
     status: PluginRunStatus,
     findings_count: int = 0,
+    duration_seconds: float | None = None,
     error_message: str | None = None,
     metadata: dict | None = None,
 ) -> ScanPluginRun:
     plugin_run.status = status
     plugin_run.findings_count = findings_count
+    plugin_run.duration_seconds = duration_seconds
     plugin_run.error_message = error_message
     plugin_run.metadata_json = metadata
     plugin_run.completed_at = datetime.now(UTC)

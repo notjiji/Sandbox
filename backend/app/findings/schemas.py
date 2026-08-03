@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import Field
 
 from app.findings.enums import FindingSeverity, FindingStatus
@@ -9,10 +11,17 @@ class FindingSummary(BaseSchema):
     project_id: str
     scan_id: str
     asset_id: str
+    plugin: str | None = None
     title: str
     description: str | None = None
     severity: FindingSeverity
     status: FindingStatus
+    evidence: str | None = None
+    recommendation: str | None = None
+    references: list[str] = Field(default_factory=list)
+    raw_data: dict = Field(default_factory=dict)
+    confidence: float | None = None
+    detected_at: datetime | None = None
 
 
 class FindingListResponse(BaseSchema):

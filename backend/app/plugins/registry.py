@@ -35,7 +35,19 @@ class PluginRegistry:
         return plugins
 
     def get_disabled_plugins(self) -> list[ScannerPlugin]:
-        return [plugin for plugin in self.all() if not plugin.enabled]
+        return [plugin for plugin in self.all() if not plugin.config.enabled]
+
+    def get_plugin_configs(self) -> list[dict]:
+        return [
+            {
+                "name": plugin.name,
+                "description": plugin.description,
+                **plugin.config.to_dict(),
+                "supported_assets": plugin.supported_assets,
+                "supported_scan_types": plugin.supported_scan_types,
+            }
+            for plugin in self.all()
+        ]
 
 
 registry = PluginRegistry()

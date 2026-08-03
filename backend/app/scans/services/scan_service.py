@@ -28,6 +28,8 @@ def to_plugin_run_summary(plugin_run) -> ScanPluginRunSummary:
         status=plugin_run.status,
         error_message=plugin_run.error_message,
         findings_count=plugin_run.findings_count,
+        duration_seconds=plugin_run.duration_seconds,
+        metadata=plugin_run.metadata_json or {},
         started_at=plugin_run.started_at,
         completed_at=plugin_run.completed_at,
     )

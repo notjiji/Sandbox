@@ -11,9 +11,10 @@ from app.core.scan_engine.normalizer import ScanNormalizer
 from app.core.scan_engine.plugin_loader import PluginLoader
 from app.core.scan_engine.result_combiner import combine_normalized_findings, resolve_scan_status
 from app.core.scan_engine.types import CombinedScanResults, PluginExecutionRecord
-from app.findings.enums import FindingSeverity, FindingStatus
+from app.findings.enums import FindingStatus
 from app.findings.repositories.finding_repository import create_finding
 from app.plugins.base import ScanTarget, ScannerPlugin
+from app.plugins.output import PluginOutputStatus
 from app.scans.enums import PluginRunStatus, ScanStatus
 from app.scans.models import Scan
 from app.scans.repositories.scan_plugin_repository import (
@@ -121,42 +122,48 @@ class ScanOrchestrator:
             status=PluginRunStatus.RUNNING,
         )
 
-        result = self._dispatcher.dispatch(plugin=plugin, asset=target)
-        if not result.success:
-            error_message = str(result.metadata.get("error", "Plugin returned failure"))
+        output = self._dispatcher.dispatch(plugin=plugin, asset=target)
+        run_status = (
+            PluginRunStatus.COMPLETED
+            if output.status == PluginOutputStatus.COMPLETED
+            else PluginRunStatus.FAILED
+        )
+
+        if run_status == PluginRunStatus.FAILED:
+            error_message = output.error or str(output.metadata.get("error", "Plugin returned failure"))
             complete_plugin_run(
                 db,
                 plugin_run,
                 status=PluginRunStatus.FAILED,
+                duration_seconds=output.duration,
                 error_message=error_message,
-                metadata=result.metadata or None,
+                metadata=output.metadata or None,
             )
             return PluginExecutionRecord(
                 plugin_name=plugin.name,
                 target=target,
                 status=PluginRunStatus.FAILED,
+                output=output,
                 error_message=error_message,
-                metadata=result.metadata,
+                duration=output.duration,
             )
 
-        normalized_findings = self._normalizer.normalize_findings(
-            plugin_name=plugin.name,
-            raw_findings=result.findings,
-        )
+        normalized_findings = self._normalizer.normalize_output(output)
         complete_plugin_run(
             db,
             plugin_run,
             status=PluginRunStatus.COMPLETED,
             findings_count=len(normalized_findings),
-            metadata=result.metadata or None,
+            duration_seconds=output.duration,
+            metadata=output.metadata or None,
         )
         return PluginExecutionRecord(
             plugin_name=plugin.name,
             target=target,
             status=PluginRunStatus.COMPLETED,
-            raw_findings=result.findings,
+            output=output,
             normalized_findings=normalized_findings,
-            metadata=result.metadata,
+            duration=output.duration,
         )
 
     def _record_skipped_plugin(
@@ -209,10 +216,17 @@ class ScanOrchestrator:
                     project_id=scan.project_id,
                     scan_id=scan.id,
                     asset_id=asset_id,
-                    title=finding["title"],
-                    description=finding.get("description"),
-                    severity=FindingSeverity(finding["severity"]),
+                    plugin=finding.plugin,
+                    title=finding.title,
+                    description=finding.description,
+                    severity=finding.severity,
                     status=FindingStatus.OPEN,
+                    evidence=finding.evidence,
+                    recommendation=finding.recommendation,
+                    references=finding.references,
+                    raw_data=finding.raw_data,
+                    confidence=finding.confidence,
+                    detected_at=finding.detected_at,
                 )
 
 

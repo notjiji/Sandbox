@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -13,18 +14,32 @@ def create_finding(
     scan_id: uuid.UUID,
     asset_id: uuid.UUID,
     title: str,
+    plugin: str | None = None,
     description: str | None = None,
     severity: FindingSeverity = FindingSeverity.MEDIUM,
     status: FindingStatus = FindingStatus.OPEN,
+    evidence: str | None = None,
+    recommendation: str | None = None,
+    references: list[str] | None = None,
+    raw_data: dict | None = None,
+    confidence: float | None = None,
+    detected_at: datetime | None = None,
 ) -> Finding:
     finding = Finding(
         project_id=project_id,
         scan_id=scan_id,
         asset_id=asset_id,
+        plugin=plugin,
         title=title,
         description=description,
         severity=severity,
         status=status,
+        evidence=evidence,
+        recommendation=recommendation,
+        references=references,
+        raw_data=raw_data,
+        confidence=confidence,
+        detected_at=detected_at,
     )
     db.add(finding)
     db.flush()

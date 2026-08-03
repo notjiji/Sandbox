@@ -396,7 +396,8 @@ Tree view auto-disables when **searching** or filtering by **child asset types**
 | `backend/app/core/scan_engine/orchestrator.py` | `ScanOrchestrator` — pipeline entry point |
 | `backend/app/core/scan_engine/normalizer.py` | Raw findings → normalized dicts |
 | `backend/app/core/scan_engine/result_combiner.py` | Combine findings, resolve scan status |
-| `backend/app/plugins/base.py` | `ScannerPlugin` interface, `ScanTarget`, `ScanResult` |
+| `backend/app/plugins/output.py` | `PluginOutput`, `PluginFinding`, `make_finding()` |
+| `backend/app/plugins/config.py` | `PluginConfig` — enabled, timeout, retries, parallel, version |
 | `backend/app/plugins/builtin.py` | `BUILTIN_PLUGIN_CLASSES` — single registration list |
 | `backend/app/plugins/registry.py` | `PluginRegistry.get_enabled_plugins()` |
 | `backend/app/core/scan_engine/plugin_loader.py` | `PluginLoader.select_for_scan()` |
@@ -423,6 +424,98 @@ Tree view auto-disables when **searching** or filtering by **child asset types**
 | Revision | Description |
 |----------|-------------|
 | `014_scan_plugin_runs.py` | `scan_plugin_runs` table + `plugin_run_status` enum |
+| `015_finding_schema_expansion.py` | Expanded finding fields + plugin run duration |
+
+---
+
+## 8. Plugin Output
+
+Every plugin returns the **exact same structure** — no exceptions. This makes aggregation simple.
+
+```json
+{
+  "plugin": "ssl",
+  "status": "completed",
+  "duration": 1.42,
+  "findings": [],
+  "metadata": {}
+}
+```
+
+Defined in `app/plugins/output.py` as `PluginOutput`. Failed runs use `"status": "failed"` with an `error` field.
+
+```mermaid
+flowchart LR
+    PLUGIN["ScannerPlugin.scan()"] --> OUT["PluginOutput"]
+    OUT --> ORCH["ScanOrchestrator"]
+    ORCH --> NORM["ScanNormalizer.normalize_output()"]
+    NORM --> DB[("findings + scan_plugin_runs")]
+```
+
+---
+
+## 9. Finding Model
+
+Every finding follows one schema. Plugins convert raw results into `PluginFinding` **before returning**:
+
+| Field | Description |
+|-------|-------------|
+| `plugin` | Source scanner slug |
+| `title` | Short summary |
+| `description` | Detailed explanation |
+| `severity` | critical / high / medium / low / info |
+| `evidence` | Proof or observation |
+| `recommendation` | Remediation guidance |
+| `references` | External links (CVE, OWASP, etc.) |
+| `raw_data` | Original structured payload |
+| `confidence` | 0.0–1.0 score |
+| `detected_at` | When the issue was observed |
+
+Use the `make_finding()` helper in `app/plugins/output.py` to build findings consistently.
+
+Persisted to the `findings` table (migration `015`).
+
+---
+
+## 10. Plugin Metadata
+
+Each plugin can return arbitrary **metadata** alongside findings. Metadata is displayed on the asset page but does not necessarily affect risk scoring.
+
+| Plugin | Example metadata |
+|--------|------------------|
+| **SSL** | certificate, issuer, expires, cipher, tls_versions |
+| **WHOIS** | registrar, created, updated, expiration |
+| **HTTP** | status_code, headers, redirect_count |
+| **DNS** | records, resolver |
+| **Ports** | open_ports, filtered_ports, scan_profile |
+
+Stored on `scan_plugin_runs.metadata` and returned in `ScanPluginRunSummary.metadata`.
+
+---
+
+## 11. Plugin Configuration
+
+Each plugin exposes its own configuration via `PluginConfig`:
+
+| Setting | Purpose |
+|---------|---------|
+| `enabled` | Toggle plugin on/off |
+| `timeout` | Max seconds before timeout |
+| `retries` | Retry count on transient failure |
+| `parallel` | Allow parallel execution hint |
+| `version` | Plugin version string |
+
+```python
+default_config = PluginConfig(
+    enabled=True,
+    timeout=45.0,
+    retries=2,
+    parallel=False,
+    version="0.1.0",
+)
+```
+
+Administrators can tune scanner behavior without code changes. Inspect all plugin configs via `registry.get_plugin_configs()`.
 
 ---
 
@@ -434,7 +527,8 @@ Tree view auto-disables when **searching** or filtering by **child asset types**
 4. **Status is observable** — every plugin run is recorded for debugging and UI.
 5. **New plugins** — add a class + register in `BUILTIN_PLUGIN_CLASSES`; no orchestrator changes.
 6. **New asset types** — add metadata/adapter logic; plugins declare `supported_assets`.
-7. **Tree list pagination** — roots paginate cleanly; children load on demand.
+8. **Standard output** — every plugin returns `PluginOutput`; aggregation is uniform.
+9. **Rich findings** — plugins produce full `PluginFinding` objects before returning.
 
 ---
 

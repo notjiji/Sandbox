@@ -18,10 +18,17 @@ def to_finding_summary(finding: Finding) -> FindingSummary:
         project_id=str(finding.project_id),
         scan_id=str(finding.scan_id),
         asset_id=str(finding.asset_id),
+        plugin=finding.plugin,
         title=finding.title,
         description=finding.description,
         severity=finding.severity,
         status=finding.status,
+        evidence=finding.evidence,
+        recommendation=finding.recommendation,
+        references=finding.references or [],
+        raw_data=finding.raw_data or {},
+        confidence=finding.confidence,
+        detected_at=finding.detected_at,
     )
 
 
