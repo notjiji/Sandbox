@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -41,6 +42,11 @@ def update_user_password(db: Session, user: User, hashed_password: str) -> None:
 
 def mark_user_verified(db: Session, user: User) -> None:
     user.is_verified = True
+    db.add(user)
+
+
+def update_last_login(db: Session, user: User) -> None:
+    user.last_login = datetime.now(UTC)
     db.add(user)
 
 

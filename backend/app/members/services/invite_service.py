@@ -20,6 +20,7 @@ from app.members.repositories.member_repository import (
     update_member_role,
 )
 from app.members.schemas import (
+    InviteLinkResponse,
     InviteMemberRequest,
     InvitePreview,
     InviteResult,
@@ -229,6 +230,7 @@ def invite_member(
         status=invite.status.value,
         user_exists=user is not None,
         membership_id=str(created_membership.id) if created_membership else None,
+        invite_link=_build_invite_link(token),
     )
 
 
@@ -307,6 +309,60 @@ def accept_invite_by_token(db: Session, *, user: User, token: str) -> Organizati
         user_id=user.id,
     )
     return to_organization_summary(membership)
+
+
+def resend_invite(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    invite_id: uuid.UUID,
+    send_email: bool = True,
+) -> InviteLinkResponse:
+    invite = get_invite_by_id(
+        db,
+        organization_id=membership.organization_id,
+        invite_id=invite_id,
+    )
+    if not invite or invite.status.value != "pending":
+        raise NotFoundError("Invitation")
+
+    token = generate_opaque_token()
+    token_hash = hash_token(token)
+    expires_at = get_organization_invite_expiry()
+    invite = refresh_organization_invite(
+        db,
+        invite,
+        token_hash=token_hash,
+        expires_at=expires_at,
+        role=invite.role,
+        membership_id=invite.membership_id,
+    )
+    invite_link = _build_invite_link(token)
+
+    if send_email:
+        _send_invite_email(
+            to_email=invite.email,
+            organization=membership.organization,
+            role=invite.role,
+            token=token,
+            inviter=membership.user,
+        )
+
+    record_audit_event(
+        db,
+        action=MemberAuditAction.INVITE_RESEND,
+        user_id=membership.user_id,
+        organization_id=membership.organization_id,
+        resource_type="organization_invite",
+        resource_id=invite.id,
+        details={"invited_email": invite.email, "send_email": send_email},
+    )
+    db.commit()
+    return InviteLinkResponse(
+        invite_id=str(invite.id),
+        invite_link=invite_link,
+        email=invite.email,
+    )
 
 
 def revoke_invite(

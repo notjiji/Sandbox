@@ -1,69 +1,85 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, UserPlus } from "lucide-react";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
 import FormAlert from "@/shared/components/FormAlert";
-import FormError from "@/shared/components/FormError";
+import Pagination from "@/shared/components/Pagination";
 import { ApiError } from "@/shared/api/client";
 import type { ValidationErrors } from "@/shared/types/api";
-import type {
-  MemberSummary,
-  PendingInviteSummary,
-  RoleInfo,
-} from "@/shared/types/member";
+import type { MemberFiltersState, RoleInfo } from "@/shared/types/member";
+import { DEFAULT_MEMBER_FILTERS } from "@/shared/types/member";
 import type { OrganizationRole } from "@/shared/types/organization";
+import { organizationsApi } from "@/features/organizations/api";
+import { orgStorage } from "@/features/organizations/storage";
+import { usersApi } from "@/features/users/api";
 import { membersApi } from "../api";
-
-interface InviteForm {
-  email: string;
-  role: OrganizationRole;
-}
+import InviteMemberForm, { type InviteForm } from "../components/InviteMemberForm";
+import MemberFilters from "../components/MemberFilters";
+import MemberTable from "../components/MemberTable";
+import { useOrganizationMembers } from "../hooks/useOrganizationMembers";
 
 export default function Members() {
-  const [members, setMembers] = useState<MemberSummary[]>([]);
-  const [invites, setInvites] = useState<PendingInviteSummary[]>([]);
   const [roles, setRoles] = useState<RoleInfo[]>([]);
+  const [filters, setFilters] = useState<MemberFiltersState>(DEFAULT_MEMBER_FILTERS);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [form, setForm] = useState<InviteForm>({ email: "", role: "viewer" });
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [alert, setAlert] = useState("");
   const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [canManage, setCanManage] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const loadData = async () => {
-    const [membersRes, invitesRes, rolesRes] = await Promise.all([
-      membersApi.listMembers(),
-      membersApi.listInvites(),
-      membersApi.listRoles(),
-    ]);
-    setMembers(membersRes?.items ?? []);
-    setInvites(invitesRes?.items ?? []);
-    setRoles(rolesRes?.roles ?? []);
-  };
+  const { members, total, loading, error } = useOrganizationMembers({
+    page,
+    limit,
+    filters,
+    reloadToken: refreshKey,
+  });
 
   useEffect(() => {
     let active = true;
 
-    async function load() {
+    async function loadMeta() {
       try {
-        await loadData();
-      } catch (error) {
-        if (active) {
-          setAlert(error instanceof ApiError ? error.message : "Unable to load members.");
+        const [rolesRes, orgsRes, profileRes] = await Promise.all([
+          membersApi.listRoles(),
+          organizationsApi.listMine(),
+          usersApi.getMe(),
+        ]);
+        if (!active) return;
+        setRoles(rolesRes?.roles ?? []);
+        setCurrentUserId(profileRes?.id ?? null);
+
+        const activeOrgId = orgStorage.getActiveOrgId();
+        const currentOrg = orgsRes?.items.find((org) => org.id === activeOrgId);
+        if (currentOrg) {
+          setCanManage(["owner", "admin"].includes(currentOrg.role));
         }
-      } finally {
-        if (active) setLoading(false);
+      } catch {
+        if (active) setRoles([]);
       }
     }
 
-    void load();
+    void loadMeta();
     return () => {
       active = false;
     };
   }, []);
 
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    setPage(1);
+  }, [filters.search, filters.status, filters.role, filters.sort, filters.order]);
+
+  useEffect(() => {
+    if (error) setAlert(error);
+  }, [error]);
+
+  const refresh = () => setRefreshKey((value) => value + 1);
+
+  const handleInvite = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!form.email.trim()) {
       setErrors({ email: "Email is required" });
       return;
@@ -79,173 +95,143 @@ export default function Members() {
       });
       setSuccess("Invitation sent successfully.");
       setForm({ email: "", role: "viewer" });
-      await loadData();
-    } catch (error) {
-      setAlert(error instanceof ApiError ? error.message : "Unable to send invitation.");
+      refresh();
+    } catch (err) {
+      setAlert(err instanceof ApiError ? err.message : "Unable to send invitation.");
     } finally {
       setInviting(false);
     }
   };
 
-  const handleRevokeInvite = async (inviteId: string) => {
+  const runAction = async (action: () => Promise<void>, successMessage: string) => {
+    setAlert("");
+    setSuccess("");
     try {
-      await membersApi.revokeInvite(inviteId);
-      setSuccess("Invitation revoked.");
-      await loadData();
-    } catch (error) {
-      setAlert(error instanceof ApiError ? error.message : "Unable to revoke invitation.");
+      await action();
+      setSuccess(successMessage);
+      refresh();
+    } catch (err) {
+      setAlert(err instanceof ApiError ? err.message : "Action failed.");
     }
   };
 
-  const handleRemoveMember = async (membershipId: string) => {
+  const handleEditRole = async (membershipId: string, role: OrganizationRole) => {
+    await runAction(
+      () => membersApi.updateMember(membershipId, { role }).then(() => undefined),
+      "Member role updated.",
+    );
+  };
+
+  const handleSuspend = async (membershipId: string) => {
+    await runAction(
+      () => membersApi.updateMember(membershipId, { status: "suspended" }).then(() => undefined),
+      "Member suspended.",
+    );
+  };
+
+  const handleReactivate = async (membershipId: string) => {
+    await runAction(
+      () => membersApi.updateMember(membershipId, { status: "active" }).then(() => undefined),
+      "Member reactivated.",
+    );
+  };
+
+  const handleRemove = async (membershipId: string) => {
+    await runAction(
+      () => membersApi.removeMember(membershipId).then(() => undefined),
+      "Member removed.",
+    );
+  };
+
+  const handleResendInvite = async (inviteId: string) => {
+    await runAction(
+      () => membersApi.resendInvite(inviteId, true).then(() => undefined),
+      "Invitation resent.",
+    );
+  };
+
+  const handleCopyInviteLink = async (inviteId: string) => {
+    setAlert("");
+    setSuccess("");
     try {
-      await membersApi.removeMember(membershipId);
-      setSuccess("Member removed.");
-      await loadData();
-    } catch (error) {
-      setAlert(error instanceof ApiError ? error.message : "Unable to remove member.");
+      const result = await membersApi.resendInvite(inviteId, false);
+      if (result?.invite_link) {
+        await navigator.clipboard.writeText(result.invite_link);
+        setSuccess("Invite link copied to clipboard.");
+      }
+    } catch (err) {
+      setAlert(err instanceof ApiError ? err.message : "Unable to copy invite link.");
     }
+  };
+
+  const handleRevokeInvite = async (inviteId: string) => {
+    await runAction(
+      () => membersApi.revokeInvite(inviteId).then(() => undefined),
+      "Invitation revoked.",
+    );
   };
 
   return (
-    <DashboardShell title="Members" subtitle="Manage team access and send invitations.">
+    <DashboardShell title="Members" subtitle="Manage team access, roles, and invitations.">
       {alert && <FormAlert message={alert} />}
       {success && <FormAlert message={success} variant="success" />}
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-panel p-6"
-        >
-          <h2 className="mb-4 text-lg font-semibold text-brand-100">Team members</h2>
-          {loading ? (
-            <p className="text-brand-500">Loading...</p>
-          ) : members.length === 0 ? (
-            <p className="text-brand-500">No members yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {members.map((member) => (
-                <li
-                  key={member.membership_id}
-                  className="flex items-center justify-between rounded-lg border border-brand-800/50 px-4 py-3"
-                >
-                  <div>
-                    <p className="font-medium text-brand-100">
-                      {member.first_name} {member.last_name}
-                    </p>
-                    <p className="text-sm text-brand-500">{member.email}</p>
-                    <p className="text-xs uppercase tracking-wide text-brand-600">
-                      {member.role} · {member.status}
-                    </p>
-                  </div>
-                  {member.role !== "owner" && member.status === "active" && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveMember(member.membership_id)}
-                      className="btn-ghost text-sm text-red-300"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+      <div className="grid gap-6 xl:grid-cols-[1fr_22rem]">
+        <div className="space-y-4">
+          <MemberFilters filters={filters} roles={roles} onChange={setFilters} />
 
-          {invites.length > 0 && (
-            <div className="mt-8 border-t border-brand-800/50 pt-6">
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-brand-400">
-                Pending email invitations
-              </h3>
-              <ul className="space-y-3">
-                {invites.map((invite) => (
-                  <li
-                    key={invite.invite_id}
-                    className="flex items-center justify-between rounded-lg border border-amber-500/20 px-4 py-3"
-                  >
-                    <div>
-                      <p className="font-medium text-brand-100">{invite.email}</p>
-                      <p className="text-sm text-brand-500">{invite.role}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRevokeInvite(invite.invite_id)}
-                      className="btn-ghost text-sm"
-                    >
-                      Revoke
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </motion.div>
-
-        <motion.form
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          onSubmit={handleInvite}
-          className="glass-panel h-fit space-y-4 p-6"
-        >
-          <h2 className="text-lg font-semibold text-brand-100">Invite member</h2>
-          <p className="text-sm text-brand-500">
-            Invites work for existing and new users. An email will be sent with a secure link.
-          </p>
-
-          <div>
-            <label htmlFor="email" className="terminal-text mb-2 block">
-              email_addr
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-              className="input-field"
-              placeholder="teammate@company.com"
-            />
-            <FormError message={errors.email} />
-          </div>
-
-          <div>
-            <label htmlFor="role" className="terminal-text mb-2 block">
-              role
-            </label>
-            <select
-              id="role"
-              name="role"
-              value={form.role}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, role: e.target.value as OrganizationRole }))
-              }
-              className="input-field"
-            >
-              {roles
-                .filter((role) => role.role !== "owner")
-                .map((role) => (
-                  <option key={role.role} value={role.role}>
-                    {role.role}
-                  </option>
-                ))}
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            disabled={inviting}
-            className="btn-primary inline-flex w-full items-center justify-center gap-2"
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-panel overflow-hidden"
           >
-            <UserPlus size={18} />
-            {inviting ? "Sending..." : "Send invitation"}
-          </button>
+            <div className="border-b border-brand-800/50 px-5 py-4">
+              <h2 className="text-lg font-semibold text-brand-100">Team members</h2>
+              <p className="text-sm text-brand-500">
+                {total} member{total === 1 ? "" : "s"} in this organization
+              </p>
+            </div>
 
-          <p className="flex items-start gap-2 text-xs text-brand-600">
-            <Mail size={14} className="mt-0.5 shrink-0" />
-            Recipients without an account can register using the invite link.
-          </p>
-        </motion.form>
+            <div className="p-2 sm:p-4">
+              <MemberTable
+                members={members}
+                roles={roles}
+                loading={loading}
+                currentUserId={currentUserId}
+                canManage={canManage}
+                onEditRole={handleEditRole}
+                onSuspend={handleSuspend}
+                onReactivate={handleReactivate}
+                onRemove={handleRemove}
+                onResendInvite={handleResendInvite}
+                onCopyInviteLink={handleCopyInviteLink}
+                onRevokeInvite={handleRevokeInvite}
+              />
+            </div>
+
+            <div className="border-t border-brand-800/50 px-5 py-4">
+              <Pagination
+                page={page}
+                limit={limit}
+                total={total}
+                onPageChange={setPage}
+                onLimitChange={(nextLimit) => {
+                  setLimit(nextLimit);
+                  setPage(1);
+                }}
+              />
+            </div>
+          </motion.div>
+        </div>
+
+        <InviteMemberForm
+          form={form}
+          roles={roles}
+          errors={errors}
+          inviting={inviting}
+          onChange={setForm}
+          onSubmit={handleInvite}
+        />
       </div>
     </DashboardShell>
   );

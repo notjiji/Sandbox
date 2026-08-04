@@ -21,17 +21,24 @@ from app.members.schemas import (
 from app.audit.service import record_audit_event
 
 
-def to_member_summary(membership: OrganizationMember) -> MemberSummary:
+def to_member_summary(
+    membership: OrganizationMember,
+    *,
+    invite_id: str | None = None,
+) -> MemberSummary:
     user = membership.user
     return MemberSummary(
         membership_id=str(membership.id),
+        invite_id=invite_id,
         user_id=str(user.id),
         email=user.email,
         first_name=user.first_name,
         last_name=user.last_name,
         role=membership.role,
-        status=membership.status,
+        status=membership.status.value,
         joined_at=membership.joined_at,
+        last_login=user.last_login,
+        invited_at=membership.created_at,
     )
 
 

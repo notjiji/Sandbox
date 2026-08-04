@@ -189,6 +189,8 @@ def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
         token=refresh_token,
         expires_at=get_refresh_token_expiry(),
     )
+    from app.users.repositories.user_repository import update_last_login
+
     record_auth_event(
         db,
         action=AuditAction.AUTH_LOGIN,
@@ -197,6 +199,7 @@ def login_user(db: Session, *, email: str, password: str) -> LoginResponse:
         resource_id=refresh_record.id,
         details={"email": email, "session_id": str(refresh_record.id)},
     )
+    update_last_login(db, user)
     clear_login_lockout(email)
     db.commit()
 

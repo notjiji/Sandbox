@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from app.core.responses import success_response
 from app.members.models import OrganizationMember
 from app.members.schemas import (
     InviteMemberRequest,
+    MemberListQuery,
     TransferOwnershipRequest,
     UpdateMemberRoleRequest,
 )
@@ -19,11 +20,12 @@ from app.members.services.invite_service import (
     get_invite_preview,
     invite_member,
     list_current_pending_invites,
+    resend_invite,
     revoke_invite,
 )
+from app.members.services.member_list_service import list_organization_members_paginated
 from app.members.services.member_service import (
     accept_invitation,
-    list_current_organization_members,
     remove_member,
     transfer_organization_ownership,
     update_member,
@@ -61,16 +63,30 @@ def accept_invite_token(
 
 @router.get("/current/members")
 def list_members(
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    search: str | None = Query(default=None, max_length=255),
+    status: str | None = Query(default=None),
+    role: str | None = Query(default=None),
+    sort: str = Query(default="name"),
+    order: str = Query(default="asc"),
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(Permission.MEMBER_READ)),
 ) -> JSONResponse:
-    members = list_current_organization_members(db, membership)
-    return success_response(
-        data={
-            "items": [member.model_dump(mode="json") for member in members],
-            "total": len(members),
-        }
+    from app.members.enums import OrganizationRole
+
+    parsed_role = OrganizationRole(role) if role else None
+    query = MemberListQuery(
+        page=page,
+        limit=limit,
+        search=search,
+        status=status,
+        role=parsed_role,
+        sort=sort,
+        order=order,
     )
+    result = list_organization_members_paginated(db, membership, query=query)
+    return success_response(data=result.model_dump(mode="json"))
 
 
 @router.get("/current/invites")
@@ -114,6 +130,17 @@ def delete_pending_invite(
 ) -> JSONResponse:
     revoke_invite(db, membership, invite_id=invite_id)
     return success_response(data={"message": "Invitation revoked successfully"})
+
+
+@router.post("/current/invites/{invite_id}/resend")
+def resend_pending_invite(
+    invite_id: uuid.UUID,
+    send_email: bool = Query(default=True),
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.MEMBER_INVITE)),
+) -> JSONResponse:
+    result = resend_invite(db, membership, invite_id=invite_id, send_email=send_email)
+    return success_response(data=result.model_dump(mode="json"))
 
 
 @router.patch("/current/members/{membership_id}")

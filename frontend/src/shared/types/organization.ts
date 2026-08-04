@@ -1,5 +1,10 @@
-export type OrganizationRole = "owner" | "admin" | "member" | "viewer";
-export type MemberStatus = "active" | "invited" | "suspended";
+export type OrganizationRole =
+  | "owner"
+  | "admin"
+  | "security_analyst"
+  | "manager"
+  | "viewer";
+export type MemberStatus = "active" | "invited" | "suspended" | "pending";
 
 export interface OrganizationSummary {
   id: string;
@@ -47,4 +52,5 @@ export interface UpdateOrganizationRequest {
 
 export interface OrganizationListData {
   items: OrganizationSummary[];
+  total?: number;
 }

@@ -31,14 +31,37 @@ def build_roles_list_response() -> RolesListResponse:
 
 
 class MemberSummary(BaseSchema):
-    membership_id: str
-    user_id: str
+    membership_id: str | None = None
+    invite_id: str | None = None
+    user_id: str | None = None
     email: str
-    first_name: str
-    last_name: str
+    first_name: str | None = None
+    last_name: str | None = None
     role: OrganizationRole
-    status: MemberStatus
+    status: str
     joined_at: datetime | None = None
+    last_login: datetime | None = None
+    invited_at: datetime | None = None
+
+
+class MemberListQuery(BaseSchema):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+    search: str | None = Field(default=None, max_length=255)
+    status: str | None = Field(
+        default=None,
+        description="Filter by active, pending, or suspended",
+    )
+    role: OrganizationRole | None = None
+    sort: str = Field(default="name", pattern="^(name|email|role|status|joined_at|last_login)$")
+    order: str = Field(default="asc", pattern="^(asc|desc)$")
+
+
+class MemberListResponse(BaseSchema):
+    items: list[MemberSummary]
+    total: int
+    page: int
+    limit: int
 
 
 class InviteMemberRequest(BaseSchema):
@@ -83,6 +106,13 @@ class InviteResult(BaseSchema):
     status: str
     user_exists: bool
     membership_id: str | None = None
+    invite_link: str | None = None
+
+
+class InviteLinkResponse(BaseSchema):
+    invite_id: str
+    invite_link: str
+    email: str
 
 
 class PendingInviteSummary(BaseSchema):

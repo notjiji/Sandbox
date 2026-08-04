@@ -113,6 +113,10 @@ def _noop_auth_emails(monkeypatch) -> None:
         "app.auth.services.auth_service.send_password_reset_email",
         lambda **_kwargs: None,
     )
+    monkeypatch.setattr(
+        "app.members.services.invite_service.send_organization_invite_email",
+        lambda **_kwargs: None,
+    )
 
 
 @pytest.fixture(autouse=True)
