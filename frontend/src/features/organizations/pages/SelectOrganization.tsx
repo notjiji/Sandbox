@@ -5,7 +5,7 @@ import { Building2, Plus } from "lucide-react";
 import AppShell from "@/shared/layouts/AppShell";
 import FormAlert from "@/shared/components/FormAlert";
 import FormError from "@/shared/components/FormError";
-import { ApiError, unwrapData } from "@/shared/api/client";
+import { ApiError } from "@/shared/api/client";
 import type { ValidationErrors } from "@/shared/types/api";
 import type { OrganizationSummary } from "@/shared/types/organization";
 import { organizationsApi } from "../api";
@@ -89,12 +89,10 @@ export default function SelectOrganization() {
     setCreating(true);
     setAlert("");
     try {
-      const created = unwrapData(
-        await organizationsApi.create({
+      const created = await organizationsApi.create({
           name: form.name.trim(),
           description: form.description.trim() || undefined,
-        }),
-      );
+        });
       orgStorage.setActiveOrgId(created.id);
       navigate("/dashboard");
     } catch (error) {

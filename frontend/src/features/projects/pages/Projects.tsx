@@ -26,7 +26,7 @@ export default function Projects() {
 
   const loadProjects = async () => {
     const response = await projectsApi.list();
-    setProjects(response?.data?.items ?? []);
+    setProjects(response?.items ?? []);
   };
 
   useEffect(() => {

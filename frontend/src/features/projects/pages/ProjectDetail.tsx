@@ -51,8 +51,8 @@ export default function ProjectDetail() {
           riskApi.getProjectRisk(projectId),
         ]);
         if (!active) return;
-        setProject(projectResponse?.data ?? null);
-        setRisk(riskResponse?.data ?? null);
+        setProject(projectResponse ?? null);
+        setRisk(riskResponse ?? null);
       } catch (error) {
         if (active) {
           setAlert(error instanceof ApiError ? error.message : "Unable to load project.");

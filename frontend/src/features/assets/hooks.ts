@@ -56,8 +56,8 @@ export function useProjectAssets(projectId: string | undefined, filters: AssetLi
     setError(null);
     try {
       const response = await assetsApi.list(projectId, query);
-      setAssets(response?.data?.items ?? []);
-      setTotal(response?.data?.total ?? 0);
+      setAssets(response?.items ?? []);
+      setTotal(response?.total ?? 0);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load assets.");
     } finally {
@@ -83,7 +83,7 @@ export function useAsset(projectId: string | undefined, assetId: string | undefi
     setError(null);
     try {
       const response = await assetsApi.get(projectId, assetId);
-      setAsset(response?.data ?? null);
+      setAsset(response ?? null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load asset.");
     } finally {
@@ -112,7 +112,7 @@ export function useAssetAuditHistory(projectId: string | undefined, assetId: str
       .auditHistory(projectId, assetId)
       .then((response) => {
         if (active) {
-          const items = (response?.data as { items?: AuditLogEntry[] } | undefined)?.items ?? [];
+          const items = (response as { items?: AuditLogEntry[] } | undefined)?.items ?? [];
           setAuditLogs(items);
         }
       })

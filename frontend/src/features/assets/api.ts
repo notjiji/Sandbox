@@ -1,5 +1,4 @@
 import { apiRequest } from "@/shared/api/client";
-import type { ApiEnvelope } from "@/shared/types/api";
 import type {
   AssetListData,
   AssetListQuery,
@@ -23,52 +22,52 @@ function toQuery(params: AssetListQuery = {}): string {
 
 export const assetsApi = {
   list: (projectId: string, params?: AssetListQuery) =>
-    apiRequest<ApiEnvelope<AssetListData>>(`${base(projectId)}${toQuery(params)}`, {
+    apiRequest<AssetListData>(`${base(projectId)}${toQuery(params)}`, {
       auth: true,
     }),
 
   create: (projectId: string, data: CreateAssetRequest) =>
-    apiRequest<ApiEnvelope<AssetSummary>>(base(projectId), {
+    apiRequest<AssetSummary>(base(projectId), {
       method: "POST",
       body: data,
       auth: true,
     }),
 
   get: (projectId: string, assetId: string) =>
-    apiRequest<ApiEnvelope<AssetSummary>>(`${base(projectId)}/${assetId}`, { auth: true }),
+    apiRequest<AssetSummary>(`${base(projectId)}/${assetId}`, { auth: true }),
 
   update: (projectId: string, assetId: string, data: UpdateAssetRequest) =>
-    apiRequest<ApiEnvelope<AssetSummary>>(`${base(projectId)}/${assetId}`, {
+    apiRequest<AssetSummary>(`${base(projectId)}/${assetId}`, {
       method: "PUT",
       body: data,
       auth: true,
     }),
 
   archive: (projectId: string, assetId: string) =>
-    apiRequest<ApiEnvelope<AssetSummary>>(`${base(projectId)}/${assetId}/archive`, {
+    apiRequest<AssetSummary>(`${base(projectId)}/${assetId}/archive`, {
       method: "PATCH",
       auth: true,
     }),
 
   restore: (projectId: string, assetId: string) =>
-    apiRequest<ApiEnvelope<AssetSummary>>(`${base(projectId)}/${assetId}/restore`, {
+    apiRequest<AssetSummary>(`${base(projectId)}/${assetId}/restore`, {
       method: "PATCH",
       auth: true,
     }),
 
   delete: (projectId: string, assetId: string) =>
-    apiRequest<ApiEnvelope<void>>(`${base(projectId)}/${assetId}`, {
+    apiRequest<void>(`${base(projectId)}/${assetId}`, {
       method: "DELETE",
       auth: true,
     }),
 
   auditHistory: (projectId: string, assetId: string) =>
-    apiRequest<ApiEnvelope<unknown>>(`${base(projectId)}/${assetId}/audit-history`, {
+    apiRequest<unknown>(`${base(projectId)}/${assetId}/audit-history`, {
       auth: true,
     }),
 
   children: (projectId: string, assetId: string, params?: AssetListQuery) =>
-    apiRequest<ApiEnvelope<AssetListData>>(
+    apiRequest<AssetListData>(
       `${base(projectId)}/${assetId}/children${toQuery(params)}`,
       { auth: true },
     ),

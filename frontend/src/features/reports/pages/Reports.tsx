@@ -48,8 +48,8 @@ export default function Reports() {
       projectsApi.get(projectId),
       reportsApi.list(projectId),
     ]);
-    setProject(projectResponse?.data ?? null);
-    setReports((reportsResponse?.data?.items ?? []) as unknown as ReportItem[]);
+    setProject(projectResponse ?? null);
+    setReports((reportsResponse?.items ?? []) as unknown as ReportItem[]);
   };
 
   useEffect(() => {

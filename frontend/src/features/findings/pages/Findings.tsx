@@ -49,8 +49,8 @@ export default function Findings() {
           findingsApi.list(projectId),
         ]);
         if (!active) return;
-        setProject(projectResponse?.data ?? null);
-        setFindings((findingsResponse?.data?.items ?? []) as FindingWithDescription[]);
+        setProject(projectResponse ?? null);
+        setFindings((findingsResponse?.items ?? []) as FindingWithDescription[]);
       } catch (error) {
         if (active) {
           setAlert(error instanceof ApiError ? error.message : "Unable to load findings.");

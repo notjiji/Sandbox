@@ -5,20 +5,11 @@ import { BadgeCheck, Building2, Mail, Save, Shield } from "lucide-react";
 import AppShell from "@/shared/layouts/AppShell";
 import FormAlert from "@/shared/components/FormAlert";
 import FormError from "@/shared/components/FormError";
-import { ApiError, unwrapData } from "@/shared/api/client";
+import { ApiError } from "@/shared/api/client";
 import type { FieldValidationDetail, ValidationErrors } from "@/shared/types/api";
+import type { UserProfile } from "@/shared/types/user";
 import { usersApi } from "../api";
 import { validateProfileForm } from "@/shared/lib/validation";
-
-interface ProfileData {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  is_verified: boolean;
-  role?: string | null;
-  organization?: string | null;
-}
 
 interface ProfileForm {
   firstName: string;
@@ -54,7 +45,7 @@ function mapProfileFieldErrors(details: unknown): ValidationErrors {
 }
 
 export default function Profile() {
-  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [form, setForm] = useState<ProfileForm>({ firstName: "", lastName: "" });
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [alert, setAlert] = useState("");
@@ -67,7 +58,7 @@ export default function Profile() {
 
     async function loadProfile() {
       try {
-        const data = unwrapData(await usersApi.getMe()) as unknown as ProfileData;
+        const data = await usersApi.getMe();
         if (!active) return;
         setProfile(data);
         setForm({
@@ -114,12 +105,10 @@ export default function Profile() {
 
     setSaving(true);
     try {
-      const updated = unwrapData(
-        await usersApi.updateMe({
+      const updated = await usersApi.updateMe({
           first_name: form.firstName.trim(),
           last_name: form.lastName.trim(),
-        }),
-      ) as unknown as ProfileData;
+        });
       setProfile(updated);
       setForm({
         firstName: updated.first_name,
@@ -160,7 +149,7 @@ export default function Profile() {
               </h2>
               <p className="mt-1 text-sm text-brand-500">ID: {profile.id}</p>
             </div>
-            {profile.is_verified ? (
+            {profile.email_verified ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-950/40 px-3 py-1 text-xs text-green-300">
                 <BadgeCheck size={14} />
                 verified
@@ -235,7 +224,7 @@ export default function Profile() {
               <Shield size={18} className="text-brand-400" />
               <div>
                 <dt className="terminal-text text-brand-600">role</dt>
-                <dd className="text-brand-100">{profile.role ?? "unassigned"}</dd>
+                <dd className="text-brand-100">—</dd>
               </div>
             </div>
 
@@ -243,7 +232,7 @@ export default function Profile() {
               <Building2 size={18} className="text-brand-400" />
               <div>
                 <dt className="terminal-text text-brand-600">organization</dt>
-                <dd className="text-brand-100">{profile.organization ?? "none"}</dd>
+                <dd className="text-brand-100">—</dd>
               </div>
             </div>
           </dl>

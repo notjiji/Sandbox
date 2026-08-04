@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import { Menu } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { unwrapData } from "@/shared/api/client";
 import { organizationsApi } from "@/features/organizations/api";
 import Sidebar from "@/shared/components/sidebar/Sidebar";
 import { useSidebarState } from "@/shared/hooks/useSidebarState";
@@ -42,7 +41,7 @@ export default function SidebarLayout({
 
     async function loadOrg() {
       try {
-        const detail = unwrapData(await organizationsApi.getCurrent());
+        const detail = await organizationsApi.getCurrent();
         if (active) setCurrentOrg(detail);
       } catch {
         if (active) setCurrentOrg(null);

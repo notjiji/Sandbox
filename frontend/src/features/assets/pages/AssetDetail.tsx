@@ -53,8 +53,8 @@ export default function AssetDetail() {
         projectsApi.get(projectId),
         assetsApi.get(projectId, assetId),
       ]);
-      setProject(projectResponse?.data ?? null);
-      setAsset(assetResponse?.data ?? null);
+      setProject(projectResponse ?? null);
+      setAsset(assetResponse ?? null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load asset.");
     } finally {

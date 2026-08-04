@@ -4,8 +4,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, LogIn, UserPlus } from "lucide-react";
 import AuthLayout from "@/shared/layouts/AuthLayout";
 import FormAlert from "@/shared/components/FormAlert";
-import { ApiError, unwrapData } from "@/shared/api/client";
-import type { ApiEnvelope } from "@/shared/types/api";
+import { ApiError } from "@/shared/api/client";
 import type { InvitePreview } from "@/shared/types/member";
 import type { OrganizationSummary } from "@/shared/types/organization";
 import { membersApi } from "../api";
@@ -33,7 +32,7 @@ export default function AcceptInvite() {
       }
 
       try {
-        const data = unwrapData(await membersApi.previewInvite(token));
+        const data = await membersApi.previewInvite(token);
         if (active) setPreview(data);
       } catch (error) {
         if (active) {
@@ -55,9 +54,7 @@ export default function AcceptInvite() {
     setAccepting(true);
     setAlert("");
     try {
-      const organization = unwrapData(
-        (await membersApi.acceptInviteToken(token)) as unknown as ApiEnvelope<OrganizationSummary>,
-      );
+      const organization = await membersApi.acceptInviteToken(token);
       orgStorage.setActiveOrgId(organization.id);
       navigate("/dashboard");
     } catch (error) {

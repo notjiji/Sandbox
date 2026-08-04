@@ -79,11 +79,11 @@ export default function Scans() {
       scansApi.list(projectId, assetId),
       scansApi.profiles(projectId, assetId),
     ]);
-    setProject(projectResponse?.data ?? null);
-    setAsset(assetResponse?.data ?? null);
-    setScans((scansResponse?.data?.items ?? []) as ScanWithPlugins[]);
+    setProject(projectResponse ?? null);
+    setAsset(assetResponse ?? null);
+    setScans((scansResponse?.items ?? []) as ScanWithPlugins[]);
     const profileItems =
-      (profilesResponse?.data as { items?: ScanProfileOption[] } | undefined)?.items ?? [];
+      (profilesResponse as { items?: ScanProfileOption[] } | undefined)?.items ?? [];
     setProfiles(profileItems);
   };
 

@@ -80,7 +80,7 @@ export default function Assets() {
     projectsApi
       .get(projectId)
       .then((response) => {
-        if (active) setProject(response?.data ?? null);
+        if (active) setProject(response ?? null);
       })
       .catch(() => {});
     return () => {
@@ -135,7 +135,7 @@ export default function Assets() {
         const response = await assetsApi.children(projectId, assetId, childQuery);
         setChildrenByParentId((prev) => ({
           ...prev,
-          [assetId]: response?.data?.items ?? [],
+          [assetId]: response?.items ?? [],
         }));
       } catch (err) {
         setExpandError(err instanceof ApiError ? err.message : "Unable to load child assets.");

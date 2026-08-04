@@ -27,8 +27,8 @@ export default function AssetEdit() {
     Promise.all([projectsApi.get(projectId), assetsApi.get(projectId, assetId)])
       .then(([projectResponse, assetResponse]) => {
         if (!active) return;
-        setProject(projectResponse?.data ?? null);
-        setAsset(assetResponse?.data ?? null);
+        setProject(projectResponse ?? null);
+        setAsset(assetResponse ?? null);
       })
       .catch((err) => {
         if (active) {

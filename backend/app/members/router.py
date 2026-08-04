@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -35,9 +35,9 @@ router = APIRouter()
 
 
 @router.get("/roles")
-def list_roles() -> JSONResponse:
+def list_roles(request: Request) -> JSONResponse:
     response = build_roles_list_response()
-    return JSONResponse(status_code=200, content=response.model_dump(mode="json"))
+    return success_response(data=response.model_dump(mode="json"), request=request)
 
 
 @router.get("/invites/{token}")

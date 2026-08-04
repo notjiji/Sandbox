@@ -1,5 +1,4 @@
 import { apiRequest, refreshAccessToken } from "@/shared/api/client";
-import type { ApiEnvelope } from "@/shared/types/api";
 import type {
   AuthTokens,
   ChangePasswordRequest,

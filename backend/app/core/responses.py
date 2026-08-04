@@ -1,9 +1,23 @@
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from app.shared.schemas.responses import ErrorDetail, ErrorResponse, SuccessResponse
+from app.core.logging import request_id_ctx
+from app.shared.schemas.responses import ErrorDetail, ErrorResponse, ResponseMeta, SuccessResponse
+
+
+def _build_meta(request: Request | None = None) -> ResponseMeta:
+    request_id = None
+    if request is not None:
+        request_id = getattr(request.state, "request_id", None)
+    if request_id is None:
+        request_id = request_id_ctx.get()
+    return ResponseMeta(
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        request_id=request_id,
+    )
 
 
 def attach_trace_headers(request: Request | None, response: JSONResponse) -> JSONResponse:
@@ -18,9 +32,17 @@ def attach_trace_headers(request: Request | None, response: JSONResponse) -> JSO
     return response
 
 
-def success_response(data: Any = None, status_code: int = 200) -> JSONResponse:
-    payload = SuccessResponse(data=data if data is not None else {}).model_dump()
-    return JSONResponse(status_code=status_code, content=payload)
+def success_response(
+    data: Any = None,
+    status_code: int = 200,
+    request: Request | None = None,
+) -> JSONResponse:
+    payload = SuccessResponse(
+        data=data if data is not None else {},
+        meta=_build_meta(request),
+    ).model_dump()
+    response = JSONResponse(status_code=status_code, content=payload)
+    return attach_trace_headers(request, response)
 
 
 def error_response(
@@ -30,8 +52,8 @@ def error_response(
     details: list[dict[str, str]] | None = None,
     request: Request | None = None,
 ) -> JSONResponse:
-    error: dict[str, Any] = {"code": code, "message": message}
-    if details:
-        error["details"] = details
-    response = JSONResponse(status_code=status_code, content={"success": False, "error": error})
+    payload = ErrorResponse(
+        error=ErrorDetail(code=code, message=message, details=details),
+    ).model_dump()
+    response = JSONResponse(status_code=status_code, content=payload)
     return attach_trace_headers(request, response)

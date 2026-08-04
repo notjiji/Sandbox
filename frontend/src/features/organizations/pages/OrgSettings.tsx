@@ -4,7 +4,7 @@ import { Save } from "lucide-react";
 import DashboardShell from "../components/DashboardShell";
 import FormAlert from "@/shared/components/FormAlert";
 import FormError from "@/shared/components/FormError";
-import { ApiError, unwrapData } from "@/shared/api/client";
+import { ApiError } from "@/shared/api/client";
 import type { ValidationErrors } from "@/shared/types/api";
 import { organizationsApi } from "../api";
 
@@ -37,7 +37,7 @@ export default function OrgSettings() {
 
     async function load() {
       try {
-        const org = unwrapData(await organizationsApi.getCurrent());
+        const org = await organizationsApi.getCurrent();
         if (!active) return;
         setForm({
           name: org.name ?? "",

@@ -1,5 +1,4 @@
 import { apiRequest } from "@/shared/api/client";
-import type { ApiEnvelope } from "@/shared/types/api";
 import type {
   InviteListData,
   InviteMemberRequest,
@@ -10,56 +9,57 @@ import type {
   UpdateMemberRequest,
 } from "@/shared/types/member";
 import type { MessageResponse } from "@/shared/types/auth";
+import type { OrganizationSummary } from "@/shared/types/organization";
 
 export const membersApi = {
   listMembers: () =>
-    apiRequest<ApiEnvelope<MemberListData>>("/organizations/current/members", { auth: true }),
+    apiRequest<MemberListData>("/organizations/current/members", { auth: true }),
 
   listInvites: () =>
-    apiRequest<ApiEnvelope<InviteListData>>("/organizations/current/invites", { auth: true }),
+    apiRequest<InviteListData>("/organizations/current/invites", { auth: true }),
 
   inviteMember: (data: InviteMemberRequest) =>
-    apiRequest<ApiEnvelope<MemberSummary>>("/organizations/current/members", {
+    apiRequest<MemberSummary>("/organizations/current/members", {
       method: "POST",
       body: data,
       auth: true,
     }),
 
   acceptInvitation: (organizationId: string) =>
-    apiRequest<ApiEnvelope<MessageResponse>>("/organizations/current/members/accept", {
+    apiRequest<MessageResponse>("/organizations/current/members/accept", {
       method: "POST",
       auth: true,
       organizationId,
     }),
 
   updateMember: (membershipId: string, data: UpdateMemberRequest) =>
-    apiRequest<ApiEnvelope<MemberSummary>>(`/organizations/current/members/${membershipId}`, {
+    apiRequest<MemberSummary>(`/organizations/current/members/${membershipId}`, {
       method: "PATCH",
       body: data,
       auth: true,
     }),
 
   removeMember: (membershipId: string) =>
-    apiRequest<ApiEnvelope<MessageResponse>>(`/organizations/current/members/${membershipId}`, {
+    apiRequest<MessageResponse>(`/organizations/current/members/${membershipId}`, {
       method: "DELETE",
       auth: true,
     }),
 
   revokeInvite: (inviteId: string) =>
-    apiRequest<ApiEnvelope<MessageResponse>>(`/organizations/current/invites/${inviteId}`, {
+    apiRequest<MessageResponse>(`/organizations/current/invites/${inviteId}`, {
       method: "DELETE",
       auth: true,
     }),
 
   previewInvite: (token: string) =>
-    apiRequest<ApiEnvelope<InvitePreview>>(`/organizations/invites/${token}`),
+    apiRequest<InvitePreview>(`/organizations/invites/${token}`),
 
   acceptInviteToken: (token: string) =>
-    apiRequest<ApiEnvelope<MessageResponse>>(`/organizations/invites/${token}/accept`, {
+    apiRequest<OrganizationSummary>(`/organizations/invites/${token}/accept`, {
       method: "POST",
       auth: true,
       organizationId: null,
     }),
 
-  listRoles: () => apiRequest<ApiEnvelope<RolesListData>>("/organizations/roles"),
+  listRoles: () => apiRequest<RolesListData>("/organizations/roles"),
 };

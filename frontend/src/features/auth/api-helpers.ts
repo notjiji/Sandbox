@@ -1,4 +1,5 @@
 import type { ApiRequestOptions } from "@/shared/types/api";
+import { unwrapData } from "@/shared/api/client";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
@@ -29,5 +30,5 @@ export async function rawApiRequest<T = unknown>(
         : "Request failed";
     throw new Error(error);
   }
-  return payload as T;
+  return unwrapData<T>(payload);
 }

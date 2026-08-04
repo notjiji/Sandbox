@@ -21,7 +21,7 @@ export default function AssetNew() {
     projectsApi
       .get(projectId)
       .then((response) => {
-        setProject(response?.data ?? null);
+        setProject(response ?? null);
       })
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : "Unable to load project.");

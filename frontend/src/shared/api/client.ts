@@ -101,7 +101,7 @@ async function rawApiRequest<T = unknown>(
     throw parseErrorPayload(payload, response);
   }
 
-  return payload as T;
+  return unwrapData<T>(payload);
 }
 
 async function performTokenRefresh(): Promise<AuthTokens> {
@@ -202,8 +202,11 @@ export async function apiRequest<T = unknown>(
   }
 }
 
-export function unwrapData<T>(payload: ApiEnvelope<T> | T): T {
-  if (isRecord(payload) && "data" in payload) {
+export function unwrapData<T>(payload: unknown): T {
+  if (isRecord(payload) && payload.success === true && "data" in payload) {
+    return (payload as unknown as ApiEnvelope<T>).data;
+  }
+  if (isRecord(payload) && "data" in payload && !("error" in payload)) {
     return (payload as unknown as ApiEnvelope<T>).data;
   }
   return payload as T;

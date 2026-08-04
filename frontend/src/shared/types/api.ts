@@ -1,7 +1,13 @@
-/** Standard API envelope used by most backend routes. */
+/** Standard API success envelope returned by backend routes. */
+export interface ResponseMeta {
+  timestamp: string;
+  request_id?: string | null;
+}
+
 export interface ApiEnvelope<T = unknown> {
-  success: boolean;
+  success: true;
   data: T;
+  meta: ResponseMeta;
 }
 
 export interface ApiErrorDetail {

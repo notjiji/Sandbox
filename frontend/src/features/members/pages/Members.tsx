@@ -36,9 +36,9 @@ export default function Members() {
       membersApi.listInvites(),
       membersApi.listRoles(),
     ]);
-    setMembers(membersRes?.data?.items ?? []);
-    setInvites(invitesRes?.data?.items ?? []);
-    setRoles(rolesRes?.data?.roles ?? []);
+    setMembers(membersRes?.items ?? []);
+    setInvites(invitesRes?.items ?? []);
+    setRoles(rolesRes?.roles ?? []);
   };
 
   useEffect(() => {

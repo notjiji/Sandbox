@@ -1,5 +1,4 @@
 import { apiRequest } from "@/shared/api/client";
-import type { ApiEnvelope } from "@/shared/types/api";
 import type {
   CreateScanRequest,
   ScanListData,
@@ -12,33 +11,33 @@ const base = (projectId: string, assetId: string) =>
 
 export const scansApi = {
   list: (projectId: string, assetId: string) =>
-    apiRequest<ApiEnvelope<ScanListData>>(base(projectId, assetId), { auth: true }),
+    apiRequest<ScanListData>(base(projectId, assetId), { auth: true }),
 
   profiles: (projectId: string, assetId: string) =>
-    apiRequest<ApiEnvelope<ScanProfilesData>>(`${base(projectId, assetId)}/profiles`, {
+    apiRequest<ScanProfilesData>(`${base(projectId, assetId)}/profiles`, {
       auth: true,
     }),
 
   create: (projectId: string, assetId: string, data: CreateScanRequest) =>
-    apiRequest<ApiEnvelope<ScanSummary>>(base(projectId, assetId), {
+    apiRequest<ScanSummary>(base(projectId, assetId), {
       method: "POST",
       body: data,
       auth: true,
     }),
 
   get: (projectId: string, assetId: string, scanId: string) =>
-    apiRequest<ApiEnvelope<ScanSummary>>(`${base(projectId, assetId)}/${scanId}`, {
+    apiRequest<ScanSummary>(`${base(projectId, assetId)}/${scanId}`, {
       auth: true,
     }),
 
   run: (projectId: string, assetId: string, scanId: string) =>
-    apiRequest<ApiEnvelope<ScanSummary>>(`${base(projectId, assetId)}/${scanId}/run`, {
+    apiRequest<ScanSummary>(`${base(projectId, assetId)}/${scanId}/run`, {
       method: "POST",
       auth: true,
     }),
 
   cancel: (projectId: string, assetId: string, scanId: string) =>
-    apiRequest<ApiEnvelope<ScanSummary>>(`${base(projectId, assetId)}/${scanId}/cancel`, {
+    apiRequest<ScanSummary>(`${base(projectId, assetId)}/${scanId}/cancel`, {
       method: "POST",
       auth: true,
     }),

@@ -1,35 +1,22 @@
 import { orgStorage } from "./storage";
-import type { ApiEnvelope } from "@/shared/types/api";
 import type { OrganizationListData, OrganizationSummary } from "@/shared/types/organization";
 
 interface OrganizationsApiClient {
-  listMine: () => Promise<ApiEnvelope<OrganizationListData>>;
+  listMine: () => Promise<OrganizationListData>;
 }
 
-function normalizeOrganizations(
-  payload: ApiEnvelope<OrganizationListData> | OrganizationListData,
-): OrganizationSummary[] {
-  if ("data" in payload && payload.data?.items) {
-    return payload.data.items;
-  }
-  if ("items" in payload && payload.items) {
-    return payload.items;
-  }
-  return [];
+function normalizeOrganizations(payload: OrganizationListData): OrganizationSummary[] {
+  return payload.items ?? [];
 }
 
 /** Only organizations where the user has an active membership. */
-export function getActiveOrganizations(
-  payload: ApiEnvelope<OrganizationListData> | OrganizationListData,
-): OrganizationSummary[] {
+export function getActiveOrganizations(payload: OrganizationListData): OrganizationSummary[] {
   return normalizeOrganizations(payload).filter(
     (org) => org.membership_status === "active" && org.is_active,
   );
 }
 
-export function getInvitedOrganizations(
-  payload: ApiEnvelope<OrganizationListData> | OrganizationListData,
-): OrganizationSummary[] {
+export function getInvitedOrganizations(payload: OrganizationListData): OrganizationSummary[] {
   return normalizeOrganizations(payload).filter(
     (org) => org.membership_status === "invited" && org.is_active,
   );
@@ -39,10 +26,8 @@ export function getInvitedOrganizations(
  * Validate stored org id against server membership list.
  * Never trust a client-side org id without this check.
  */
-export function resolveActiveOrganization(
-  organizationsPayload: ApiEnvelope<OrganizationListData> | OrganizationListData,
-): string | null {
-  const activeOrgs = getActiveOrganizations(organizationsPayload);
+export function resolveActiveOrganization(payload: OrganizationListData): string | null {
+  const activeOrgs = getActiveOrganizations(payload);
   if (!activeOrgs.length) {
     orgStorage.clear();
     return null;
@@ -72,7 +57,7 @@ export async function syncOrganizations(api: OrganizationsApiClient) {
 
 export function setValidatedActiveOrg(
   organizationId: string,
-  organizationsPayload: ApiEnvelope<OrganizationListData> | OrganizationListData,
+  organizationsPayload: OrganizationListData,
 ): OrganizationSummary {
   const activeOrgs = getActiveOrganizations(organizationsPayload);
   const match = activeOrgs.find((org) => org.id === organizationId);
