@@ -6,6 +6,16 @@ from app.organizations.models import Organization
 from app.organizations.settings_defaults import merge_organization_settings
 
 
+def get_active_organization_by_id(
+    db: Session,
+    organization_id: uuid.UUID,
+) -> Organization | None:
+    organization = get_organization_by_id(db, organization_id)
+    if organization is None or not organization.is_active:
+        return None
+    return organization
+
+
 def get_organization_by_id(db: Session, organization_id: uuid.UUID) -> Organization | None:
     return db.query(Organization).filter(Organization.id == organization_id).first()
 

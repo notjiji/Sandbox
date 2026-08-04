@@ -111,13 +111,38 @@ def list_assets_for_organization(
 
     return (
         db.query(Asset)
-        .filter(Asset.organization_id == organization_id)
+        .filter(
+            Asset.organization_id == organization_id,
+            Asset.deleted_at.is_(None),
+        )
         .order_by(Asset.name.asc())
         .all()
     )
 
 
+def get_latest_asset_risk_for_organization(
+    db: Session,
+    *,
+    organization_id: uuid.UUID,
+    asset_id: uuid.UUID,
+) -> AssetRisk | None:
+    from app.assets.models import Asset
+
+    return (
+        db.query(AssetRisk)
+        .join(Asset, Asset.id == AssetRisk.asset_id)
+        .filter(
+            AssetRisk.asset_id == asset_id,
+            Asset.organization_id == organization_id,
+            Asset.deleted_at.is_(None),
+        )
+        .order_by(AssetRisk.calculated_at.desc())
+        .first()
+    )
+
+
 def get_latest_asset_risk(db: Session, *, asset_id: uuid.UUID) -> AssetRisk | None:
+    """Internal use only — prefer get_latest_asset_risk_for_organization."""
     return (
         db.query(AssetRisk)
         .filter(AssetRisk.asset_id == asset_id)

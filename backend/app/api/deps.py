@@ -13,7 +13,10 @@ from app.members.enums import MemberStatus
 from app.members.models import OrganizationMember
 from app.members.repositories.member_repository import get_membership
 from app.users.models import User
-from app.organizations.repositories.organization_repository import get_organization_by_id
+from app.organizations.repositories.organization_repository import (
+    get_active_organization_by_id,
+    get_organization_by_id,
+)
 from app.users.repositories.user_repository import get_user_by_id
 
 
@@ -69,8 +72,8 @@ def get_current_membership(
     if organization_id is None:
         raise UnauthorizedError("X-Organization-ID header is required")
 
-    if not get_organization_by_id(db, organization_id):
-        raise NotFoundError("Organization")
+    if not get_active_organization_by_id(db, organization_id):
+        raise NotFoundError("Organization", "Organization is inactive or not found")
 
     membership = get_membership(
         db,

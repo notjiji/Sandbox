@@ -12,7 +12,12 @@ from app.scans.models import Scan
 
 
 def count_project_assets(db: Session, *, project_id: uuid.UUID) -> int:
-    return db.query(func.count(Asset.id)).filter(Asset.project_id == project_id).scalar() or 0
+    return (
+        db.query(func.count(Asset.id))
+        .filter(Asset.project_id == project_id, Asset.deleted_at.is_(None))
+        .scalar()
+        or 0
+    )
 
 
 def count_project_scans(db: Session, *, project_id: uuid.UUID) -> int:

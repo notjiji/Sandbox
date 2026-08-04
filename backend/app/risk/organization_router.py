@@ -5,12 +5,14 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
+from app.assets.repositories.asset_repository import get_asset_by_id_for_organization
 from app.core.database import get_db
+from app.core.exceptions import NotFoundError
 from app.core.permissions import Permission
 from app.core.responses import success_response
 from app.members.models import OrganizationMember
-from app.risk.repositories.risk_repository import get_latest_asset_risk
-from app.risk.schemas import AssetRiskResponse, unscanned_asset_risk
+from app.risk.repositories.risk_repository import get_latest_asset_risk_for_organization
+from app.risk.schemas import AssetRiskResponse
 from app.risk.service import risk_service
 
 router = APIRouter()
@@ -41,9 +43,25 @@ def get_asset_risk(
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(Permission.FINDING_READ)),
 ) -> JSONResponse:
-    latest = get_latest_asset_risk(db, asset_id=asset_id)
+    asset = get_asset_by_id_for_organization(
+        db,
+        organization_id=membership.organization_id,
+        asset_id=asset_id,
+    )
+    if asset is None:
+        raise NotFoundError("Asset")
+
+    latest = get_latest_asset_risk_for_organization(
+        db,
+        organization_id=membership.organization_id,
+        asset_id=asset_id,
+    )
     if not latest:
-        return success_response(data=unscanned_asset_risk(asset_id=str(asset_id)).model_dump(mode="json"))
+        from app.risk.schemas import unscanned_asset_risk
+
+        return success_response(
+            data=unscanned_asset_risk(asset_id=str(asset_id)).model_dump(mode="json")
+        )
     result = AssetRiskResponse(
         asset_id=str(latest.asset_id),
         scanned=True,

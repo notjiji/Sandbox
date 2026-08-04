@@ -36,14 +36,6 @@ def get_scan_for_asset(
     )
 
 
-def get_scan_by_id(
-    db: Session,
-    *,
-    scan_id: uuid.UUID,
-) -> Scan | None:
-    return db.query(Scan).filter(Scan.id == scan_id).first()
-
-
 def list_scans_for_project(db: Session, *, project_id: uuid.UUID) -> list[Scan]:
     return (
         db.query(Scan)

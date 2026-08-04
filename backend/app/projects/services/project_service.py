@@ -124,7 +124,9 @@ def update_organization_project(
     )
     if not project:
         raise NotFoundError("Project")
-    if body.name is None and body.description is None and body.is_active is None:
+    if body.is_active is not None:
+        raise ValidationAppError("Use archive or restore endpoints to change project status")
+    if body.name is None and body.description is None:
         raise ValidationAppError("At least one field must be provided")
 
     update_project(
@@ -132,7 +134,6 @@ def update_organization_project(
         project,
         name=body.name,
         description=body.description,
-        is_active=body.is_active,
     )
     record_audit_event(
         db,

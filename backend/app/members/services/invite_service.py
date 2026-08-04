@@ -268,6 +268,8 @@ def _ensure_invite_actionable(db: Session, invite) -> None:
         db.commit()
     if status.value != "pending":
         raise _invite_state_error(status.value)
+
+
 def get_invite_preview(db: Session, *, token: str) -> InvitePreview:
     invite = get_invite_by_token_hash(db, token_hash=hash_token(token))
     if not invite:
@@ -286,6 +288,10 @@ def accept_invite_by_token(db: Session, *, user: User, token: str) -> Organizati
         raise NotFoundError("Invitation", "Invitation link is invalid")
 
     _ensure_invite_actionable(db, invite)
+
+    organization = invite.organization
+    if not organization.is_active:
+        raise NotFoundError("Organization", "Organization is inactive")
 
     if normalize_email(user.email) != invite.email:
         raise ForbiddenError("This invitation was sent to a different email address")

@@ -152,6 +152,20 @@ def list_child_assets(
     return query.order_by(Asset.created_at.asc()).all()
 
 
+def get_asset_by_id_for_organization(
+    db: Session,
+    *,
+    organization_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    include_deleted: bool = False,
+) -> Asset | None:
+    query = _asset_query(db, include_deleted=include_deleted).filter(
+        Asset.id == asset_id,
+        Asset.organization_id == organization_id,
+    )
+    return query.first()
+
+
 def get_asset_by_id(
     db: Session,
     *,

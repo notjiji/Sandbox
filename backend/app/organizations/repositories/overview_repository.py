@@ -30,7 +30,10 @@ def count_projects(db: Session, *, organization_id: uuid.UUID) -> int:
 def count_assets(db: Session, *, organization_id: uuid.UUID) -> int:
     return (
         db.query(func.count(Asset.id))
-        .filter(Asset.organization_id == organization_id)
+        .filter(
+            Asset.organization_id == organization_id,
+            Asset.deleted_at.is_(None),
+        )
         .scalar()
         or 0
     )
@@ -96,6 +99,7 @@ def count_assets_since(
         .filter(
             Asset.organization_id == organization_id,
             Asset.created_at >= since,
+            Asset.deleted_at.is_(None),
         )
         .scalar()
         or 0
