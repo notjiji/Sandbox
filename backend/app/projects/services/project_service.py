@@ -47,8 +47,14 @@ def _resolve_project_slug(
 def list_organization_projects(
     db: Session,
     membership: OrganizationMember,
+    *,
+    include_inactive: bool = False,
 ) -> list[ProjectSummary]:
-    projects = list_projects_for_organization(db, organization_id=membership.organization_id)
+    projects = list_projects_for_organization(
+        db,
+        organization_id=membership.organization_id,
+        include_inactive=include_inactive,
+    )
     return [to_project_summary(project) for project in projects]
 
 
@@ -57,13 +63,14 @@ def get_organization_project(
     membership: OrganizationMember,
     *,
     project_id: uuid.UUID,
+    require_active: bool = False,
 ) -> ProjectSummary:
     project = get_project_by_id(
         db,
         organization_id=membership.organization_id,
         project_id=project_id,
     )
-    if not project or not project.is_active:
+    if not project or (require_active and not project.is_active):
         raise NotFoundError("Project")
     return to_project_summary(project)
 
@@ -135,6 +142,66 @@ def update_organization_project(
         resource_type="project",
         resource_id=project.id,
         details=body.model_dump(exclude_none=True),
+    )
+    db.commit()
+    db.refresh(project)
+    return to_project_summary(project)
+
+
+def archive_organization_project(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    project_id: uuid.UUID,
+) -> ProjectSummary:
+    project = get_project_by_id(
+        db,
+        organization_id=membership.organization_id,
+        project_id=project_id,
+    )
+    if not project:
+        raise NotFoundError("Project")
+    if not project.is_active:
+        raise ValidationAppError("Project is already archived")
+
+    update_project(db, project, is_active=False)
+    record_audit_event(
+        db,
+        action=ProjectAuditAction.ARCHIVE,
+        user_id=membership.user_id,
+        organization_id=membership.organization_id,
+        resource_type="project",
+        resource_id=project.id,
+    )
+    db.commit()
+    db.refresh(project)
+    return to_project_summary(project)
+
+
+def restore_organization_project(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    project_id: uuid.UUID,
+) -> ProjectSummary:
+    project = get_project_by_id(
+        db,
+        organization_id=membership.organization_id,
+        project_id=project_id,
+    )
+    if not project:
+        raise NotFoundError("Project")
+    if project.is_active:
+        raise ValidationAppError("Project is already active")
+
+    update_project(db, project, is_active=True)
+    record_audit_event(
+        db,
+        action=ProjectAuditAction.RESTORE,
+        user_id=membership.user_id,
+        organization_id=membership.organization_id,
+        resource_type="project",
+        resource_id=project.id,
     )
     db.commit()
     db.refresh(project)

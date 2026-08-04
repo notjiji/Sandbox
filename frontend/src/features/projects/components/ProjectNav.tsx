@@ -1,5 +1,13 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Bug, FileText, Globe, LayoutGrid, Radar } from "lucide-react";
+import {
+  ArrowLeft,
+  Bug,
+  FileText,
+  Globe,
+  LayoutDashboard,
+  Radar,
+  Settings,
+} from "lucide-react";
 
 interface ProjectNavProps {
   projectName?: string;
@@ -11,17 +19,28 @@ export default function ProjectNav({ projectName, assetName, active }: ProjectNa
   const { projectId, assetId } = useParams<{ projectId: string; assetId?: string }>();
 
   const projectTabs = [
+    {
+      key: "overview",
+      label: "Overview",
+      icon: LayoutDashboard,
+      path: `/projects/${projectId}`,
+    },
     { key: "assets", label: "Assets", icon: Globe, path: `/projects/${projectId}/assets` },
     { key: "findings", label: "Findings", icon: Bug, path: `/projects/${projectId}/findings` },
     { key: "reports", label: "Reports", icon: FileText, path: `/projects/${projectId}/reports` },
-    { key: "risk", label: "Risk", icon: Radar, path: `/projects/${projectId}` },
+    {
+      key: "settings",
+      label: "Settings",
+      icon: Settings,
+      path: `/projects/${projectId}/settings`,
+    },
   ];
 
   const assetTabs = [
     {
       key: "overview",
       label: "Overview",
-      icon: LayoutGrid,
+      icon: LayoutDashboard,
       path: `/projects/${projectId}/assets/${assetId}`,
     },
     {

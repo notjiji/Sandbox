@@ -16,6 +16,7 @@ interface CreateProjectForm {
 }
 
 export default function Projects() {
+  const [showArchived, setShowArchived] = useState(false);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [form, setForm] = useState<CreateProjectForm>({ name: "", description: "" });
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -25,7 +26,7 @@ export default function Projects() {
   const [creating, setCreating] = useState(false);
 
   const loadProjects = async () => {
-    const response = await projectsApi.list();
+    const response = await projectsApi.list(showArchived);
     setProjects(response?.items ?? []);
   };
 
@@ -48,7 +49,7 @@ export default function Projects() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [showArchived]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +87,17 @@ export default function Projects() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-panel p-6"
         >
-          <h2 className="mb-4 text-lg font-semibold text-brand-100">All projects</h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-brand-100">All projects</h2>
+            <label className="flex items-center gap-2 text-sm text-brand-500">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+              />
+              Show archived
+            </label>
+          </div>
           {loading ? (
             <p className="text-brand-500">Loading...</p>
           ) : projects.length === 0 ? (
@@ -100,7 +111,14 @@ export default function Projects() {
                     className="flex items-center justify-between rounded-lg border border-brand-800/50 px-4 py-3 transition hover:border-brand-500/40"
                   >
                     <div>
-                      <p className="font-medium text-brand-100">{project.name}</p>
+                      <p className="font-medium text-brand-100">
+                        {project.name}
+                        {!project.is_active && (
+                          <span className="ml-2 rounded-full bg-brand-800/60 px-2 py-0.5 text-xs text-brand-400">
+                            Archived
+                          </span>
+                        )}
+                      </p>
                       <p className="text-sm text-brand-500">{project.slug}</p>
                       {project.description && (
                         <p className="mt-1 text-sm text-brand-600">{project.description}</p>

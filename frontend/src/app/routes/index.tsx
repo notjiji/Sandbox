@@ -17,6 +17,7 @@ import OrgSettings from "@/features/organizations/pages/OrgSettings";
 import Members from "@/features/members/pages/Members";
 import Projects from "@/features/projects/pages/Projects";
 import ProjectDetail from "@/features/projects/pages/ProjectDetail";
+import ProjectSettings from "@/features/projects/pages/ProjectSettings";
 import Assets from "@/features/assets/pages/Assets";
 import AssetDetail from "@/features/assets/pages/AssetDetail";
 import AssetEdit from "@/features/assets/pages/AssetEdit";
@@ -48,6 +49,7 @@ export default function AppRoutes() {
           <Route path="/organization/members" element={<Members />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:projectId" element={<ProjectDetail />} />
+          <Route path="/projects/:projectId/settings" element={<ProjectSettings />} />
           <Route path="/projects/:projectId/assets" element={<Assets />} />
           <Route path="/projects/:projectId/assets/new" element={<AssetNew />} />
           <Route path="/projects/:projectId/assets/:assetId/edit" element={<AssetEdit />} />

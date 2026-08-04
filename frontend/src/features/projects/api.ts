@@ -5,10 +5,15 @@ import type {
   ProjectSummary,
   UpdateProjectRequest,
 } from "@/shared/types/project";
+import type { ProjectActivityData, ProjectOverview } from "@/shared/types/project-overview";
 import type { MessageResponse } from "@/shared/types/auth";
 
 export const projectsApi = {
-  list: () => apiRequest<ProjectListData>("/projects", { auth: true }),
+  list: (includeInactive = false) =>
+    apiRequest<ProjectListData>(
+      `/projects${includeInactive ? "?include_inactive=true" : ""}`,
+      { auth: true },
+    ),
 
   create: (data: CreateProjectRequest) =>
     apiRequest<ProjectSummary>("/projects", {
@@ -20,10 +25,31 @@ export const projectsApi = {
   get: (projectId: string) =>
     apiRequest<ProjectSummary>(`/projects/${projectId}`, { auth: true }),
 
+  getOverview: (projectId: string) =>
+    apiRequest<ProjectOverview>(`/projects/${projectId}/overview`, { auth: true }),
+
+  getActivity: (projectId: string, page = 1, limit = 20) =>
+    apiRequest<ProjectActivityData>(
+      `/projects/${projectId}/activity?page=${page}&limit=${limit}`,
+      { auth: true },
+    ),
+
   update: (projectId: string, data: UpdateProjectRequest) =>
     apiRequest<ProjectSummary>(`/projects/${projectId}`, {
       method: "PATCH",
       body: data,
+      auth: true,
+    }),
+
+  archive: (projectId: string) =>
+    apiRequest<ProjectSummary>(`/projects/${projectId}/archive`, {
+      method: "PATCH",
+      auth: true,
+    }),
+
+  restore: (projectId: string) =>
+    apiRequest<ProjectSummary>(`/projects/${projectId}/restore`, {
+      method: "PATCH",
       auth: true,
     }),
 

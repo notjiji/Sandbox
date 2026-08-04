@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from app.core.responses import success_response
 from app.members.models import OrganizationMember
 from app.projects.schemas import CreateProjectRequest, UpdateProjectRequest
 from app.projects.services import project_service
+from app.projects.services.overview_service import get_project_activity, get_project_overview
 
 router = APIRouter()
 
@@ -26,10 +27,13 @@ router.include_router(risk_router, prefix="/{project_id}/risk", tags=["risk"])
 
 @router.get("")
 def list_projects(
+    include_inactive: bool = Query(default=False),
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(Permission.PROJECT_READ)),
 ) -> JSONResponse:
-    projects = project_service.list_organization_projects(db, membership)
+    projects = project_service.list_organization_projects(
+        db, membership, include_inactive=include_inactive
+    )
     return success_response(
         data={
             "items": [project.model_dump(mode="json") for project in projects],
@@ -58,6 +62,30 @@ def get_project(
     return success_response(data=project.model_dump(mode="json"))
 
 
+@router.get("/{project_id}/overview")
+def get_project_overview_route(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.PROJECT_READ)),
+) -> JSONResponse:
+    overview = get_project_overview(db, membership, project_id=project_id)
+    return success_response(data=overview.model_dump(mode="json"))
+
+
+@router.get("/{project_id}/activity")
+def get_project_activity_route(
+    project_id: uuid.UUID,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.PROJECT_READ)),
+) -> JSONResponse:
+    activity = get_project_activity(
+        db, membership, project_id=project_id, page=page, limit=limit
+    )
+    return success_response(data=activity.model_dump(mode="json"))
+
+
 @router.patch("/{project_id}")
 def patch_project(
     project_id: uuid.UUID,
@@ -70,6 +98,30 @@ def patch_project(
         membership,
         project_id=project_id,
         body=body,
+    )
+    return success_response(data=project.model_dump(mode="json"))
+
+
+@router.patch("/{project_id}/archive")
+def archive_project(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.PROJECT_UPDATE)),
+) -> JSONResponse:
+    project = project_service.archive_organization_project(
+        db, membership, project_id=project_id
+    )
+    return success_response(data=project.model_dump(mode="json"))
+
+
+@router.patch("/{project_id}/restore")
+def restore_project(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.PROJECT_UPDATE)),
+) -> JSONResponse:
+    project = project_service.restore_organization_project(
+        db, membership, project_id=project_id
     )
     return success_response(data=project.model_dump(mode="json"))
 
