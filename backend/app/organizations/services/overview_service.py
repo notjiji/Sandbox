@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.audit.schemas import AuditLogSummary
+from app.organizations.services.activity_service import get_organization_activity, present_activity_events
 from app.findings.enums import FindingStatus
 from app.members.models import OrganizationMember
 from app.organizations.repositories.overview_repository import (
@@ -21,18 +21,6 @@ from app.organizations.schemas_overview import (
     RecentScanSummary,
 )
 from app.risk.service import risk_service
-
-
-def _to_audit_summary(record) -> AuditLogSummary:
-    return AuditLogSummary(
-        id=str(record.id),
-        action=record.action,
-        user_id=str(record.user_id) if record.user_id else None,
-        resource_type=record.resource_type,
-        resource_id=str(record.resource_id) if record.resource_id else None,
-        details=record.details,
-        created_at=record.created_at,
-    )
 
 
 def get_organization_overview(
@@ -76,9 +64,8 @@ def get_organization_overview(
         for report in list_recent_reports(db, organization_id=org_id)
     ]
 
-    recent_activity = [
-        _to_audit_summary(record) for record in list_recent_activity(db, organization_id=org_id)
-    ]
+    activity_records = list_recent_activity(db, organization_id=org_id)
+    recent_activity = present_activity_events(db, activity_records)
 
     return OrganizationOverview(
         stats=stats,

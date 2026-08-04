@@ -114,10 +114,27 @@ def list_recent_activity(
     organization_id: uuid.UUID,
     limit: int = 10,
 ) -> list[AuditLog]:
-    return (
-        db.query(AuditLog)
-        .filter(AuditLog.organization_id == organization_id)
-        .order_by(AuditLog.created_at.desc())
-        .limit(limit)
-        .all()
+    return list_organization_activity(
+        db,
+        organization_id=organization_id,
+        limit=limit,
+        offset=0,
+    )[0]
+
+
+def list_organization_activity(
+    db: Session,
+    *,
+    organization_id: uuid.UUID,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[AuditLog], int]:
+    base_query = db.query(AuditLog).filter(AuditLog.organization_id == organization_id)
+    for prefix in ("auth.", "user."):
+        base_query = base_query.filter(~AuditLog.action.startswith(prefix))
+
+    total = base_query.count()
+    items = (
+        base_query.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
     )
+    return items, total

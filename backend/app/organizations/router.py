@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,7 @@ from app.organizations.services.organization_service import (
     list_user_organizations,
     update_current_organization,
 )
+from app.organizations.services.activity_service import get_organization_activity
 from app.organizations.services.overview_service import get_organization_overview
 from app.risk.organization_router import router as org_risk_router
 
@@ -64,6 +65,22 @@ def get_organization_overview_route(
 ) -> JSONResponse:
     overview = get_organization_overview(db, membership)
     return success_response(data=overview.model_dump(mode="json"))
+
+
+@router.get("/current/activity")
+def get_organization_activity_route(
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.ORG_READ)),
+) -> JSONResponse:
+    activity = get_organization_activity(
+        db,
+        organization_id=membership.organization_id,
+        page=page,
+        limit=limit,
+    )
+    return success_response(data=activity.model_dump(mode="json"))
 
 
 @router.patch("/current")

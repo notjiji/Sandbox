@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import Field
 
-from app.audit.schemas import AuditLogSummary
+from app.organizations.schemas_activity import ActivityEvent
 from app.reports.enums import ReportStatus
 from app.risk.schemas import DashboardMetrics
 from app.scans.enums import ScanStatus, ScanType
@@ -47,7 +47,7 @@ class OrganizationOverview(BaseSchema):
     security: DashboardMetrics
     recent_scans: list[RecentScanSummary] = Field(default_factory=list)
     recent_reports: list[RecentReportSummary] = Field(default_factory=list)
-    recent_activity: list[AuditLogSummary] = Field(default_factory=list)
+    recent_activity: list[ActivityEvent] = Field(default_factory=list)
     storage: UsagePlaceholder = Field(
         default_factory=lambda: UsagePlaceholder(label="Storage", value="—", available=False)
     )

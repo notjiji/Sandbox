@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Activity,
   Bot,
   Building2,
   FileText,
@@ -34,11 +35,19 @@ export const MAIN_NAV_ITEMS: SidebarNavItem[] = [
     isActive: (path) => path === "/dashboard",
   },
   {
+    id: "activity",
+    label: "Activity",
+    icon: Activity,
+    resolveHref: () => "/organization/activity",
+    isActive: (path) => path === "/organization/activity",
+  },
+  {
     id: "organizations",
     label: "Organizations",
     icon: Building2,
     resolveHref: () => "/organization/settings",
-    isActive: (path) => path.startsWith("/organization"),
+    isActive: (path) =>
+      path.startsWith("/organization") && path !== "/organization/activity",
   },
   {
     id: "projects",

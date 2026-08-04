@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import {
   Bug,
   ChevronRight,
-  Database,
   FileText,
   FolderKanban,
   HardDrive,
@@ -19,11 +18,11 @@ import RiskTrendChart from "../components/dashboard/RiskTrendChart";
 import StatCard, { SectionPanel } from "../components/dashboard/StatCard";
 import { organizationsApi } from "../api";
 import {
-  formatActionLabel,
   formatRelativeTime,
   reportStatusClass,
   scanStatusClass,
 } from "../utils/format";
+import ActivityTimeline from "@/shared/components/activity/ActivityTimeline";
 import FormAlert from "@/shared/components/FormAlert";
 import { ApiError } from "@/shared/api/client";
 import type { OrganizationDetail } from "@/shared/types/organization";
@@ -275,29 +274,24 @@ export default function Dashboard() {
               )}
             </SectionPanel>
 
-            <SectionPanel title="Recent Activity">
+            <SectionPanel
+              title="Recent Activity"
+              action={
+                overview.recent_activity.length > 0 ? (
+                  <Link
+                    to="/organization/activity"
+                    className="inline-flex items-center gap-1 text-xs text-brand-400 hover:text-brand-200"
+                  >
+                    View all
+                    <ChevronRight size={14} />
+                  </Link>
+                ) : undefined
+              }
+            >
               {overview.recent_activity.length === 0 ? (
                 <EmptyState message="Activity will appear as your team works in this organization." />
               ) : (
-                <ul className="space-y-3">
-                  {overview.recent_activity.map((entry) => (
-                    <li
-                      key={entry.id}
-                      className="flex items-start gap-3 rounded-lg border border-brand-800/40 bg-void-200/20 px-4 py-3"
-                    >
-                      <Database size={14} className="mt-0.5 shrink-0 text-brand-500" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-brand-200">
-                          {formatActionLabel(entry.action)}
-                        </p>
-                        <p className="text-xs text-brand-600">
-                          {entry.resource_type ?? "system"} ·{" "}
-                          {formatRelativeTime(entry.created_at)}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <ActivityTimeline items={overview.recent_activity} compact />
               )}
             </SectionPanel>
           </div>

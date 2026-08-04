@@ -1,4 +1,5 @@
 import type { DashboardMetrics } from "./risk";
+import type { ActivityEvent } from "./activity";
 
 export interface OrganizationStats {
   projects: number;
@@ -48,7 +49,7 @@ export interface OrganizationOverview {
   security: DashboardMetrics;
   recent_scans: RecentScanSummary[];
   recent_reports: RecentReportSummary[];
-  recent_activity: AuditLogSummary[];
+  recent_activity: ActivityEvent[];
   storage: UsagePlaceholder;
   api_usage: UsagePlaceholder;
   subscription: UsagePlaceholder;

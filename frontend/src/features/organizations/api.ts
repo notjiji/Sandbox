@@ -5,6 +5,7 @@ import type {
   OrganizationListData,
   UpdateOrganizationRequest,
 } from "@/shared/types/organization";
+import type { OrganizationActivityData } from "@/shared/types/activity";
 import type { OrganizationOverview } from "@/shared/types/organization-overview";
 import type { MessageResponse } from "@/shared/types/auth";
 
@@ -24,6 +25,12 @@ export const organizationsApi = {
 
   getOverview: () =>
     apiRequest<OrganizationOverview>("/organizations/current/overview", { auth: true }),
+
+  getActivity: (page = 1, limit = 20) =>
+    apiRequest<OrganizationActivityData>(
+      `/organizations/current/activity?page=${page}&limit=${limit}`,
+      { auth: true },
+    ),
 
   updateCurrent: (data: UpdateOrganizationRequest) =>
     apiRequest<OrganizationDetail>("/organizations/current", {

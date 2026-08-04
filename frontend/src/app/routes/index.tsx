@@ -15,6 +15,7 @@ import SelectOrganization from "@/features/organizations/pages/SelectOrganizatio
 import Welcome from "@/features/organizations/pages/Welcome";
 import Dashboard from "@/features/organizations/pages/Dashboard";
 import OrgSettings from "@/features/organizations/pages/OrgSettings";
+import OrganizationActivity from "@/features/organizations/pages/Activity";
 import Members from "@/features/members/pages/Members";
 import Projects from "@/features/projects/pages/Projects";
 import ProjectDetail from "@/features/projects/pages/ProjectDetail";
@@ -48,6 +49,7 @@ export default function AppRoutes() {
         <Route element={<OrgProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/organization/settings" element={<OrgSettings />} />
+          <Route path="/organization/activity" element={<OrganizationActivity />} />
           <Route path="/organization/members" element={<Members />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:projectId" element={<ProjectDetail />} />

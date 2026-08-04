@@ -7,6 +7,8 @@ from collections import Counter
 
 from sqlalchemy.orm import Session
 
+from app.audit.events import AuditAction
+from app.audit.service import record_audit_event
 from app.assets.enums import AssetCriticality
 from app.assets.models import Asset
 from app.findings.enums import FindingSeverity, FindingStatus
@@ -291,6 +293,19 @@ class RiskEngine:
                 total_risk=org_total_risk or 0.0,
                 grade=grade or "—",
             )
+            if previous is not None and abs(overall - previous) >= 0.1:
+                record_audit_event(
+                    db,
+                    action=AuditAction.ORG_RISK_SCORE_CHANGED,
+                    organization_id=organization_id,
+                    resource_type="organization",
+                    resource_id=organization_id,
+                    details={
+                        "previous_score": round(previous, 1),
+                        "current_score": round(overall, 1),
+                        "trend": trend,
+                    },
+                )
 
         org_record = get_organization_risk(db, organization_id=organization_id)
 
