@@ -16,6 +16,7 @@ from app.organizations.services.organization_service import (
     list_user_organizations,
     update_current_organization,
 )
+from app.organizations.services.overview_service import get_organization_overview
 from app.risk.organization_router import router as org_risk_router
 
 router = APIRouter()
@@ -53,6 +54,15 @@ def get_organization(
 ) -> JSONResponse:
     organization = get_current_organization(db, membership)
     return success_response(data=organization.model_dump(mode="json"))
+
+
+@router.get("/current/overview")
+def get_organization_overview_route(
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.ORG_READ)),
+) -> JSONResponse:
+    overview = get_organization_overview(db, membership)
+    return success_response(data=overview.model_dump(mode="json"))
 
 
 @router.patch("/current")

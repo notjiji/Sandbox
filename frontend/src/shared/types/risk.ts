@@ -42,3 +42,27 @@ export interface AssetRisk {
   low_count: number;
   calculated_at?: string | null;
 }
+
+export interface RiskTrendPoint {
+  date: string;
+  security_score: number;
+  grade: string;
+  total_risk: number;
+}
+
+export interface DashboardMetrics {
+  overall_security_score?: number | null;
+  organization_grade?: string | null;
+  risk_level?: string | null;
+  trend: string;
+  total_findings: number;
+  critical_findings: number;
+  high_findings: number;
+  assets_at_risk: number;
+  unscanned_assets: number;
+  most_common_issue?: string | null;
+  average_days_between_scans?: number | null;
+  findings_by_plugin: Record<string, number>;
+  findings_by_asset_type: Record<string, number>;
+  risk_trend: RiskTrendPoint[];
+}

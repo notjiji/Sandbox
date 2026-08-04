@@ -53,3 +53,23 @@ def test_organization_routes_require_org_header(client, db) -> None:
     response = client.get("/api/v1/organizations/current", headers=ctx["headers"])
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_organization_overview_returns_dashboard_data(client, db) -> None:
+    ctx = bootstrap_org_context(db, client, email="overview@example.com")
+
+    response = client.get(
+        "/api/v1/organizations/current/overview",
+        headers=ctx["org_headers"],
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["success"] is True
+
+    data = body["data"]
+    assert data["stats"]["projects"] >= 1
+    assert data["stats"]["members"] >= 1
+    assert "security" in data
+    assert "recent_scans" in data
+    assert "recent_reports" in data
+    assert "recent_activity" in data
