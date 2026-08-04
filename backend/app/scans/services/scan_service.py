@@ -225,11 +225,13 @@ def run_asset_scan(
         scan.plugin_runs = list_plugin_runs_for_scan(db, scan_id=scan.id)
     else:
         from app.jobs.scans import execute_scan
+        from app.core.logging import get_correlation_id
 
         execute_scan.delay(
             scan_id=str(scan.id),
             project_id=str(project_id),
             asset_id=str(asset_id),
+            correlation_id=get_correlation_id(),
         )
 
     return to_scan_summary(scan, include_plugin_runs=bool(settings.SCAN_RUN_INLINE))

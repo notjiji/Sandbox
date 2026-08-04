@@ -17,6 +17,7 @@ def execute_scan(
     scan_id: str,
     project_id: str,
     asset_id: str,
+    correlation_id: str | None = None,
 ) -> str:
     db = SessionLocal()
     try:

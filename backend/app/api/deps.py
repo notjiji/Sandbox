@@ -1,7 +1,7 @@
 from typing import Annotated, Callable
 import uuid
 
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -18,6 +18,7 @@ from app.users.repositories.user_repository import get_user_by_id
 
 
 def get_current_user(
+    request: Request,
     db: Session = Depends(get_db),
     authorization: Annotated[str | None, Header()] = None,
 ) -> User:
@@ -34,6 +35,7 @@ def get_current_user(
     if not user or not user.is_active:
         raise UnauthorizedError("Account is inactive or not found")
 
+    request.state.user_id = str(user.id)
     return user
 
 
