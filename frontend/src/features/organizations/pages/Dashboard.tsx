@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Bug,
   ChevronRight,
   FileText,
   FolderKanban,
   HardDrive,
   Layers,
   Radar,
+  Shield,
   Users,
   Zap,
 } from "lucide-react";
@@ -62,7 +62,10 @@ export default function Dashboard() {
   }, []);
 
   const stats = overview?.stats;
+  const analytics = overview?.analytics;
   const security = overview?.security;
+  const trends = analytics?.trends;
+  const periodLabel = analytics?.period_days ?? 30;
 
   return (
     <DashboardShell
@@ -79,77 +82,141 @@ export default function Dashboard() {
         <div className="space-y-6">
           <SecurityScoreHero security={security} />
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-              <StatCard
-                label="Projects"
-                value={stats?.projects ?? 0}
-                icon={FolderKanban}
-                href="/projects"
-              />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.04 }}
-            >
-              <StatCard
-                label="Assets"
-                value={stats?.assets ?? 0}
-                icon={Layers}
-                href="/projects"
-              />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-            >
-              <StatCard
-                label="Members"
-                value={stats?.members ?? 0}
-                icon={Users}
-                href="/organization/members"
-              />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.12 }}
-            >
-              <StatCard
-                label="Total Scans"
-                value={stats?.scans ?? 0}
-                icon={Radar}
-                href="/projects"
-              />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.16 }}
-            >
-              <StatCard
-                label="Open Findings"
-                value={stats?.open_findings ?? 0}
-                icon={Bug}
-                accent={stats && stats.open_findings > 0 ? "danger" : "default"}
-                suffix={`${stats?.total_findings ?? 0} total`}
-              />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <StatCard
-                label="Reports"
-                value={stats?.reports ?? 0}
-                icon={FileText}
-                href="/projects"
-              />
-            </motion.div>
-          </div>
+          <SectionPanel
+            title="Analytics"
+            action={
+              <span className="text-xs text-brand-600">Last {periodLabel} days</span>
+            }
+          >
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+                <StatCard
+                  label="Assets"
+                  value={stats?.assets ?? 0}
+                  icon={Layers}
+                  href="/projects"
+                  trend={
+                    trends && trends.assets !== 0
+                      ? { value: trends.assets, label: "Assets" }
+                      : undefined
+                  }
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.04 }}
+              >
+                <StatCard
+                  label="Members"
+                  value={stats?.members ?? 0}
+                  icon={Users}
+                  href="/organization/members"
+                  trend={
+                    trends && trends.members !== 0
+                      ? { value: trends.members, label: "Members" }
+                      : undefined
+                  }
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08 }}
+              >
+                <StatCard
+                  label="Projects"
+                  value={stats?.projects ?? 0}
+                  icon={FolderKanban}
+                  href="/projects"
+                  trend={
+                    trends && trends.projects !== 0
+                      ? { value: trends.projects, label: "Projects" }
+                      : undefined
+                  }
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12 }}
+              >
+                <StatCard
+                  label="Scans"
+                  value={stats?.scans ?? 0}
+                  icon={Radar}
+                  href="/projects"
+                  trend={
+                    trends && trends.scans !== 0
+                      ? { value: trends.scans, label: "Scans" }
+                      : undefined
+                  }
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.16 }}
+              >
+                <StatCard
+                  label="Reports"
+                  value={stats?.reports ?? 0}
+                  icon={FileText}
+                  href="/projects"
+                  trend={
+                    trends && trends.reports !== 0
+                      ? { value: trends.reports, label: "Reports" }
+                      : undefined
+                  }
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <StatCard
+                  label="Average Risk"
+                  value={
+                    analytics?.average_risk != null
+                      ? Math.round(analytics.average_risk)
+                      : "—"
+                  }
+                  icon={Shield}
+                  accent={
+                    analytics?.average_risk != null && analytics.average_risk >= 80
+                      ? "default"
+                      : analytics?.average_risk != null && analytics.average_risk >= 60
+                        ? "warning"
+                        : "danger"
+                  }
+                  trend={
+                    trends?.average_risk != null && trends.average_risk !== 0
+                      ? {
+                          value: trends.average_risk,
+                          label: "pts",
+                          decimals: 1,
+                        }
+                      : undefined
+                  }
+                />
+              </motion.div>
+            </div>
+
+            {trends && trends.critical_findings !== 0 && (
+              <p className="mt-4 text-sm text-brand-400">
+                <span
+                  className={
+                    trends.critical_findings < 0 ? "text-emerald-400" : "text-rose-400"
+                  }
+                >
+                  {trends.critical_findings > 0 ? "+" : ""}
+                  {trends.critical_findings} Critical Findings
+                </span>
+                <span className="text-brand-600"> · vs previous {periodLabel} days</span>
+              </p>
+            )}
+          </SectionPanel>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <SectionPanel

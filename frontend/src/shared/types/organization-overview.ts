@@ -1,6 +1,22 @@
 import type { DashboardMetrics } from "./risk";
 import type { ActivityEvent } from "./activity";
 
+export interface OrganizationTrends {
+  assets: number;
+  members: number;
+  projects: number;
+  scans: number;
+  reports: number;
+  critical_findings: number;
+  average_risk?: number | null;
+}
+
+export interface OrganizationAnalytics {
+  average_risk?: number | null;
+  period_days: number;
+  trends: OrganizationTrends;
+}
+
 export interface OrganizationStats {
   projects: number;
   assets: number;
@@ -46,6 +62,7 @@ export interface UsagePlaceholder {
 
 export interface OrganizationOverview {
   stats: OrganizationStats;
+  analytics: OrganizationAnalytics;
   security: DashboardMetrics;
   recent_scans: RecentScanSummary[];
   recent_reports: RecentReportSummary[];

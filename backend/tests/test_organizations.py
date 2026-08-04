@@ -107,3 +107,5 @@ def test_organization_overview_returns_dashboard_data(client, db) -> None:
     assert "recent_scans" in data
     assert "recent_reports" in data
     assert "recent_activity" in data
+    assert "analytics" in data
+    assert "trends" in data["analytics"]

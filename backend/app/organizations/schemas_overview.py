@@ -19,6 +19,24 @@ class OrganizationStats(BaseSchema):
     reports: int = 0
 
 
+class OrganizationTrends(BaseSchema):
+    """Period-over-period deltas (default: last 30 days)."""
+
+    assets: int = 0
+    members: int = 0
+    projects: int = 0
+    scans: int = 0
+    reports: int = 0
+    critical_findings: int = 0
+    average_risk: float | None = None
+
+
+class OrganizationAnalytics(BaseSchema):
+    average_risk: float | None = None
+    period_days: int = 30
+    trends: OrganizationTrends = Field(default_factory=OrganizationTrends)
+
+
 class RecentScanSummary(BaseSchema):
     id: str
     project_id: str
@@ -44,6 +62,7 @@ class UsagePlaceholder(BaseSchema):
 
 class OrganizationOverview(BaseSchema):
     stats: OrganizationStats
+    analytics: OrganizationAnalytics = Field(default_factory=OrganizationAnalytics)
     security: DashboardMetrics
     recent_scans: list[RecentScanSummary] = Field(default_factory=list)
     recent_reports: list[RecentReportSummary] = Field(default_factory=list)
