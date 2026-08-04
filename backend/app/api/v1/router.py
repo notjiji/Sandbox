@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 
-from app.assets.router import router as assets_router
 from app.auth.router import router as auth_router
 from app.members.router import router as members_router
 from app.organizations.router import router as organizations_router

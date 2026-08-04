@@ -1,4 +1,4 @@
-.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring
+.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test
 
 up:
 	docker compose up -d
@@ -31,3 +31,6 @@ monitoring:
 	@echo "Grafana:  http://localhost:$${GRAFANA_PORT:-3000}"
 	@echo "Prometheus: http://localhost:9090"
 	@echo "Loki:     http://localhost:3100"
+
+test:
+	cd backend && pip install -q -r requirements-dev.txt && python -m pytest tests app -q
