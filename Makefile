@@ -1,4 +1,4 @@
-.PHONY: up down build migrate migrate-down logs shell backend-logs monitoring
+.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring
 
 up:
 	docker compose up -d
@@ -14,6 +14,9 @@ migrate:
 
 migrate-down:
 	docker compose exec backend alembic downgrade -1
+
+seed:
+	docker compose exec backend python scripts/seed_demo.py
 
 logs:
 	docker compose logs -f
