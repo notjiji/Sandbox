@@ -74,7 +74,7 @@ export default function Sidebar({
 
       {showOrgSwitcher && (
         <div className={cn("border-b border-brand-800/40 px-3 py-3", collapsed && "px-2")}>
-          <OrgSwitcher collapsed={collapsed && !mobile} />
+          <OrgSwitcher collapsed={collapsed && !mobile} onNavigate={onCloseMobile} />
         </div>
       )}
 

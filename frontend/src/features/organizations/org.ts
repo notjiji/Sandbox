@@ -67,3 +67,12 @@ export function setValidatedActiveOrg(
   orgStorage.setActiveOrgId(match.id);
   return match;
 }
+
+/** Switch workspace after server-side membership validation. Persists last org in localStorage. */
+export async function switchOrganization(
+  api: OrganizationsApiClient,
+  organizationId: string,
+): Promise<OrganizationSummary> {
+  const payload = await api.listMine();
+  return setValidatedActiveOrg(organizationId, payload);
+}

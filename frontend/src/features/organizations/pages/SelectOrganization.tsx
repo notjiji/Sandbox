@@ -10,7 +10,7 @@ import type { ValidationErrors } from "@/shared/types/api";
 import type { OrganizationSummary } from "@/shared/types/organization";
 import { organizationsApi } from "../api";
 import { membersApi } from "@/features/members/api";
-import { getActiveOrganizations, getInvitedOrganizations, setValidatedActiveOrg } from "../org";
+import { getActiveOrganizations, getInvitedOrganizations, switchOrganization } from "../org";
 import { orgStorage } from "../storage";
 
 interface CreateOrgForm {
@@ -61,8 +61,7 @@ export default function SelectOrganization() {
 
   const handleSelect = async (organizationId: string) => {
     try {
-      const payload = await organizationsApi.listMine();
-      setValidatedActiveOrg(organizationId, payload);
+      await switchOrganization(organizationsApi, organizationId);
       navigate("/dashboard");
     } catch (error) {
       setAlert(error instanceof ApiError ? error.message : "Unable to select organization.");
