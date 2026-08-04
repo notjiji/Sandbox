@@ -8,6 +8,23 @@ export type ScanStatus =
 
 export type ScanType = "quick" | "full" | "custom";
 
+export interface ScanLifecycleTimestamps {
+  pending_at?: string | null;
+  queued_at?: string | null;
+  running_at?: string | null;
+  completed_at?: string | null;
+  failed_at?: string | null;
+  cancelled_at?: string | null;
+}
+
+export interface ScanPluginRunSummary {
+  id: string;
+  asset_id: string;
+  plugin_name: string;
+  status: string;
+  findings_count?: number;
+}
+
 export interface ScanSummary {
   id: string;
   asset_id: string;
@@ -15,7 +32,9 @@ export interface ScanSummary {
   scan_type: ScanType;
   status: ScanStatus;
   selected_plugins?: string[] | null;
-  created_at: string;
+  lifecycle?: ScanLifecycleTimestamps;
+  plugin_runs?: ScanPluginRunSummary[];
+  created_at?: string;
   pending_at?: string | null;
   queued_at?: string | null;
   running_at?: string | null;

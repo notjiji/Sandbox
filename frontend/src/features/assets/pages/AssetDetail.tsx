@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Pencil, Radar } from "lucide-react";
+import { ChevronDown, Pencil, Radar } from "lucide-react";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
+import { organizationsApi } from "@/features/organizations/api";
 import FormAlert from "@/shared/components/FormAlert";
 import { ApiError } from "@/shared/api/client";
-import type { AssetSummary } from "@/shared/types/asset";
+import type { AssetOverview } from "@/shared/types/asset-overview";
+import type { OrganizationDetail } from "@/shared/types/organization";
 import type { ProjectSummary } from "@/shared/types/project";
 import { projectsApi } from "@/features/projects/api";
 import ProjectNav from "@/features/projects/components/ProjectNav";
@@ -15,12 +17,16 @@ import {
   AssetStatusBadge,
   AssetTypeBadge,
 } from "../components/AssetBadges";
+import AssetDashboard from "../components/AssetDashboard";
 import AssetLifecycleActions from "../components/AssetLifecycleActions";
-import PlaceholderPanel from "../components/PlaceholderPanel";
+import AssetRelationshipsPanel from "../components/AssetRelationshipsPanel";
 import { assetsApi } from "../api";
-import { useAssetAuditHistory } from "../hooks";
-import { ASSET_TYPE_LABELS, getPrimaryMetadataValue } from "../types";
-import { formatAuditAction, formatDateTime, UNAVAILABLE } from "../utils";
+import {
+  ASSET_CATEGORY_LABELS,
+  ASSET_TYPE_LABELS,
+  getPrimaryMetadataValue,
+} from "../types";
+import { formatActor, formatDateTime } from "../utils";
 
 interface DetailFieldProps {
   label: string;
@@ -39,24 +45,27 @@ function DetailField({ label, children }: DetailFieldProps) {
 export default function AssetDetail() {
   const { projectId, assetId } = useParams<{ projectId: string; assetId: string }>();
   const [project, setProject] = useState<ProjectSummary | null>(null);
-  const [asset, setAsset] = useState<AssetSummary | null>(null);
+  const [organization, setOrganization] = useState<OrganizationDetail | null>(null);
+  const [overview, setOverview] = useState<AssetOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { auditLogs, loading: auditLoading } = useAssetAuditHistory(projectId, assetId);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const load = async () => {
     if (!projectId || !assetId) return;
     setLoading(true);
     setError(null);
     try {
-      const [projectResponse, assetResponse] = await Promise.all([
+      const [projectResponse, overviewResponse, organizationResponse] = await Promise.all([
         projectsApi.get(projectId),
-        assetsApi.get(projectId, assetId),
+        assetsApi.overview(projectId, assetId),
+        organizationsApi.getCurrent(),
       ]);
       setProject(projectResponse ?? null);
-      setAsset(assetResponse ?? null);
+      setOverview(overviewResponse ?? null);
+      setOrganization(organizationResponse ?? null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to load asset.");
+      setError(err instanceof ApiError ? err.message : "Unable to load asset dashboard.");
     } finally {
       setLoading(false);
     }
@@ -66,6 +75,7 @@ export default function AssetDetail() {
     void load();
   }, [projectId, assetId]);
 
+  const asset = overview?.asset ?? null;
   const primaryValue = asset ? getPrimaryMetadataValue(asset) : null;
   const metadataEntries = asset?.metadata ? Object.entries(asset.metadata) : [];
 
@@ -74,14 +84,14 @@ export default function AssetDetail() {
   return (
     <DashboardShell
       title={asset?.name ?? "Asset"}
-      subtitle={asset ? (ASSET_TYPE_LABELS[asset.type] ?? asset.type) : "Asset inventory detail"}
+      subtitle={asset ? (ASSET_TYPE_LABELS[asset.type] ?? asset.type) : "Asset command center"}
     >
       {error && <FormAlert message={error} />}
       <ProjectNav projectName={project?.name} assetName={asset?.name} active="overview" />
 
       {loading ? (
-        <p className="text-brand-500">Loading asset...</p>
-      ) : asset ? (
+        <p className="text-brand-500">Loading asset dashboard...</p>
+      ) : asset && overview ? (
         <div className="space-y-6">
           {asset.status === "deleted" && (
             <div className="rounded-lg border border-red-500/30 bg-red-950/20 px-4 py-3 text-sm text-red-200">
@@ -93,6 +103,7 @@ export default function AssetDetail() {
               This asset is archived. Restore it to run scans; other details can still be edited.
             </div>
           )}
+
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -122,7 +133,7 @@ export default function AssetDetail() {
                     className="btn-primary inline-flex items-center gap-2"
                   >
                     <Radar size={18} />
-                    View scans
+                    Run scan
                   </Link>
                 )}
                 {asset.status !== "deleted" && (
@@ -131,7 +142,7 @@ export default function AssetDetail() {
                     className="btn-ghost inline-flex items-center gap-2"
                   >
                     <Pencil size={18} />
-                    {asset.status === "archived" ? "Edit details" : "Edit"}
+                    Edit
                   </Link>
                 )}
               </div>
@@ -140,128 +151,67 @@ export default function AssetDetail() {
             <div className="mt-6">
               <AssetLifecycleActions projectId={projectId} asset={asset} onChanged={load} />
             </div>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <DetailField label="criticality">
-                <AssetCriticalityBadge criticality={asset.criticality} />
-              </DetailField>
-              <DetailField label="status">
-                <AssetStatusBadge status={asset.status} />
-              </DetailField>
-              <DetailField label="environment">
-                <AssetEnvironmentBadge environment={asset.environment} />
-              </DetailField>
-              <DetailField label="owner">{asset.owner || "—"}</DetailField>
-            </div>
-
-            {asset.tags.length > 0 && (
-              <div className="mt-6">
-                <p className="terminal-text mb-2 text-xs text-brand-500">tags</p>
-                <div className="flex flex-wrap gap-2">
-                  {asset.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full border border-brand-700/50 bg-brand-900/40 px-3 py-1 text-xs text-brand-300"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </motion.div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-panel p-6"
-            >
-              <h2 className="mb-4 text-lg font-semibold text-brand-100">Metadata</h2>
-              {metadataEntries.length === 0 ? (
-                <p className="text-sm text-brand-500">No metadata recorded.</p>
-              ) : (
-                <dl className="space-y-3">
-                  {metadataEntries.map(([key, value]) => (
-                    <div
-                      key={key}
-                      className="flex items-start justify-between gap-4 border-b border-brand-800/40 pb-3 last:border-0 last:pb-0"
-                    >
-                      <dt className="terminal-text text-xs text-brand-500">{key}</dt>
-                      <dd className="text-right text-sm text-brand-200">{value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-            </motion.div>
-
-            <PlaceholderPanel
-              title="Last Scan"
-              phase="Phase 5"
-              description="Scan history and last-run timestamps will appear here once scanning is fully wired."
-            />
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <PlaceholderPanel
-              title="Risk Score"
-              phase="Phase 6"
-              description="Asset-level risk scoring based on open findings and criticality weighting."
-            />
-            <PlaceholderPanel
-              title="Recent Findings"
-              phase="Phase 6"
-              description="Latest vulnerabilities discovered on this asset will be listed here."
-            />
-          </div>
-
-          <PlaceholderPanel
-            title="Recent Reports"
-            description="Generated reports that include this asset will appear in a future release."
+          <AssetDashboard
+            overview={overview}
+            projectId={projectId}
+            assetId={assetId}
+            organization={organization}
           />
 
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-panel p-6"
-          >
-            <h2 className="mb-4 text-lg font-semibold text-brand-100">Audit History</h2>
-            {auditLoading ? (
-              <p className="text-sm text-brand-500">Loading audit history...</p>
-            ) : auditLogs.length === 0 ? (
-              <p className="text-sm text-brand-500">No audit events recorded yet.</p>
-            ) : (
-              <ul className="space-y-3">
-                {auditLogs.map((entry) => (
-                  <li
-                    key={entry.id}
-                    className="flex items-start justify-between gap-4 rounded-lg border border-brand-800/50 px-4 py-3"
-                  >
-                    <div>
-                      <p className="font-medium text-brand-100">
-                        {formatAuditAction(entry.action)}
-                      </p>
-                      {entry.details && Object.keys(entry.details).length > 0 && (
-                        <p className="mt-1 text-xs text-brand-500">
-                          {JSON.stringify(entry.details)}
-                        </p>
-                      )}
-                    </div>
-                    <time className="shrink-0 text-xs text-brand-500">
-                      {formatDateTime(entry.created_at)}
-                    </time>
-                  </li>
-                ))}
-              </ul>
+          <div className="glass-panel overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setDetailsOpen((open) => !open)}
+              className="flex w-full items-center justify-between px-6 py-4 text-left"
+            >
+              <span className="text-lg font-semibold text-brand-100">Asset details</span>
+              <ChevronDown
+                size={18}
+                className={`text-brand-500 transition ${detailsOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {detailsOpen && (
+              <div className="space-y-6 border-t border-brand-800/50 px-6 py-6">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <DetailField label="organization">{asset.organization_name ?? "—"}</DetailField>
+                  <DetailField label="project">{asset.project_name ?? project?.name ?? "—"}</DetailField>
+                  <DetailField label="external identifier">
+                    {asset.external_identifier || primaryValue || "—"}
+                  </DetailField>
+                  <DetailField label="business unit">{asset.business_unit || "—"}</DetailField>
+                  <DetailField label="owner">{asset.owner || "—"}</DetailField>
+                  <DetailField label="asset category">
+                    {asset.asset_category
+                      ? (ASSET_CATEGORY_LABELS[asset.asset_category] ?? asset.asset_category)
+                      : "—"}
+                  </DetailField>
+                  <DetailField label="created">{formatDateTime(asset.created_at)}</DetailField>
+                  <DetailField label="updated">{formatDateTime(asset.updated_at)}</DetailField>
+                  <DetailField label="created by">{formatActor(asset.created_by)}</DetailField>
+                </div>
+                {metadataEntries.length > 0 && (
+                  <div>
+                    <h3 className="mb-3 text-sm font-semibold text-brand-200">Type metadata</h3>
+                    <dl className="space-y-3">
+                      {metadataEntries.map(([key, value]) => (
+                        <div
+                          key={key}
+                          className="flex items-start justify-between gap-4 border-b border-brand-800/40 pb-3 last:border-0 last:pb-0"
+                        >
+                          <dt className="terminal-text text-xs text-brand-500">{key}</dt>
+                          <dd className="text-right text-sm text-brand-200">{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                )}
+              </div>
             )}
-          </motion.div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <DetailField label="last scan">{UNAVAILABLE}</DetailField>
-            <DetailField label="risk score">{UNAVAILABLE}</DetailField>
-            <DetailField label="project">{project?.name ?? "—"}</DetailField>
-            <DetailField label="children">{asset.children_count ?? 0}</DetailField>
           </div>
+
+          <AssetRelationshipsPanel projectId={projectId} assetId={assetId} asset={asset} />
         </div>
       ) : null}
     </DashboardShell>

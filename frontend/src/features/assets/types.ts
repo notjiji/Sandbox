@@ -2,20 +2,49 @@ import type {
   AssetCriticality,
   AssetEnvironment,
   AssetFormState,
+  AssetLinkType,
   AssetStatus,
   AssetSummary,
   AssetType,
 } from "@/shared/types/asset";
 
-/** Child asset type → required parent asset type. */
+/** Child asset type → allowed parent asset types. */
+export const ALLOWED_PARENT_TYPES: Partial<Record<AssetType, AssetType[]>> = {
+  public_ip: ["website", "domain"],
+  email_domain: ["domain"],
+  s3_bucket: ["cloud_account"],
+  server: ["public_ip"],
+  windows_server: ["public_ip"],
+  docker_host: ["server", "windows_server"],
+  website: ["docker_host", "server", "domain"],
+  api_endpoint: ["website", "kubernetes_cluster"],
+  kubernetes_cluster: ["cloud_account", "azure_subscription"],
+};
+
+export const REQUIRED_PARENT_TYPES: AssetType[] = [
+  "public_ip",
+  "email_domain",
+  "s3_bucket",
+  "server",
+  "windows_server",
+  "docker_host",
+];
+
+/** @deprecated Use ALLOWED_PARENT_TYPES */
 export const CHILD_PARENT_TYPES: Partial<Record<AssetType, AssetType>> = {
   public_ip: "website",
   email_domain: "domain",
   s3_bucket: "cloud_account",
+  server: "public_ip",
+  windows_server: "public_ip",
+  docker_host: "server",
+  website: "docker_host",
+  api_endpoint: "website",
+  kubernetes_cluster: "cloud_account",
 };
 
-/** Child assets that require a parent. */
-export const CHILD_ASSET_TYPES = Object.keys(CHILD_PARENT_TYPES) as AssetType[];
+/** Child assets that may have a parent. */
+export const CHILD_ASSET_TYPES = Object.keys(ALLOWED_PARENT_TYPES) as AssetType[];
 
 /** Root assets registered directly under a project. */
 export const ROOT_ASSET_TYPES: AssetType[] = [
@@ -44,6 +73,80 @@ export const ASSET_ENVIRONMENTS: AssetEnvironment[] = [
 ];
 
 export const ASSET_CRITICALITIES: AssetCriticality[] = ["critical", "high", "medium", "low"];
+
+export type AssetCategory =
+  | "infrastructure"
+  | "application"
+  | "data"
+  | "network"
+  | "identity"
+  | "endpoint"
+  | "cloud"
+  | "other";
+
+export const ASSET_CATEGORIES: AssetCategory[] = [
+  "infrastructure",
+  "application",
+  "data",
+  "network",
+  "identity",
+  "endpoint",
+  "cloud",
+  "other",
+];
+
+export const ASSET_CATEGORY_LABELS: Record<AssetCategory, string> = {
+  infrastructure: "Infrastructure",
+  application: "Application",
+  data: "Data",
+  network: "Network",
+  identity: "Identity",
+  endpoint: "Endpoint",
+  cloud: "Cloud",
+  other: "Other",
+};
+
+export const DEFAULT_ASSET_CATEGORY_BY_TYPE: Partial<Record<AssetType, AssetCategory>> = {
+  website: "application",
+  api_endpoint: "application",
+  mobile_application: "application",
+  git_repository: "application",
+  domain: "network",
+  public_ip: "network",
+  email_domain: "network",
+  server: "infrastructure",
+  windows_server: "infrastructure",
+  docker_host: "infrastructure",
+  kubernetes_cluster: "infrastructure",
+  cloud_account: "cloud",
+  azure_subscription: "cloud",
+  s3_bucket: "cloud",
+};
+
+export const ASSET_LINK_TYPES: AssetLinkType[] = [
+  "depends_on",
+  "hosts",
+  "runs_on",
+  "exposes",
+  "related",
+];
+
+export const ASSET_LINK_TYPE_LABELS: Record<AssetLinkType, string> = {
+  depends_on: "Depends on",
+  hosts: "Hosts",
+  runs_on: "Runs on",
+  exposes: "Exposes",
+  related: "Related",
+};
+
+export const SCAN_STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  queued: "Queued",
+  running: "Running",
+  completed: "Completed",
+  failed: "Failed",
+  cancelled: "Cancelled",
+};
 
 export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   website: "Website",
@@ -178,6 +281,9 @@ export function assetToFormState(asset: AssetSummary): AssetFormState {
     name: asset.name ?? "",
     description: asset.description ?? "",
     primary_value: primaryKey ? (asset.metadata?.[primaryKey] ?? "") : "",
+    external_identifier: asset.external_identifier ?? "",
+    business_unit: asset.business_unit ?? "",
+    asset_category: asset.asset_category ?? DEFAULT_ASSET_CATEGORY_BY_TYPE[asset.type] ?? "",
     os: asset.metadata?.os ?? "",
     connection_type: asset.metadata?.connection_type ?? "ssh",
     allow_private_ip: false,

@@ -2,10 +2,14 @@ import { apiRequest } from "@/shared/api/client";
 import type {
   AssetListData,
   AssetListQuery,
+  AssetLinkSummary,
+  AssetRelationships,
   AssetSummary,
+  CreateAssetLinkRequest,
   CreateAssetRequest,
   UpdateAssetRequest,
 } from "@/shared/types/asset";
+import type { AssetOverview } from "@/shared/types/asset-overview";
 
 const base = (projectId: string) => `/projects/${projectId}/assets`;
 
@@ -35,6 +39,9 @@ export const assetsApi = {
 
   get: (projectId: string, assetId: string) =>
     apiRequest<AssetSummary>(`${base(projectId)}/${assetId}`, { auth: true }),
+
+  overview: (projectId: string, assetId: string) =>
+    apiRequest<AssetOverview>(`${base(projectId)}/${assetId}/overview`, { auth: true }),
 
   update: (projectId: string, assetId: string, data: UpdateAssetRequest) =>
     apiRequest<AssetSummary>(`${base(projectId)}/${assetId}`, {
@@ -71,4 +78,22 @@ export const assetsApi = {
       `${base(projectId)}/${assetId}/children${toQuery(params)}`,
       { auth: true },
     ),
+
+  relationships: (projectId: string, assetId: string) =>
+    apiRequest<AssetRelationships>(`${base(projectId)}/${assetId}/relationships`, {
+      auth: true,
+    }),
+
+  createLink: (projectId: string, assetId: string, data: CreateAssetLinkRequest) =>
+    apiRequest<AssetLinkSummary>(`${base(projectId)}/${assetId}/links`, {
+      method: "POST",
+      body: data,
+      auth: true,
+    }),
+
+  deleteLink: (projectId: string, assetId: string, linkId: string) =>
+    apiRequest<void>(`${base(projectId)}/${assetId}/links/${linkId}`, {
+      method: "DELETE",
+      auth: true,
+    }),
 };

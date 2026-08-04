@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.assets.enums import (
+    AssetCategory,
     AssetCriticality,
     AssetEnvironment,
     AssetStatus,
@@ -60,7 +61,24 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         default=AssetCriticality.MEDIUM,
     )
     owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    external_identifier: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    business_unit: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    asset_category: Mapped[AssetCategory | None] = mapped_column(
+        Enum(AssetCategory, name="asset_category", native_enum=True),
+        nullable=True,
+    )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_by: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
@@ -76,6 +94,8 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         "Asset", back_populates="parent", cascade="all, delete-orphan"
     )
     creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])
+    updater: Mapped["User | None"] = relationship("User", foreign_keys=[updated_by])
+    archiver: Mapped["User | None"] = relationship("User", foreign_keys=[archived_by])
     metadata_entries: Mapped[list["AssetMetadataEntry"]] = relationship(
         "AssetMetadataEntry",
         back_populates="asset",
@@ -88,6 +108,18 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     scans: Mapped[list["Scan"]] = relationship("Scan", back_populates="asset")
     findings: Mapped[list["Finding"]] = relationship("Finding", back_populates="asset")
+    outbound_links: Mapped[list["AssetLink"]] = relationship(
+        "AssetLink",
+        foreign_keys="AssetLink.source_asset_id",
+        back_populates="source_asset",
+        cascade="all, delete-orphan",
+    )
+    inbound_links: Mapped[list["AssetLink"]] = relationship(
+        "AssetLink",
+        foreign_keys="AssetLink.target_asset_id",
+        back_populates="target_asset",
+        cascade="all, delete-orphan",
+    )
 
 
 class AssetMetadataEntry(Base, UUIDPrimaryKeyMixin, TimestampMixin):

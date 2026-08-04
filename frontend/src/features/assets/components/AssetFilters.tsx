@@ -1,5 +1,7 @@
 import { Search } from "lucide-react";
 import {
+  ASSET_CATEGORIES,
+  ASSET_CATEGORY_LABELS,
   ASSET_CRITICALITIES,
   ASSET_CRITICALITY_LABELS,
   ASSET_ENVIRONMENTS,
@@ -31,11 +33,11 @@ export default function AssetFilters({ filters, onChange }: AssetFiltersProps) {
           value={filters.search}
           onChange={(e) => set("search", e.target.value)}
           className="input-field pl-9"
-          placeholder="Search name, domain, URL, IP, owner, tags, description..."
+          placeholder="Search name, identifier, owner, business unit, tags..."
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <select
           value={filters.type}
           onChange={(e) => set("type", e.target.value)}
@@ -92,6 +94,20 @@ export default function AssetFilters({ filters, onChange }: AssetFiltersProps) {
           {ASSET_CRITICALITIES.map((criticality) => (
             <option key={criticality} value={criticality}>
               {ASSET_CRITICALITY_LABELS[criticality]}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.asset_category}
+          onChange={(e) => set("asset_category", e.target.value)}
+          className="input-field"
+          aria-label="Filter by category"
+        >
+          <option value="">All categories</option>
+          {ASSET_CATEGORIES.map((category) => (
+            <option key={category} value={category}>
+              {ASSET_CATEGORY_LABELS[category]}
             </option>
           ))}
         </select>

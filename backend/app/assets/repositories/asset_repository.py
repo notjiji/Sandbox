@@ -4,6 +4,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.assets.enums import (
+    AssetCategory,
     AssetCriticality,
     AssetEnvironment,
     AssetStatus,
@@ -17,6 +18,11 @@ def _asset_query(db: Session, *, include_deleted: bool = False):
         joinedload(Asset.metadata_entries),
         joinedload(Asset.tags),
         joinedload(Asset.parent),
+        joinedload(Asset.organization),
+        joinedload(Asset.project),
+        joinedload(Asset.creator),
+        joinedload(Asset.updater),
+        joinedload(Asset.archiver),
     )
     if not include_deleted:
         query = query.filter(Asset.deleted_at.is_(None))
@@ -30,6 +36,7 @@ def _apply_list_filters(
     asset_type: AssetType | None = None,
     criticality: AssetCriticality | None = None,
     environment: AssetEnvironment | None = None,
+    asset_category: AssetCategory | None = None,
     search: str | None = None,
 ):
     if status == AssetStatus.DELETED:
@@ -45,6 +52,8 @@ def _apply_list_filters(
         query = query.filter(Asset.criticality == criticality)
     if environment is not None:
         query = query.filter(Asset.environment == environment)
+    if asset_category is not None:
+        query = query.filter(Asset.asset_category == asset_category)
 
     if search and search.strip():
         term = f"%{search.strip()}%"
@@ -56,6 +65,8 @@ def _apply_list_filters(
                     Asset.name.ilike(term),
                     Asset.description.ilike(term),
                     Asset.owner.ilike(term),
+                    Asset.external_identifier.ilike(term),
+                    Asset.business_unit.ilike(term),
                     AssetTag.tag.ilike(term),
                     AssetMetadataEntry.value.ilike(term),
                 )
@@ -75,6 +86,7 @@ def list_assets_for_project(
     asset_type: AssetType | None = None,
     criticality: AssetCriticality | None = None,
     environment: AssetEnvironment | None = None,
+    asset_category: AssetCategory | None = None,
     search: str | None = None,
     roots_only: bool = False,
     parent_id: uuid.UUID | None = None,
@@ -91,6 +103,7 @@ def list_assets_for_project(
         asset_type=asset_type,
         criticality=criticality,
         environment=environment,
+        asset_category=asset_category,
         search=search,
     )
 
@@ -136,6 +149,7 @@ def list_child_assets(
     asset_type: AssetType | None = None,
     criticality: AssetCriticality | None = None,
     environment: AssetEnvironment | None = None,
+    asset_category: AssetCategory | None = None,
     search: str | None = None,
 ) -> list[Asset]:
     query = _asset_query(db, include_deleted=status == AssetStatus.DELETED).filter(
@@ -147,6 +161,7 @@ def list_child_assets(
         asset_type=asset_type,
         criticality=criticality,
         environment=environment,
+        asset_category=asset_category,
         search=search,
     )
     return query.order_by(Asset.created_at.asc()).all()
@@ -193,6 +208,9 @@ def create_asset(
     environment: AssetEnvironment = AssetEnvironment.PRODUCTION,
     criticality: AssetCriticality = AssetCriticality.MEDIUM,
     owner: str | None = None,
+    external_identifier: str | None = None,
+    business_unit: str | None = None,
+    asset_category: AssetCategory | None = None,
     created_by: uuid.UUID | None = None,
 ) -> Asset:
     asset = Asset(
@@ -206,6 +224,9 @@ def create_asset(
         environment=environment,
         criticality=criticality,
         owner=owner,
+        external_identifier=external_identifier,
+        business_unit=business_unit,
+        asset_category=asset_category,
         created_by=created_by,
     )
     db.add(asset)
@@ -224,6 +245,10 @@ def update_asset(
     environment: AssetEnvironment | None = None,
     criticality: AssetCriticality | None = None,
     owner: str | None = None,
+    external_identifier: str | None = None,
+    business_unit: str | None = None,
+    asset_category: AssetCategory | None = None,
+    updated_by: uuid.UUID | None = None,
     parent_id: uuid.UUID | None = None,
     clear_parent: bool = False,
 ) -> Asset:
@@ -241,6 +266,14 @@ def update_asset(
         asset.criticality = criticality
     if owner is not None:
         asset.owner = owner
+    if external_identifier is not None:
+        asset.external_identifier = external_identifier or None
+    if business_unit is not None:
+        asset.business_unit = business_unit or None
+    if asset_category is not None:
+        asset.asset_category = asset_category
+    if updated_by is not None:
+        asset.updated_by = updated_by
     if clear_parent:
         asset.parent_id = None
     elif parent_id is not None:
@@ -250,8 +283,17 @@ def update_asset(
     return asset
 
 
-def archive_asset(db: Session, asset: Asset) -> Asset:
+def archive_asset(
+    db: Session,
+    asset: Asset,
+    *,
+    archived_by: uuid.UUID | None = None,
+) -> Asset:
+    from datetime import datetime, timezone
+
     asset.status = AssetStatus.ARCHIVED
+    asset.archived_at = datetime.now(timezone.utc)
+    asset.archived_by = archived_by
     db.add(asset)
     db.flush()
     return asset
@@ -260,6 +302,8 @@ def archive_asset(db: Session, asset: Asset) -> Asset:
 def restore_asset(db: Session, asset: Asset) -> Asset:
     asset.status = AssetStatus.ACTIVE
     asset.deleted_at = None
+    asset.archived_at = None
+    asset.archived_by = None
     db.add(asset)
     db.flush()
     return asset

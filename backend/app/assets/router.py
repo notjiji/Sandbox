@@ -5,9 +5,10 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
-from app.assets.enums import AssetCriticality, AssetEnvironment, AssetStatus, AssetType
+from app.assets.enums import AssetCategory, AssetCriticality, AssetEnvironment, AssetStatus, AssetType
 from app.assets.permissions import ASSET_CREATE, ASSET_DELETE, ASSET_READ, ASSET_UPDATE
-from app.assets.schemas import AssetListQuery, CreateAssetRequest, UpdateAssetRequest
+from app.assets.services.relationship_service import asset_relationship_service
+from app.assets.services.overview_service import get_asset_overview
 from app.assets.services import (
     archive_project_asset,
     create_project_asset,
@@ -19,6 +20,7 @@ from app.assets.services import (
     restore_project_asset,
     update_project_asset,
 )
+from app.assets.schemas import AssetListQuery, CreateAssetLinkRequest, CreateAssetRequest, UpdateAssetRequest
 from app.core.database import get_db
 from app.core.responses import success_response
 from app.members.models import OrganizationMember
@@ -38,6 +40,7 @@ def list_assets(
     asset_type: AssetType | None = Query(None, alias="type"),
     criticality: AssetCriticality | None = None,
     environment: AssetEnvironment | None = None,
+    asset_category: AssetCategory | None = None,
     search: str | None = Query(None, max_length=255),
     roots_only: bool = Query(False),
     parent_id: str | None = None,
@@ -55,6 +58,7 @@ def list_assets(
             type=asset_type,
             criticality=criticality,
             environment=environment,
+            asset_category=asset_category,
             search=search,
             roots_only=roots_only,
             parent_id=parent_id,
@@ -82,6 +86,7 @@ def list_asset_children(
     asset_type: AssetType | None = Query(None, alias="type"),
     criticality: AssetCriticality | None = None,
     environment: AssetEnvironment | None = None,
+    asset_category: AssetCategory | None = None,
     search: str | None = Query(None, max_length=255),
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
@@ -96,10 +101,79 @@ def list_asset_children(
             type=asset_type,
             criticality=criticality,
             environment=environment,
+            asset_category=asset_category,
             search=search,
         ),
     )
     return success_response(data=result.model_dump(mode="json"))
+
+
+@router.get("/{asset_id}/overview")
+def get_asset_overview_route(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    result = get_asset_overview(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+    )
+    return success_response(data=result.model_dump(mode="json"))
+
+
+@router.get("/{asset_id}/relationships")
+def get_asset_relationships(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    result = asset_relationship_service.get_relationships(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+    )
+    return success_response(data=result.model_dump(mode="json"))
+
+
+@router.post("/{asset_id}/links", status_code=201)
+def create_asset_link(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    body: CreateAssetLinkRequest,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_UPDATE)),
+) -> JSONResponse:
+    link = asset_relationship_service.create_link(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+        body=body,
+    )
+    return success_response(data=link.model_dump(mode="json"), status_code=201)
+
+
+@router.delete("/{asset_id}/links/{link_id}", status_code=200)
+def delete_asset_link(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    link_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_UPDATE)),
+) -> JSONResponse:
+    asset_relationship_service.delete_link(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+        link_id=link_id,
+    )
+    return success_response(data={"message": "Asset link removed"})
 
 
 @router.get("/{asset_id}/audit-history")

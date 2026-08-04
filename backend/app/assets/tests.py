@@ -26,16 +26,30 @@ def test_asset_hierarchy_validation() -> None:
     from app.core.exceptions import ValidationAppError
 
     validate_hierarchy(AssetType.WEBSITE, None)
+    validate_hierarchy(AssetType.DOMAIN, None)
     validate_hierarchy(AssetType.CLOUD_ACCOUNT, None)
     validate_hierarchy(AssetType.PUBLIC_IP, "00000000-0000-4000-8000-000000000001")
     validate_hierarchy(AssetType.EMAIL_DOMAIN, "00000000-0000-4000-8000-000000000002")
     validate_hierarchy(AssetType.S3_BUCKET, "00000000-0000-4000-8000-000000000003")
+    validate_hierarchy(AssetType.SERVER, "00000000-0000-4000-8000-000000000004")
+    validate_hierarchy(AssetType.DOCKER_HOST, "00000000-0000-4000-8000-000000000005")
+    validate_hierarchy(AssetType.WEBSITE, "00000000-0000-4000-8000-000000000006")
 
     validate_parent_type(AssetType.PUBLIC_IP, AssetType.WEBSITE)
+    validate_parent_type(AssetType.PUBLIC_IP, AssetType.DOMAIN)
     validate_parent_type(AssetType.EMAIL_DOMAIN, AssetType.DOMAIN)
     validate_parent_type(AssetType.S3_BUCKET, AssetType.CLOUD_ACCOUNT)
+    validate_parent_type(AssetType.SERVER, AssetType.PUBLIC_IP)
+    validate_parent_type(AssetType.DOCKER_HOST, AssetType.SERVER)
+    validate_parent_type(AssetType.WEBSITE, AssetType.DOCKER_HOST)
 
-    for child_type in (AssetType.PUBLIC_IP, AssetType.EMAIL_DOMAIN, AssetType.S3_BUCKET):
+    for child_type in (
+        AssetType.PUBLIC_IP,
+        AssetType.EMAIL_DOMAIN,
+        AssetType.S3_BUCKET,
+        AssetType.SERVER,
+        AssetType.DOCKER_HOST,
+    ):
         try:
             validate_hierarchy(child_type, None)
             raise AssertionError("expected ValidationAppError")
@@ -43,13 +57,19 @@ def test_asset_hierarchy_validation() -> None:
             pass
 
     try:
-        validate_hierarchy(AssetType.WEBSITE, "00000000-0000-4000-8000-000000000001")
+        validate_hierarchy(AssetType.DOMAIN, "00000000-0000-4000-8000-000000000001")
         raise AssertionError("expected ValidationAppError")
     except ValidationAppError:
         pass
 
     try:
-        validate_parent_type(AssetType.PUBLIC_IP, AssetType.DOMAIN)
+        validate_parent_type(AssetType.PUBLIC_IP, AssetType.SERVER)
+        raise AssertionError("expected ValidationAppError")
+    except ValidationAppError:
+        pass
+
+    try:
+        validate_parent_type(AssetType.SERVER, AssetType.DOMAIN)
         raise AssertionError("expected ValidationAppError")
     except ValidationAppError:
         pass

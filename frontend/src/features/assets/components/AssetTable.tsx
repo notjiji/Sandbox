@@ -14,7 +14,7 @@ import {
   isChildAsset,
   orderAssetsHierarchically,
 } from "../utils/hierarchy";
-import { UNAVAILABLE } from "../utils";
+import { formatDateTime, formatRiskScore, UNAVAILABLE } from "../utils";
 
 type ViewMode = "tree" | "flat";
 
@@ -158,8 +158,12 @@ function AssetDataRow({
         <AssetStatusBadge status={asset.status} />
       </td>
       <td className="px-4 py-3 text-brand-300">{asset.owner || "—"}</td>
-      <td className="px-4 py-3 text-brand-500">{UNAVAILABLE}</td>
-      <td className="px-4 py-3 text-brand-500">{UNAVAILABLE}</td>
+      <td className="px-4 py-3 text-brand-300">
+        {asset.last_scan_at ? formatDateTime(asset.last_scan_at) : UNAVAILABLE}
+      </td>
+      <td className="px-4 py-3 text-brand-300">
+        {formatRiskScore(asset.current_risk_score ?? null)}
+      </td>
     </tr>
   );
 }

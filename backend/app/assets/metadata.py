@@ -39,6 +39,23 @@ def metadata_to_dict(entries: list[AssetMetadataEntry]) -> dict[str, str]:
     return {entry.key: entry.value for entry in entries}
 
 
+def resolve_external_identifier(
+    asset_type: AssetType,
+    metadata: dict[str, str],
+    *,
+    explicit: str | None = None,
+    fallback_name: str | None = None,
+) -> str | None:
+    if explicit and explicit.strip():
+        return explicit.strip()
+    primary_key = PRIMARY_METADATA_KEYS.get(asset_type)
+    if primary_key and metadata.get(primary_key):
+        return metadata[primary_key].strip()
+    if fallback_name:
+        return fallback_name.strip()
+    return None
+
+
 def resolve_primary_value(asset: Asset, metadata: dict[str, str]) -> str:
     """Return the primary scan identifier from metadata, falling back to name."""
     primary_key = PRIMARY_METADATA_KEYS.get(asset.type)

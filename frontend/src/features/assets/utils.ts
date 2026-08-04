@@ -19,6 +19,23 @@ export function formatDateTime(value: string | null | undefined): string {
   return new Date(value).toLocaleString();
 }
 
+export function formatActor(actor: { name?: string | null; email?: string | null } | null | undefined): string {
+  if (!actor) return "—";
+  if (actor.name?.trim()) return actor.name.trim();
+  if (actor.email?.trim()) return actor.email.trim();
+  return "—";
+}
+
+export function formatRiskScore(score: number | null | undefined): string {
+  if (score == null || Number.isNaN(score)) return UNAVAILABLE;
+  return score.toFixed(1);
+}
+
+export function formatCount(value: number | null | undefined): string {
+  if (value == null) return "0";
+  return String(value);
+}
+
 export function criticalityClass(criticality: AssetCriticality | string): string {
   switch (criticality) {
     case "critical":

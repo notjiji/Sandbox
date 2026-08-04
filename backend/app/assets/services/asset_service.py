@@ -5,14 +5,18 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.assets.enums import (
+    DEFAULT_ASSET_CATEGORY_BY_TYPE,
+    OPTIONAL_PARENT_TYPES,
+    PARENT_ASSET_TYPES,
+    PURE_ROOT_TYPES,
+    REQUIRED_PARENT_TYPES,
     AssetType,
     CHILD_ASSET_TYPES,
-    PARENT_ASSET_TYPES,
     ROOT_ASSET_TYPES,
 )
 from app.assets.events import AssetAuditAction
 from app.assets.adapter import asset_adapter
-from app.assets.metadata import metadata_to_dict
+from app.assets.metadata import metadata_to_dict, resolve_external_identifier
 from app.assets.models import Asset
 from app.assets.repositories.asset_repository import (
     archive_asset,
@@ -27,6 +31,7 @@ from app.assets.repositories.asset_repository import (
     upsert_metadata_entries,
 )
 from app.assets.schemas import (
+    AssetActorSummary,
     AssetChildrenResponse,
     AssetListQuery,
     AssetListResponse,
@@ -35,6 +40,7 @@ from app.assets.schemas import (
     NormalizedScanTarget,
     UpdateAssetRequest,
 )
+from app.assets.services.asset_enrichment import AssetSecurityStats, load_security_stats_batch
 from app.assets.validators import (
     parse_parent_id,
     require_active_project,
@@ -54,32 +60,94 @@ from app.audit.service import record_audit_event
 from app.core.exceptions import NotFoundError
 from app.members.models import OrganizationMember
 from app.plugins.base import ScanTarget
+from app.users.models import User
+
+
+def _user_to_actor(user: User | None) -> AssetActorSummary | None:
+    if not user:
+        return None
+    name = f"{user.first_name} {user.last_name}".strip()
+    return AssetActorSummary(
+        id=str(user.id),
+        name=name or None,
+        email=user.email,
+    )
 
 
 class AssetService:
     """Owns everything related to digital assets within a project."""
 
-    def to_summary(self, asset: Asset, *, children_count: int = 0) -> AssetSummary:
+    def to_summary(
+        self,
+        asset: Asset,
+        *,
+        children_count: int = 0,
+        security: AssetSecurityStats | None = None,
+    ) -> AssetSummary:
         metadata = metadata_to_dict(asset.metadata_entries)
         tags = [entry.tag for entry in asset.tags]
+        security = security or AssetSecurityStats()
         return AssetSummary(
             id=str(asset.id),
             organization_id=str(asset.organization_id),
+            organization_name=asset.organization.name if asset.organization else None,
             project_id=str(asset.project_id),
+            project_name=asset.project.name if asset.project else None,
             parent_id=str(asset.parent_id) if asset.parent_id else None,
             parent_name=asset.parent.name if asset.parent else None,
             name=asset.name,
             description=asset.description,
             type=asset.type,
+            external_identifier=asset.external_identifier,
             status=asset.status,
             environment=asset.environment,
             criticality=asset.criticality,
+            business_unit=asset.business_unit,
             owner=asset.owner,
+            asset_category=asset.asset_category,
             metadata=metadata,
             tags=tags,
-            created_by=str(asset.created_by) if asset.created_by else None,
             children_count=children_count,
+            current_risk_score=security.current_risk_score,
+            security_grade=security.security_grade,
+            last_scan_at=security.last_scan_at,
+            last_successful_scan_at=security.last_successful_scan_at,
+            last_scan_status=security.last_scan_status,
+            findings_count=security.findings_count,
+            critical_findings_count=security.critical_findings_count,
+            created_at=asset.created_at,
+            updated_at=asset.updated_at,
+            archived_at=asset.archived_at,
+            archived_by=_user_to_actor(asset.archiver),
+            created_by=_user_to_actor(asset.creator),
+            last_modified_by=_user_to_actor(asset.updater),
         )
+
+    def _summaries_for_assets(
+        self,
+        db: Session,
+        assets: list[Asset],
+        *,
+        child_counts: dict[uuid.UUID, int] | None = None,
+    ) -> list[AssetSummary]:
+        if not assets:
+            return []
+        organization_id = assets[0].organization_id
+        asset_ids = [asset.id for asset in assets]
+        security_by_asset = load_security_stats_batch(
+            db,
+            organization_id=organization_id,
+            asset_ids=asset_ids,
+        )
+        child_counts = child_counts or {}
+        return [
+            self.to_summary(
+                asset,
+                children_count=child_counts.get(asset.id, 0),
+                security=security_by_asset.get(asset.id),
+            )
+            for asset in assets
+        ]
 
     def list_for_project(
         self,
@@ -101,6 +169,7 @@ class AssetService:
             asset_type=params.type,
             criticality=params.criticality,
             environment=params.environment,
+            asset_category=params.asset_category,
             search=params.search,
             roots_only=params.roots_only,
             parent_id=parent_uuid,
@@ -110,10 +179,7 @@ class AssetService:
             for asset in assets
             if asset.type in PARENT_ASSET_TYPES
         }
-        items = [
-            self.to_summary(asset, children_count=child_counts.get(asset.id, 0))
-            for asset in assets
-        ]
+        items = self._summaries_for_assets(db, assets, child_counts=child_counts)
         return AssetListResponse(
             items=items,
             total=total,
@@ -143,9 +209,10 @@ class AssetService:
             asset_type=params.type,
             criticality=params.criticality,
             environment=params.environment,
+            asset_category=params.asset_category,
             search=params.search,
         )
-        items = [self.to_summary(child) for child in children]
+        items = self._summaries_for_assets(db, children)
         return AssetChildrenResponse(items=items, total=len(items))
 
     def get_for_project(
@@ -166,7 +233,12 @@ class AssetService:
         children_count = 0
         if asset.type in PARENT_ASSET_TYPES:
             children_count = len(list_child_assets(db, parent_id=asset.id))
-        return self.to_summary(asset, children_count=children_count)
+        security = load_security_stats_batch(
+            db,
+            organization_id=asset.organization_id,
+            asset_ids=[asset.id],
+        ).get(asset.id)
+        return self.to_summary(asset, children_count=children_count, security=security)
 
     def create_for_project(
         self,
@@ -179,6 +251,7 @@ class AssetService:
         validate_create_payload(body)
         project = require_active_project(db, membership, project_id)
         parent_id = self._resolve_parent(db, project_id=project_id, body=body)
+        asset_category = body.asset_category or DEFAULT_ASSET_CATEGORY_BY_TYPE.get(body.type)
 
         asset = create_asset(
             db,
@@ -192,9 +265,24 @@ class AssetService:
             environment=body.environment,
             criticality=body.criticality,
             owner=body.owner,
+            external_identifier=body.external_identifier,
+            business_unit=body.business_unit,
+            asset_category=asset_category,
             created_by=membership.user_id,
         )
         upsert_metadata_entries(db, asset_id=asset.id, metadata=body.metadata)
+        if not asset.external_identifier:
+            metadata = metadata_to_dict(asset.metadata_entries)
+            external_id = resolve_external_identifier(
+                body.type,
+                metadata,
+                explicit=body.external_identifier,
+                fallback_name=body.name,
+            )
+            if external_id:
+                asset.external_identifier = external_id
+                db.add(asset)
+                db.flush()
         replace_tags(db, asset_id=asset.id, tags=body.tags)
         self._record_event(
             db,
@@ -235,15 +323,26 @@ class AssetService:
 
         parent_uuid = None
         clear_parent = False
-        if next_type in ROOT_ASSET_TYPES:
+        if next_type in PURE_ROOT_TYPES:
             clear_parent = True
-        elif body.parent_id is not None:
+        elif next_type in REQUIRED_PARENT_TYPES:
+            resolved_parent = body.parent_id if body.parent_id is not None else next_parent_id
             parent_uuid = self._resolve_parent_id(
                 db,
                 project_id=project_id,
                 child_type=next_type,
-                parent_id=body.parent_id,
+                parent_id=resolved_parent,
             )
+        elif next_type in OPTIONAL_PARENT_TYPES:
+            if body.parent_id is not None:
+                parent_uuid = self._resolve_parent_id(
+                    db,
+                    project_id=project_id,
+                    child_type=next_type,
+                    parent_id=body.parent_id,
+                )
+        else:
+            clear_parent = True
 
         update_asset(
             db,
@@ -255,11 +354,25 @@ class AssetService:
             environment=body.environment,
             criticality=body.criticality,
             owner=body.owner,
+            external_identifier=body.external_identifier,
+            business_unit=body.business_unit,
+            asset_category=body.asset_category,
+            updated_by=membership.user_id,
             parent_id=parent_uuid,
             clear_parent=clear_parent,
         )
         if body.metadata is not None:
             upsert_metadata_entries(db, asset_id=asset.id, metadata=body.metadata)
+        if body.external_identifier is None and body.metadata is not None:
+            metadata = metadata_to_dict(asset.metadata_entries)
+            external_id = resolve_external_identifier(
+                next_type,
+                metadata,
+                fallback_name=asset.name,
+            )
+            asset.external_identifier = external_id
+            db.add(asset)
+            db.flush()
         if body.tags is not None:
             replace_tags(db, asset_id=asset.id, tags=body.tags)
         self._record_event(
@@ -303,7 +416,7 @@ class AssetService:
     ) -> AssetSummary:
         asset = self._get_asset_entity(db, membership, project_id=project_id, asset_id=asset_id)
         validate_archivable(asset)
-        archive_asset(db, asset)
+        archive_asset(db, asset, archived_by=membership.user_id)
         self._record_event(
             db,
             membership,
@@ -442,6 +555,10 @@ class AssetService:
         project_id: uuid.UUID,
         body: CreateAssetRequest,
     ) -> uuid.UUID | None:
+        if body.type in PURE_ROOT_TYPES:
+            return None
+        if body.type in OPTIONAL_PARENT_TYPES and not body.parent_id:
+            return None
         if body.type not in CHILD_ASSET_TYPES:
             return None
         parent_id = self._resolve_parent_id(

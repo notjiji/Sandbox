@@ -4,6 +4,7 @@ import DashboardShell from "@/features/organizations/components/DashboardShell";
 import FormAlert from "@/shared/components/FormAlert";
 import { ApiError } from "@/shared/api/client";
 import type {
+  AssetCategory,
   AssetCriticality,
   AssetEnvironment,
   AssetListQuery,
@@ -31,6 +32,7 @@ const DEFAULT_FILTERS: AssetFiltersState = {
   status: "",
   environment: "",
   criticality: "",
+  asset_category: "",
 };
 
 type ViewMode = "tree" | "flat";
@@ -61,6 +63,7 @@ export default function Assets() {
     if (filters.status) result.status = filters.status as AssetStatus;
     if (filters.environment) result.environment = filters.environment as AssetEnvironment;
     if (filters.criticality) result.criticality = filters.criticality as AssetCriticality;
+    if (filters.asset_category) result.asset_category = filters.asset_category as AssetCategory;
     return result;
   }, [filters, page, pageSize, effectiveMode]);
 
@@ -69,8 +72,9 @@ export default function Assets() {
     if (filters.status) result.status = filters.status as AssetStatus;
     if (filters.environment) result.environment = filters.environment as AssetEnvironment;
     if (filters.criticality) result.criticality = filters.criticality as AssetCriticality;
+    if (filters.asset_category) result.asset_category = filters.asset_category as AssetCategory;
     return result;
-  }, [filters.status, filters.environment, filters.criticality]);
+  }, [filters.status, filters.environment, filters.criticality, filters.asset_category]);
 
   const { assets, total, loading, error } = useProjectAssets(projectId, query);
 

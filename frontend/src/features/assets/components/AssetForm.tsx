@@ -15,6 +15,9 @@ import type {
 } from "@/shared/types/asset";
 import { assetsApi } from "../api";
 import {
+  ALLOWED_PARENT_TYPES,
+  ASSET_CATEGORIES,
+  ASSET_CATEGORY_LABELS,
   ASSET_CRITICALITIES,
   ASSET_CRITICALITY_LABELS,
   ASSET_ENVIRONMENTS,
@@ -23,9 +26,10 @@ import {
   ASSET_TYPE_GROUPS,
   ASSET_TYPE_LABELS,
   CHILD_ASSET_TYPES,
-  CHILD_PARENT_TYPES,
+  DEFAULT_ASSET_CATEGORY_BY_TYPE,
   METADATA_PLACEHOLDERS,
   PRIMARY_METADATA_KEYS,
+  REQUIRED_PARENT_TYPES,
   SERVER_CONNECTION_TYPES,
   SERVER_CONNECTION_TYPE_LABELS,
   assetToFormState,
@@ -39,6 +43,9 @@ const EMPTY_FORM: AssetFormState = {
   name: "",
   description: "",
   primary_value: "",
+  external_identifier: "",
+  business_unit: "",
+  asset_category: "",
   os: "",
   connection_type: "ssh",
   allow_private_ip: false,
@@ -87,17 +94,21 @@ export default function AssetForm({
     }
   }, [mode, asset]);
 
-  const isChildType = CHILD_ASSET_TYPES.includes(form.type);
+  const allowedParentTypes = ALLOWED_PARENT_TYPES[form.type] ?? [];
+  const showParentPicker = allowedParentTypes.length > 0;
+  const requiresParent = REQUIRED_PARENT_TYPES.includes(form.type);
   const isPublicIpType = form.type === "public_ip";
   const needsOsFields = typeNeedsOsFields(form.type);
-  const requiredParentType = CHILD_PARENT_TYPES[form.type];
   const primaryMetadataKey = PRIMARY_METADATA_KEYS[form.type];
   const isEdit = mode === "edit";
   const showStatusField = !isEdit || EDITABLE_STATUSES.includes(form.status);
 
   const parentOptions = useMemo(
-    () => parentAssets.filter((item) => item.type === requiredParentType && item.id !== assetId),
-    [parentAssets, requiredParentType, assetId],
+    () =>
+      parentAssets.filter(
+        (item) => allowedParentTypes.includes(item.type) && item.id !== assetId,
+      ),
+    [parentAssets, allowedParentTypes, assetId],
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,12 +117,12 @@ export default function AssetForm({
       setErrors({ name: "Asset name is required" });
       return;
     }
-    if (isChildType && !form.parent_id) {
-      const parentLabel = requiredParentType
-        ? (ASSET_TYPE_LABELS[requiredParentType]?.toLowerCase() ?? requiredParentType)
-        : "parent";
+    if (requiresParent && !form.parent_id) {
+      const parentLabels = allowedParentTypes
+        .map((type) => ASSET_TYPE_LABELS[type]?.toLowerCase() ?? type)
+        .join(" or ");
       setErrors({
-        parent_id: `Select a parent ${parentLabel}`,
+        parent_id: `Select a parent ${parentLabels}`,
       });
       return;
     }
@@ -138,10 +149,13 @@ export default function AssetForm({
         environment: form.environment,
         criticality: form.criticality,
         owner: form.owner.trim() || undefined,
+        external_identifier: form.external_identifier.trim() || undefined,
+        business_unit: form.business_unit.trim() || undefined,
+        asset_category: form.asset_category || undefined,
         metadata: buildMetadataPayload(form.type, form.primary_value, extraMetadata),
         tags,
         allow_private_ip: isPublicIpType ? form.allow_private_ip : false,
-        parent_id: isChildType ? form.parent_id : undefined,
+        parent_id: showParentPicker && form.parent_id ? form.parent_id : undefined,
       };
       if (showStatusField) {
         payload.status = form.status;
@@ -187,6 +201,8 @@ export default function AssetForm({
             setForm((prev) => ({
               ...prev,
               type: e.target.value as AssetType,
+              asset_category:
+                DEFAULT_ASSET_CATEGORY_BY_TYPE[e.target.value as AssetType] ?? prev.asset_category,
               parent_id: CHILD_ASSET_TYPES.includes(e.target.value as AssetType)
                 ? prev.parent_id
                 : "",
@@ -206,10 +222,10 @@ export default function AssetForm({
         </select>
       </div>
 
-      {isChildType && requiredParentType && (
+      {showParentPicker && (
         <div>
           <label htmlFor="parent_id" className="terminal-text mb-2 block">
-            parent {ASSET_TYPE_LABELS[requiredParentType]?.toLowerCase() ?? requiredParentType}
+            parent asset{requiresParent ? "" : " (optional)"}
           </label>
           <select
             id="parent_id"
@@ -218,11 +234,13 @@ export default function AssetForm({
             className="input-field"
           >
             <option value="">
-              Select {ASSET_TYPE_LABELS[requiredParentType]?.toLowerCase() ?? requiredParentType}...
+              {requiresParent
+                ? `Select ${allowedParentTypes.map((type) => ASSET_TYPE_LABELS[type]?.toLowerCase() ?? type).join(" or ")}...`
+                : "No parent"}
             </option>
             {parentOptions.map((parent) => (
               <option key={parent.id} value={parent.id}>
-                {parent.name}
+                {parent.name} ({ASSET_TYPE_LABELS[parent.type]})
               </option>
             ))}
           </select>
@@ -391,6 +409,32 @@ export default function AssetForm({
           </select>
         </div>
         <div>
+          <label htmlFor="asset_category" className="terminal-text mb-2 block">
+            asset category
+          </label>
+          <select
+            id="asset_category"
+            value={form.asset_category}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                asset_category: e.target.value as AssetFormState["asset_category"],
+              }))
+            }
+            className="input-field"
+          >
+            <option value="">Auto (from type)</option>
+            {ASSET_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {ASSET_CATEGORY_LABELS[category]}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
           <label htmlFor="owner" className="terminal-text mb-2 block">
             owner
           </label>
@@ -402,6 +446,31 @@ export default function AssetForm({
             placeholder="Infrastructure Team"
           />
         </div>
+        <div>
+          <label htmlFor="business_unit" className="terminal-text mb-2 block">
+            business unit
+          </label>
+          <input
+            id="business_unit"
+            value={form.business_unit}
+            onChange={(e) => setForm((prev) => ({ ...prev, business_unit: e.target.value }))}
+            className="input-field"
+            placeholder="Platform Engineering"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor="external_identifier" className="terminal-text mb-2 block">
+          external identifier
+        </label>
+        <input
+          id="external_identifier"
+          value={form.external_identifier}
+          onChange={(e) => setForm((prev) => ({ ...prev, external_identifier: e.target.value }))}
+          className="input-field"
+          placeholder="CMDB-12345 or leave blank to derive from primary value"
+        />
       </div>
 
       <div>

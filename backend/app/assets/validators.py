@@ -1,8 +1,15 @@
 import uuid
 
-from app.assets.enums import AssetStatus, AssetType, CHILD_ASSET_TYPES, CHILD_PARENT_MAP, ROOT_ASSET_TYPES
-from app.assets.models import Asset
+from app.assets.enums import (
+    ALLOWED_PARENT_TYPES,
+    AssetStatus,
+    AssetType,
+    OPTIONAL_PARENT_TYPES,
+    PURE_ROOT_TYPES,
+    REQUIRED_PARENT_TYPES,
+)
 from app.assets.schemas import CreateAssetRequest, UpdateAssetRequest
+from app.assets.models import Asset
 from app.assets.type_validators import validate_asset_metadata
 from app.core.exceptions import ValidationAppError
 from app.projects.validators import require_active_project
@@ -57,26 +64,33 @@ def validate_asset_metadata_for_update(
 
 
 def validate_hierarchy(asset_type: AssetType, parent_id: str | None) -> None:
-    if asset_type in ROOT_ASSET_TYPES:
+    if asset_type in PURE_ROOT_TYPES:
         if parent_id:
             raise ValidationAppError(f"{asset_type.value} assets cannot have a parent")
         return
 
-    if asset_type in CHILD_ASSET_TYPES:
+    if asset_type in REQUIRED_PARENT_TYPES:
         if not parent_id:
             raise ValidationAppError(f"{asset_type.value} assets require a parent asset")
         return
 
-    raise ValidationAppError(f"Unsupported asset type: {asset_type.value}")
+    if asset_type in OPTIONAL_PARENT_TYPES:
+        if parent_id:
+            return
+        return
+
+    if parent_id:
+        raise ValidationAppError(f"{asset_type.value} assets cannot have a parent")
 
 
 def validate_parent_type(child_type: AssetType, parent_type: AssetType) -> None:
-    expected = CHILD_PARENT_MAP.get(child_type)
-    if expected is None:
+    allowed = ALLOWED_PARENT_TYPES.get(child_type)
+    if allowed is None:
         raise ValidationAppError(f"{child_type.value} does not support a parent asset")
-    if parent_type != expected:
+    if parent_type not in allowed:
+        allowed_labels = ", ".join(sorted(t.value.replace("_", " ") for t in allowed))
         raise ValidationAppError(
-            f"{child_type.value} assets must belong to a {expected.value.replace('_', ' ')}"
+            f"{child_type.value} assets must belong to one of: {allowed_labels}"
         )
 
 

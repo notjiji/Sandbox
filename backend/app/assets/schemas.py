@@ -1,31 +1,64 @@
+from datetime import datetime
+
 from pydantic import Field
 
 from app.assets.enums import (
+    AssetCategory,
     AssetCriticality,
     AssetEnvironment,
+    AssetLinkType,
     AssetStatus,
     AssetType,
 )
+from app.scans.enums import ScanStatus
 from app.shared.schemas.base import BaseSchema
+
+
+class AssetActorSummary(BaseSchema):
+    id: str | None = None
+    name: str | None = None
+    email: str | None = None
 
 
 class AssetSummary(BaseSchema):
     id: str
     organization_id: str
+    organization_name: str | None = None
     project_id: str
+    project_name: str | None = None
     parent_id: str | None = None
     parent_name: str | None = None
+
     name: str
-    description: str | None = None
     type: AssetType
-    status: AssetStatus
-    environment: AssetEnvironment
+    description: str | None = None
+    external_identifier: str | None = None
+
     criticality: AssetCriticality
+    business_unit: str | None = None
+    environment: AssetEnvironment
     owner: str | None = None
+    asset_category: AssetCategory | None = None
+
+    status: AssetStatus
     metadata: dict[str, str] = Field(default_factory=dict)
     tags: list[str] = Field(default_factory=list)
-    created_by: str | None = None
     children_count: int = 0
+
+    current_risk_score: float | None = None
+    security_grade: str | None = None
+    last_scan_at: datetime | None = None
+    last_successful_scan_at: datetime | None = None
+    last_scan_status: ScanStatus | str | None = None
+    findings_count: int = 0
+    critical_findings_count: int = 0
+
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    archived_at: datetime | None = None
+    archived_by: AssetActorSummary | None = None
+    created_by: AssetActorSummary | None = None
+    last_modified_by: AssetActorSummary | None = None
 
 
 class AssetListResponse(BaseSchema):
@@ -42,6 +75,7 @@ class AssetListQuery(BaseSchema):
     type: AssetType | None = None
     criticality: AssetCriticality | None = None
     environment: AssetEnvironment | None = None
+    asset_category: AssetCategory | None = None
     search: str | None = Field(default=None, max_length=255)
     roots_only: bool = Field(
         default=False,
@@ -66,6 +100,9 @@ class CreateAssetRequest(BaseSchema):
     environment: AssetEnvironment = AssetEnvironment.PRODUCTION
     criticality: AssetCriticality = AssetCriticality.MEDIUM
     owner: str | None = Field(default=None, max_length=255)
+    external_identifier: str | None = Field(default=None, max_length=512)
+    business_unit: str | None = Field(default=None, max_length=128)
+    asset_category: AssetCategory | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
     tags: list[str] = Field(default_factory=list)
     allow_private_ip: bool = Field(
@@ -89,6 +126,9 @@ class UpdateAssetRequest(BaseSchema):
     environment: AssetEnvironment | None = None
     criticality: AssetCriticality | None = None
     owner: str | None = Field(default=None, max_length=255)
+    external_identifier: str | None = Field(default=None, max_length=512)
+    business_unit: str | None = Field(default=None, max_length=128)
+    asset_category: AssetCategory | None = None
     metadata: dict[str, str] | None = None
     tags: list[str] | None = None
     allow_private_ip: bool | None = Field(
@@ -119,5 +159,50 @@ class NormalizedScanTarget(BaseSchema):
     related_targets: list[RelatedScanTarget] = Field(default_factory=list)
 
 
-# Backward-compatible alias
 ScanTargetContext = NormalizedScanTarget
+
+
+class AssetLinkSummary(BaseSchema):
+    id: str
+    link_type: AssetLinkType
+    label: str | None = None
+    direction: str
+    asset: AssetSummary
+
+
+class AssetGraphNode(BaseSchema):
+    id: str
+    name: str
+    type: AssetType
+    external_identifier: str | None = None
+    is_current: bool = False
+    depth: int = 0
+
+
+class AssetGraphEdge(BaseSchema):
+    source: str
+    target: str
+    kind: str
+    link_type: AssetLinkType | None = None
+    label: str | None = None
+
+
+class AssetRelationshipGraph(BaseSchema):
+    nodes: list[AssetGraphNode]
+    edges: list[AssetGraphEdge]
+
+
+class AssetRelationshipsResponse(BaseSchema):
+    parent: AssetSummary | None = None
+    ancestors: list[AssetSummary] = Field(default_factory=list)
+    children: list[AssetSummary] = Field(default_factory=list)
+    links: list[AssetLinkSummary] = Field(default_factory=list)
+    graph: AssetRelationshipGraph
+    descendants_count: int = 0
+
+
+class CreateAssetLinkRequest(BaseSchema):
+    target_asset_id: str
+    link_type: AssetLinkType = AssetLinkType.RELATED
+    label: str | None = Field(default=None, max_length=255)
+

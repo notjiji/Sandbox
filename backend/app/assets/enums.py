@@ -20,21 +20,75 @@ class AssetType(str, enum.Enum):
     AZURE_SUBSCRIPTION = "azure_subscription"
 
 
-# Child asset → required parent type.
-CHILD_PARENT_MAP: dict[AssetType, AssetType] = {
-    AssetType.PUBLIC_IP: AssetType.WEBSITE,
-    AssetType.EMAIL_DOMAIN: AssetType.DOMAIN,
-    AssetType.S3_BUCKET: AssetType.CLOUD_ACCOUNT,
-}
-
-CHILD_ASSET_TYPES: frozenset[AssetType] = frozenset(CHILD_PARENT_MAP.keys())
-
-ROOT_ASSET_TYPES: frozenset[AssetType] = frozenset(
-    asset_type for asset_type in AssetType if asset_type not in CHILD_ASSET_TYPES
+# Types that may never be assigned a parent.
+PURE_ROOT_TYPES: frozenset[AssetType] = frozenset(
+    {
+        AssetType.DOMAIN,
+        AssetType.CLOUD_ACCOUNT,
+        AssetType.AZURE_SUBSCRIPTION,
+        AssetType.GIT_REPOSITORY,
+        AssetType.MOBILE_APPLICATION,
+    }
 )
 
-# Parent types that may have child assets attached.
-PARENT_ASSET_TYPES: frozenset[AssetType] = frozenset(CHILD_PARENT_MAP.values())
+# Child type → allowed parent types (supports multi-level infrastructure chains).
+ALLOWED_PARENT_TYPES: dict[AssetType, frozenset[AssetType]] = {
+    AssetType.PUBLIC_IP: frozenset({AssetType.WEBSITE, AssetType.DOMAIN}),
+    AssetType.EMAIL_DOMAIN: frozenset({AssetType.DOMAIN}),
+    AssetType.S3_BUCKET: frozenset({AssetType.CLOUD_ACCOUNT}),
+    AssetType.SERVER: frozenset({AssetType.PUBLIC_IP}),
+    AssetType.WINDOWS_SERVER: frozenset({AssetType.PUBLIC_IP}),
+    AssetType.DOCKER_HOST: frozenset({AssetType.SERVER, AssetType.WINDOWS_SERVER}),
+    AssetType.WEBSITE: frozenset({AssetType.DOCKER_HOST, AssetType.SERVER, AssetType.DOMAIN}),
+    AssetType.API_ENDPOINT: frozenset({AssetType.WEBSITE, AssetType.KUBERNETES_CLUSTER}),
+    AssetType.KUBERNETES_CLUSTER: frozenset(
+        {AssetType.CLOUD_ACCOUNT, AssetType.AZURE_SUBSCRIPTION}
+    ),
+}
+
+REQUIRED_PARENT_TYPES: frozenset[AssetType] = frozenset(
+    {
+        AssetType.PUBLIC_IP,
+        AssetType.EMAIL_DOMAIN,
+        AssetType.S3_BUCKET,
+        AssetType.SERVER,
+        AssetType.WINDOWS_SERVER,
+        AssetType.DOCKER_HOST,
+    }
+)
+
+OPTIONAL_PARENT_TYPES: frozenset[AssetType] = frozenset(
+    {
+        AssetType.WEBSITE,
+        AssetType.API_ENDPOINT,
+        AssetType.KUBERNETES_CLUSTER,
+    }
+)
+
+CHILD_ASSET_TYPES: frozenset[AssetType] = frozenset(ALLOWED_PARENT_TYPES.keys())
+
+ROOT_ASSET_TYPES: frozenset[AssetType] = frozenset(
+    asset_type for asset_type in AssetType if asset_type not in REQUIRED_PARENT_TYPES
+)
+
+PARENT_ASSET_TYPES: frozenset[AssetType] = frozenset(
+    parent_type
+    for parent_types in ALLOWED_PARENT_TYPES.values()
+    for parent_type in parent_types
+)
+
+# Backward-compatible single-parent map (first allowed parent per child type).
+CHILD_PARENT_MAP: dict[AssetType, AssetType] = {
+    child: next(iter(parents)) for child, parents in ALLOWED_PARENT_TYPES.items()
+}
+
+
+class AssetLinkType(str, enum.Enum):
+    DEPENDS_ON = "depends_on"
+    HOSTS = "hosts"
+    RUNS_ON = "runs_on"
+    EXPOSES = "exposes"
+    RELATED = "related"
 
 
 class AssetStatus(str, enum.Enum):
@@ -58,6 +112,35 @@ class AssetCriticality(str, enum.Enum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
+
+
+class AssetCategory(str, enum.Enum):
+    INFRASTRUCTURE = "infrastructure"
+    APPLICATION = "application"
+    DATA = "data"
+    NETWORK = "network"
+    IDENTITY = "identity"
+    ENDPOINT = "endpoint"
+    CLOUD = "cloud"
+    OTHER = "other"
+
+
+DEFAULT_ASSET_CATEGORY_BY_TYPE: dict[AssetType, AssetCategory] = {
+    AssetType.WEBSITE: AssetCategory.APPLICATION,
+    AssetType.API_ENDPOINT: AssetCategory.APPLICATION,
+    AssetType.MOBILE_APPLICATION: AssetCategory.APPLICATION,
+    AssetType.GIT_REPOSITORY: AssetCategory.APPLICATION,
+    AssetType.DOMAIN: AssetCategory.NETWORK,
+    AssetType.PUBLIC_IP: AssetCategory.NETWORK,
+    AssetType.EMAIL_DOMAIN: AssetCategory.NETWORK,
+    AssetType.SERVER: AssetCategory.INFRASTRUCTURE,
+    AssetType.WINDOWS_SERVER: AssetCategory.INFRASTRUCTURE,
+    AssetType.DOCKER_HOST: AssetCategory.INFRASTRUCTURE,
+    AssetType.KUBERNETES_CLUSTER: AssetCategory.INFRASTRUCTURE,
+    AssetType.CLOUD_ACCOUNT: AssetCategory.CLOUD,
+    AssetType.AZURE_SUBSCRIPTION: AssetCategory.CLOUD,
+    AssetType.S3_BUCKET: AssetCategory.CLOUD,
+}
 
 
 # Multipliers for risk scoring based on asset business importance.

@@ -7,6 +7,7 @@ export interface AssetFiltersState {
   status: string;
   environment: string;
   criticality: string;
+  asset_category: string;
 }
 
 export type TreeDisplayRow =
@@ -44,7 +45,7 @@ export function isChildAsset(asset: AssetSummary | null | undefined): boolean {
   return Boolean(asset?.parent_id);
 }
 
-export function canUseTreeView(filters: AssetFiltersState = { search: "", type: "", status: "", environment: "", criticality: "" }): boolean {
+export function canUseTreeView(filters: AssetFiltersState = { search: "", type: "", status: "", environment: "", criticality: "", asset_category: "" }): boolean {
   return !filters.search.trim() && !CHILD_ASSET_TYPES.includes(filters.type as (typeof CHILD_ASSET_TYPES)[number]);
 }
 

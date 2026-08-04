@@ -6,6 +6,7 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import get_settings
 from app.shared.db import Base
 import app.assets.models  # noqa: F401 — register feature tables with metadata
+import app.assets.link_models  # noqa: F401
 import app.audit.models  # noqa: F401
 import app.auth.models  # noqa: F401
 import app.findings.models  # noqa: F401
