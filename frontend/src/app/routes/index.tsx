@@ -12,6 +12,7 @@ import Settings from "@/features/auth/pages/Settings";
 import Profile from "@/features/users/pages/Profile";
 import AcceptInvite from "@/features/members/pages/AcceptInvite";
 import SelectOrganization from "@/features/organizations/pages/SelectOrganization";
+import Welcome from "@/features/organizations/pages/Welcome";
 import Dashboard from "@/features/organizations/pages/Dashboard";
 import OrgSettings from "@/features/organizations/pages/OrgSettings";
 import Members from "@/features/members/pages/Members";
@@ -40,6 +41,7 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route path="/select-organization" element={<SelectOrganization />} />
+        <Route path="/welcome" element={<Welcome />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
 

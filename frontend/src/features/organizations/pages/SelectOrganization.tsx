@@ -12,6 +12,7 @@ import { organizationsApi } from "../api";
 import { membersApi } from "@/features/members/api";
 import { getActiveOrganizations, getInvitedOrganizations, switchOrganization } from "../org";
 import { orgStorage } from "../storage";
+import { buildWelcomePath } from "@/shared/lib/welcome";
 
 interface CreateOrgForm {
   name: string;
@@ -71,8 +72,20 @@ export default function SelectOrganization() {
   const handleAcceptInvite = async (organizationId: string) => {
     try {
       await membersApi.acceptInvitation(organizationId);
+      const org = invited.find((item) => item.id === organizationId);
       orgStorage.setActiveOrgId(organizationId);
-      navigate("/dashboard");
+      if (org) {
+        navigate(
+          buildWelcomePath({
+            id: org.id,
+            name: org.name,
+            slug: org.slug,
+            role: org.role,
+          }),
+        );
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
       setAlert(error instanceof ApiError ? error.message : "Unable to accept invitation.");
     }

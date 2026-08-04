@@ -9,6 +9,8 @@ import { ApiError } from "@/shared/api/client";
 import type { FieldValidationDetail, ValidationErrors } from "@/shared/types/api";
 import { authApi } from "../api";
 import { validateRegisterForm } from "@/shared/lib/validation";
+import { buildWelcomePath } from "@/shared/lib/welcome";
+import { orgStorage } from "@/features/organizations/storage";
 
 interface RegisterForm {
   firstName: string;
@@ -42,6 +44,7 @@ export default function Register() {
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get("invite") ?? undefined;
   const prefilledEmail = searchParams.get("email") ?? "";
+  const isInviteRegistration = Boolean(inviteToken);
   const [form, setForm] = useState<RegisterForm>({
     firstName: "",
     lastName: "",
@@ -84,13 +87,24 @@ export default function Register() {
         invite_token: inviteToken,
       });
       setSuccess(response.message ?? "Account created successfully");
-      setTimeout(
-        () =>
-          navigate(
-            `/verify-email?email=${encodeURIComponent(form.email.trim().toLowerCase())}`,
-          ),
-        800,
-      );
+
+      const verifyParams = new URLSearchParams({
+        email: form.email.trim().toLowerCase(),
+      });
+      if (response.organization) {
+        orgStorage.setActiveOrgId(response.organization.id);
+        verifyParams.set(
+          "welcome",
+          buildWelcomePath({
+            id: response.organization.id,
+            name: response.organization.name,
+            slug: response.organization.slug,
+            role: response.organization.role,
+          }),
+        );
+      }
+
+      setTimeout(() => navigate(`/verify-email?${verifyParams.toString()}`), 800);
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.details) {
@@ -107,8 +121,12 @@ export default function Register() {
 
   return (
     <AuthLayout
-      title="Create Account"
-      subtitle="Register a new operator identity in the system."
+      title={isInviteRegistration ? "Join Organization" : "Create Account"}
+      subtitle={
+        isInviteRegistration
+          ? "Create your account and choose a password to join the workspace."
+          : "Register a new operator identity in the system."
+      }
       footer={
         <>
           Already registered?{" "}
@@ -169,8 +187,9 @@ export default function Register() {
             autoComplete="email"
             value={form.email}
             onChange={handleChange}
+            readOnly={isInviteRegistration}
             placeholder="john@company.com"
-            className="input-field"
+            className="input-field read-only:cursor-not-allowed read-only:opacity-80"
           />
           <FormError message={errors.email} />
         </div>
@@ -217,7 +236,7 @@ export default function Register() {
           whileTap={{ scale: loading ? 1 : 0.98 }}
         >
           <UserPlus size={18} />
-          {loading ? "Initializing..." : "Initialize Account"}
+          {loading ? "Initializing..." : isInviteRegistration ? "Create account and join" : "Initialize Account"}
         </motion.button>
       </form>
     </AuthLayout>

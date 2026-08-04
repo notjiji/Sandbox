@@ -14,6 +14,7 @@ export default function VerifyEmail() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialEmail = searchParams.get("email") ?? "";
+  const welcomeRedirect = searchParams.get("welcome") ?? "";
 
   const [email, setEmail] = useState(initialEmail);
   const [otp, setOtp] = useState("");
@@ -66,7 +67,10 @@ export default function VerifyEmail() {
         otp,
       });
       setSuccess(response.message ?? "Email verified successfully");
-      setTimeout(() => navigate("/login"), 1500);
+      const loginTarget = welcomeRedirect
+        ? `/login?from=${encodeURIComponent(welcomeRedirect)}`
+        : "/login";
+      setTimeout(() => navigate(loginTarget), 1500);
     } catch (error) {
       if (error instanceof ApiError) {
         setAlert(error.message);

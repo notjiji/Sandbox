@@ -129,7 +129,26 @@ def revoke_organization_invite(db: Session, invite: OrganizationInvite) -> None:
     db.add(invite)
 
 
+def mark_invite_expired(db: Session, invite: OrganizationInvite) -> OrganizationInvite:
+    invite.status = InviteStatus.EXPIRED
+    db.add(invite)
+    db.flush()
+    return invite
+
+
+def _as_utc_aware(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def resolve_invite_status(db: Session, invite: OrganizationInvite) -> InviteStatus:
+    if invite.status == InviteStatus.PENDING and _as_utc_aware(invite.expires_at) <= datetime.now(UTC):
+        mark_invite_expired(db, invite)
+    return invite.status
+
+
 def is_invite_valid(invite: OrganizationInvite) -> bool:
     if invite.status != InviteStatus.PENDING:
         return False
-    return invite.expires_at > datetime.now(UTC)
+    return _as_utc_aware(invite.expires_at) > datetime.now(UTC)

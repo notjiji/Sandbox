@@ -32,6 +32,7 @@ from app.auth.schemas import (
     LogoutResponse,
     MessageResponse,
     RefreshResponse,
+    RegisterOrganizationSummary,
     RegisterResponse,
     ResetPasswordRequest,
 )
@@ -107,14 +108,25 @@ def register_user(
     db.commit()
     db.refresh(user)
 
+    organization_summary = None
     if invite_token:
         from app.members.services.invite_service import accept_invite_by_token
 
-        accept_invite_by_token(db, user=user, token=invite_token)
+        organization_summary = accept_invite_by_token(db, user=user, token=invite_token)
+
+    organization = None
+    if organization_summary:
+        organization = RegisterOrganizationSummary(
+            id=organization_summary.id,
+            name=organization_summary.name,
+            slug=organization_summary.slug,
+            role=organization_summary.role.value,
+        )
 
     return RegisterResponse(
         message="Account created. Check your email for a verification code.",
         email=user.email,
+        organization=organization,
     )
 
 

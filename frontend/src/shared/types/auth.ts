@@ -61,3 +61,15 @@ export interface RevokeSessionResponse {
 export interface MessageResponse {
   message: string;
 }
+
+export interface RegisterOrganizationSummary {
+  id: string;
+  name: string;
+  slug: string;
+  role: string;
+}
+
+export interface RegisterResponse extends MessageResponse {
+  email: string;
+  organization?: RegisterOrganizationSummary | null;
+}

@@ -73,9 +73,17 @@ class ForgotPasswordRequest(BaseSchema):
         return value
 
 
+class RegisterOrganizationSummary(BaseSchema):
+    id: str
+    name: str
+    slug: str
+    role: str
+
+
 class RegisterResponse(BaseSchema):
     message: str
     email: str
+    organization: RegisterOrganizationSummary | None = None
 
 
 class VerifyEmailRequest(BaseSchema):

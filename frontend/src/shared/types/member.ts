@@ -43,7 +43,10 @@ export interface InvitePreview {
   inviter_name: string;
   expires_at: string;
   user_exists: boolean;
+  status: InviteLifecycleStatus;
 }
+
+export type InviteLifecycleStatus = "pending" | "accepted" | "expired" | "revoked";
 
 export interface RoleInfo {
   role: OrganizationRole;
@@ -101,6 +104,13 @@ export const DEFAULT_MEMBER_FILTERS: MemberFiltersState = {
   role: "",
   sort: "name",
   order: "asc",
+};
+
+export const INVITE_STATUS_LABELS: Record<InviteLifecycleStatus, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  expired: "Expired",
+  revoked: "Revoked",
 };
 
 export const MEMBER_STATUS_LABELS: Record<string, string> = {

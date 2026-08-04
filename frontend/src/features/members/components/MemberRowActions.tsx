@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import {
   Ban,
   CheckCircle2,
-  Copy,
   Link2,
   Mail,
   MoreHorizontal,
   Pencil,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import type { MemberSummary, RoleInfo } from "@/shared/types/member";
 import type { OrganizationRole } from "@/shared/types/organization";
@@ -173,7 +173,7 @@ export default function MemberRowActions({
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-amber-300 hover:bg-brand-900/40"
                 onClick={() => void run(() => onRevokeInvite(member.invite_id!))}
               >
-                <Copy size={14} />
+                <XCircle size={14} />
                 Revoke invitation
               </button>
             </>

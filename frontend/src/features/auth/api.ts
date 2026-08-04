@@ -6,6 +6,7 @@ import type {
   LoginRequest,
   MessageResponse,
   RegisterRequest,
+  RegisterResponse,
   ResendVerificationRequest,
   ResetPasswordRequest,
   RevokeSessionResponse,
@@ -18,7 +19,7 @@ import { rawApiRequest } from "./api-helpers";
 
 export const authApi = {
   register: (data: RegisterRequest) =>
-    apiRequest<MessageResponse>("/auth/register", { method: "POST", body: data }),
+    apiRequest<RegisterResponse>("/auth/register", { method: "POST", body: data }),
 
   verifyEmail: (data: VerifyEmailRequest) =>
     apiRequest<MessageResponse>("/auth/verify-email", { method: "POST", body: data }),

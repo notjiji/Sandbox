@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationAppError
+from app.core.exceptions import ConflictError, ForbiddenError, InviteStateError, NotFoundError, ValidationAppError
 from app.core.security import (
     generate_opaque_token,
     get_organization_invite_expiry,
@@ -40,6 +40,7 @@ from app.organizations.repositories.invite_repository import (
     list_pending_invites_for_organization,
     mark_invite_accepted,
     refresh_organization_invite,
+    resolve_invite_status,
     revoke_organization_invite,
 )
 from app.organizations.models import Organization
@@ -234,15 +235,19 @@ def invite_member(
     )
 
 
-def get_invite_preview(db: Session, *, token: str) -> InvitePreview:
-    invite = get_invite_by_token_hash(db, token_hash=hash_token(token))
-    if not invite or not is_invite_valid(invite):
-        raise NotFoundError("Invitation", "Invitation is invalid or has expired")
+def _invite_state_error(status: str) -> InviteStateError:
+    messages = {
+        "accepted": "This invitation has already been accepted.",
+        "expired": "This invitation has expired. Ask an administrator to send a new one.",
+        "revoked": "This invitation was revoked by an administrator.",
+    }
+    return InviteStateError(status=status, message=messages.get(status, "Invitation is no longer valid."))
 
+
+def _build_invite_preview(db: Session, invite, *, status: str) -> InvitePreview:
     organization = invite.organization
     inviter = invite.inviter
     user = get_user_by_email(db, invite.email)
-
     return InvitePreview(
         organization_id=str(organization.id),
         organization_name=organization.name,
@@ -252,13 +257,35 @@ def get_invite_preview(db: Session, *, token: str) -> InvitePreview:
         inviter_name=_inviter_display_name(inviter),
         expires_at=invite.expires_at,
         user_exists=user is not None,
+        status=status,
     )
+
+
+def _ensure_invite_actionable(db: Session, invite) -> None:
+    previous = invite.status
+    status = resolve_invite_status(db, invite)
+    if status != previous:
+        db.commit()
+    if status.value != "pending":
+        raise _invite_state_error(status.value)
+def get_invite_preview(db: Session, *, token: str) -> InvitePreview:
+    invite = get_invite_by_token_hash(db, token_hash=hash_token(token))
+    if not invite:
+        raise NotFoundError("Invitation", "Invitation link is invalid")
+
+    previous = invite.status
+    status = resolve_invite_status(db, invite)
+    if status != previous:
+        db.commit()
+    return _build_invite_preview(db, invite, status=status.value)
 
 
 def accept_invite_by_token(db: Session, *, user: User, token: str) -> OrganizationSummary:
     invite = get_invite_by_token_hash(db, token_hash=hash_token(token))
-    if not invite or not is_invite_valid(invite):
-        raise NotFoundError("Invitation", "Invitation is invalid or has expired")
+    if not invite:
+        raise NotFoundError("Invitation", "Invitation link is invalid")
+
+    _ensure_invite_actionable(db, invite)
 
     if normalize_email(user.email) != invite.email:
         raise ForbiddenError("This invitation was sent to a different email address")

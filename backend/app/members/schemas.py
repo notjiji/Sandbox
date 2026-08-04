@@ -134,3 +134,4 @@ class InvitePreview(BaseSchema):
     inviter_name: str
     expires_at: datetime
     user_exists: bool
+    status: str = "pending"

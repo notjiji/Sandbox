@@ -82,6 +82,17 @@ class ConflictError(AppException):
         )
 
 
+class InviteStateError(AppException):
+    def __init__(self, *, status: str, message: str) -> None:
+        status_code = 410 if status == "expired" else 409
+        super().__init__(
+            code=f"INVITE_{status.upper()}",
+            message=message,
+            status_code=status_code,
+        )
+        self.invite_status = status
+
+
 class InternalServerError(AppException):
     def __init__(self, message: str = "An unexpected error occurred") -> None:
         super().__init__(
