@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1.router import router as api_v1_router
 from app.core.config import get_settings
 from app.core.exceptions import AccountLockedError, AppException, InternalServerError
+from app.core.health import router as health_router
 from app.core.logging import get_logger, setup_logging
 from app.core.rate_limit import limiter
 from app.core.responses import error_response
@@ -44,6 +45,7 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
+app.include_router(health_router, tags=["health"])
 app.include_router(api_v1_router, prefix="/api/v1")
 
 app.add_middleware(SecurityHeadersMiddleware)
