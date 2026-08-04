@@ -10,6 +10,7 @@ from app.members.models import OrganizationMember
 from app.users.models import User
 from app.organizations.schemas import CreateOrganizationRequest, UpdateOrganizationRequest
 from app.organizations.services.organization_service import (
+    archive_current_organization,
     create_user_organization,
     delete_current_organization,
     get_current_organization,
@@ -72,6 +73,15 @@ def patch_organization(
     membership: OrganizationMember = Depends(require_permission(Permission.ORG_UPDATE)),
 ) -> JSONResponse:
     organization = update_current_organization(db, membership, body=body)
+    return success_response(data=organization.model_dump(mode="json"))
+
+
+@router.patch("/current/archive")
+def archive_organization(
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.ORG_DELETE)),
+) -> JSONResponse:
+    organization = archive_current_organization(db, membership)
     return success_response(data=organization.model_dump(mode="json"))
 
 

@@ -1,3 +1,5 @@
+import type { OrganizationSettings, UpdateOrganizationSettings } from "./organization-settings";
+
 export type OrganizationRole =
   | "owner"
   | "admin"
@@ -25,6 +27,7 @@ export interface OrganizationDetail {
   logo_url?: string | null;
   country?: string | null;
   timezone?: string | null;
+  settings?: OrganizationSettings;
   created_by?: string | null;
   is_active: boolean;
 }
@@ -48,6 +51,7 @@ export interface UpdateOrganizationRequest {
   logo_url?: string;
   country?: string;
   timezone?: string;
+  settings?: UpdateOrganizationSettings;
 }
 
 export interface OrganizationListData {

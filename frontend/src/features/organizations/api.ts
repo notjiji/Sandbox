@@ -37,4 +37,10 @@ export const organizationsApi = {
       method: "DELETE",
       auth: true,
     }),
+
+  archiveCurrent: () =>
+    apiRequest<OrganizationDetail>("/organizations/current/archive", {
+      method: "PATCH",
+      auth: true,
+    }),
 };

@@ -55,6 +55,40 @@ def test_organization_routes_require_org_header(client, db) -> None:
     assert response.json()["error"]["code"] == "UNAUTHORIZED"
 
 
+def test_organization_settings_update(client, db) -> None:
+    ctx = bootstrap_org_context(db, client, email="org-settings@example.com")
+
+    update_response = client.patch(
+        "/api/v1/organizations/current",
+        json={
+            "timezone": "Europe/London",
+            "settings": {
+                "language": "fr",
+                "notifications": {"weekly_reports": False},
+                "security": {"session_timeout_minutes": 240},
+            },
+        },
+        headers=ctx["org_headers"],
+    )
+    assert update_response.status_code == 200, update_response.text
+    data = update_response.json()["data"]
+    assert data["timezone"] == "Europe/London"
+    assert data["settings"]["language"] == "fr"
+    assert data["settings"]["notifications"]["weekly_reports"] is False
+    assert data["settings"]["security"]["session_timeout_minutes"] == 240
+
+
+def test_organization_archive(client, db) -> None:
+    ctx = bootstrap_org_context(db, client, email="org-archive@example.com")
+
+    archive_response = client.patch(
+        "/api/v1/organizations/current/archive",
+        headers=ctx["org_headers"],
+    )
+    assert archive_response.status_code == 200, archive_response.text
+    assert archive_response.json()["data"]["is_active"] is False
+
+
 def test_organization_overview_returns_dashboard_data(client, db) -> None:
     ctx = bootstrap_org_context(db, client, email="overview@example.com")
 

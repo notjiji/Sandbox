@@ -4,4 +4,5 @@
 class OrganizationAuditAction:
     CREATE = "org.create"
     UPDATE = "org.update"
+    ARCHIVE = "org.archive"
     DELETE = "org.delete"

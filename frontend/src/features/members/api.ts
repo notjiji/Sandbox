@@ -88,4 +88,11 @@ export const membersApi = {
     }),
 
   listRoles: () => apiRequest<RolesListData>("/organizations/roles"),
+
+  transferOwnership: (newOwnerUserId: string) =>
+    apiRequest<MemberSummary>("/organizations/current/transfer-ownership", {
+      method: "POST",
+      body: { new_owner_user_id: newOwnerUserId },
+      auth: true,
+    }),
 };

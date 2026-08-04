@@ -1,7 +1,27 @@
 from pydantic import Field, field_validator
 
 from app.members.enums import MemberStatus, OrganizationRole
+from app.auth.schemas import normalize_email
 from app.shared.schemas.base import BaseSchema
+
+
+class NotificationSettings(BaseSchema):
+    email_enabled: bool = True
+    weekly_reports: bool = True
+    scan_complete: bool = True
+    critical_findings: bool = True
+
+
+class SecuritySettings(BaseSchema):
+    mfa_policy: str = "optional"
+    password_min_length: int = Field(default=12, ge=8, le=128)
+    session_timeout_minutes: int = Field(default=480, ge=15, le=1440)
+
+
+class OrganizationSettings(BaseSchema):
+    language: str = "en"
+    notifications: NotificationSettings = Field(default_factory=NotificationSettings)
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
 
 
 class OrganizationSummary(BaseSchema):
@@ -23,6 +43,7 @@ class OrganizationDetail(BaseSchema):
     logo_url: str | None = None
     country: str | None = None
     timezone: str | None = None
+    settings: OrganizationSettings = Field(default_factory=OrganizationSettings)
     created_by: str | None = None
     is_active: bool
 
@@ -45,6 +66,12 @@ class CreateOrganizationRequest(BaseSchema):
         return value
 
 
+class UpdateOrganizationSettings(BaseSchema):
+    language: str | None = None
+    notifications: NotificationSettings | None = None
+    security: SecuritySettings | None = None
+
+
 class UpdateOrganizationRequest(BaseSchema):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
@@ -53,6 +80,7 @@ class UpdateOrganizationRequest(BaseSchema):
     logo_url: str | None = Field(default=None, max_length=1024)
     country: str | None = Field(default=None, min_length=2, max_length=2)
     timezone: str | None = Field(default=None, max_length=64)
+    settings: UpdateOrganizationSettings | None = None
 
     @field_validator("name", mode="before")
     @classmethod

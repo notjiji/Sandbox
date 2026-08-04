@@ -20,9 +20,11 @@ from app.organizations.repositories.organization_repository import (
 from app.organizations.schemas import (
     CreateOrganizationRequest,
     OrganizationDetail,
+    OrganizationSettings,
     OrganizationSummary,
     UpdateOrganizationRequest,
 )
+from app.organizations.settings_defaults import merge_organization_settings
 from app.audit.service import record_audit_event
 
 
@@ -39,6 +41,7 @@ def to_organization_summary(membership: OrganizationMember) -> OrganizationSumma
 
 
 def to_organization_detail(organization: Organization) -> OrganizationDetail:
+    merged_settings = merge_organization_settings(getattr(organization, "settings", None) or {})
     return OrganizationDetail(
         id=str(organization.id),
         name=organization.name,
@@ -49,6 +52,7 @@ def to_organization_detail(organization: Organization) -> OrganizationDetail:
         logo_url=organization.logo_url,
         country=organization.country,
         timezone=organization.timezone,
+        settings=OrganizationSettings.model_validate(merged_settings),
         created_by=str(organization.created_by) if organization.created_by else None,
         is_active=organization.is_active,
     )
@@ -124,8 +128,21 @@ def update_current_organization(
     organization = membership.organization
     if not organization.is_active:
         raise NotFoundError("Organization", "Organization is inactive")
-    if body.model_dump(exclude_none=True) == {}:
+    if body.model_dump(exclude_unset=True) == {}:
         raise ValidationAppError("At least one field must be provided")
+
+    settings_payload = None
+    if body.settings is not None:
+        current = merge_organization_settings(organization.settings)
+        if body.settings.language is not None:
+            current["language"] = body.settings.language
+        if body.settings.notifications is not None:
+            current["notifications"].update(
+                body.settings.notifications.model_dump(exclude_none=True)
+            )
+        if body.settings.security is not None:
+            current["security"].update(body.settings.security.model_dump(exclude_none=True))
+        settings_payload = current
 
     update_organization(
         db,
@@ -137,6 +154,7 @@ def update_current_organization(
         logo_url=body.logo_url,
         country=body.country,
         timezone=body.timezone,
+        settings=settings_payload,
     )
     record_audit_event(
         db,
@@ -145,7 +163,28 @@ def update_current_organization(
         organization_id=organization.id,
         resource_type="organization",
         resource_id=organization.id,
-        details=body.model_dump(exclude_none=True),
+        details=body.model_dump(exclude_unset=True),
+    )
+    db.commit()
+    db.refresh(organization)
+    return to_organization_detail(organization)
+
+
+def archive_current_organization(db: Session, membership: OrganizationMember) -> OrganizationDetail:
+    organization = membership.organization
+    if membership.role != OrganizationRole.OWNER:
+        raise ForbiddenError("Only the organization owner can archive the organization")
+    if not organization.is_active:
+        raise ValidationAppError("Organization is already archived")
+
+    update_organization(db, organization, is_active=False)
+    record_audit_event(
+        db,
+        action=OrganizationAuditAction.ARCHIVE,
+        user_id=membership.user_id,
+        organization_id=organization.id,
+        resource_type="organization",
+        resource_id=organization.id,
     )
     db.commit()
     db.refresh(organization)
