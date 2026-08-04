@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { organizationsApi } from "@/features/organizations/api";
 import Sidebar from "@/shared/components/sidebar/Sidebar";
+import OrganizationLogo from "@/shared/components/OrganizationLogo";
 import { useSidebarState } from "@/shared/hooks/useSidebarState";
 import type { OrganizationDetail } from "@/shared/types/organization";
 import { cn } from "@/shared/lib/utils";
@@ -120,7 +121,18 @@ export default function SidebarLayout({
           >
             <Menu size={20} />
           </button>
-          <span className="font-dyslexic text-sm text-brand-300">Sandbox</span>
+          {currentOrg ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <OrganizationLogo
+                name={currentOrg.name}
+                logoUrl={currentOrg.logo_url}
+                size="xs"
+              />
+              <span className="truncate font-dyslexic text-sm text-brand-300">{currentOrg.name}</span>
+            </div>
+          ) : (
+            <span className="font-dyslexic text-sm text-brand-300">Sandbox</span>
+          )}
         </header>
 
         <main id="main-content" className={cn("mx-auto w-full flex-1 px-4 py-8 sm:px-6", maxWidthClass[maxWidth])}>
@@ -131,7 +143,14 @@ export default function SidebarLayout({
               className="mb-8"
             >
               {showOrgContext && currentOrg && (
-                <p className="terminal-text text-brand-500">{">"} {currentOrg.slug}</p>
+                <div className="flex items-center gap-3">
+                  <OrganizationLogo
+                    name={currentOrg.name}
+                    logoUrl={currentOrg.logo_url}
+                    size="sm"
+                  />
+                  <p className="terminal-text text-brand-500">{">"} {currentOrg.slug}</p>
+                </div>
               )}
               {title && <h1 className="mt-2 text-3xl font-bold text-brand-50">{title}</h1>}
               {subtitle && <p className="mt-2 text-brand-400">{subtitle}</p>}

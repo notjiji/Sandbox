@@ -1,3 +1,5 @@
+import EmptyState from "@/shared/components/EmptyState";
+import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import MemberAvatar from "./MemberAvatar";
 import MemberRowActions from "./MemberRowActions";
 import {
@@ -77,14 +79,16 @@ export default function MemberTable({
   onRevokeInvite,
 }: MemberTableProps) {
   if (loading) {
-    return <p className="text-brand-500">Loading members...</p>;
+    return <TableSkeleton rows={6} />;
   }
 
   if (members.length === 0) {
     return (
-      <p className="rounded-lg border border-brand-800/50 px-4 py-8 text-center text-brand-500">
-        No members match your filters.
-      </p>
+      <EmptyState
+        compact
+        title="No members match your filters"
+        description="Try adjusting search or status filters to see more results."
+      />
     );
   }
 

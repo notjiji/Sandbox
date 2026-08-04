@@ -1,9 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Bug } from "lucide-react";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
 import FormAlert from "@/shared/components/FormAlert";
+import EmptyState from "@/shared/components/EmptyState";
+import ListSearchBar from "@/shared/components/ListSearchBar";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/client";
 import type { FindingSeverity, FindingSummary } from "@/shared/types/finding";
 import type { ProjectSummary } from "@/shared/types/project";
@@ -34,7 +38,8 @@ export default function Findings() {
   const { projectId } = useParams<{ projectId: string }>();
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [findings, setFindings] = useState<FindingWithDescription[]>([]);
-  const [alert, setAlert] = useState("");
+  const [search, setSearch] = useState("");
+  const [severity, setSeverity] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,7 +58,7 @@ export default function Findings() {
         setFindings((findingsResponse?.items ?? []) as FindingWithDescription[]);
       } catch (error) {
         if (active) {
-          setAlert(error instanceof ApiError ? error.message : "Unable to load findings.");
+          toast.error(error instanceof ApiError ? error.message : "Unable to load findings.");
         }
       } finally {
         if (active) setLoading(false);
@@ -66,9 +71,21 @@ export default function Findings() {
     };
   }, [projectId]);
 
+  const filteredFindings = useMemo(() => {
+    return findings.filter((finding) => {
+      if (severity && finding.severity !== severity) return false;
+      if (!search.trim()) return true;
+      const needle = search.toLowerCase();
+      return (
+        finding.title.toLowerCase().includes(needle) ||
+        (finding.description?.toLowerCase().includes(needle) ?? false) ||
+        finding.status.toLowerCase().includes(needle)
+      );
+    });
+  }, [findings, search, severity]);
+
   return (
     <DashboardShell title="Findings" subtitle="Vulnerabilities discovered in this project.">
-      {alert && <FormAlert message={alert} />}
       <ProjectNav projectName={project?.name} active="findings" />
 
       <motion.div
@@ -77,13 +94,41 @@ export default function Findings() {
         className="glass-panel p-6"
       >
         <h2 className="mb-4 text-lg font-semibold text-brand-100">All findings</h2>
+        <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_12rem]">
+          <ListSearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search findings..."
+          />
+          <select
+            value={severity}
+            onChange={(e) => setSeverity(e.target.value)}
+            className="input-field"
+            aria-label="Filter by severity"
+          >
+            <option value="">All severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
         {loading ? (
-          <p className="text-brand-500">Loading...</p>
-        ) : findings.length === 0 ? (
-          <p className="text-brand-500">No findings yet. Run a scan to populate results.</p>
+          <ListSkeleton rows={4} />
+        ) : filteredFindings.length === 0 ? (
+          <EmptyState
+            compact
+            icon={Bug}
+            title={search || severity ? "No matching findings" : "No findings yet"}
+            description={
+              search || severity
+                ? "Adjust your search or severity filter."
+                : "Run a scan to populate results."
+            }
+          />
         ) : (
           <ul className="space-y-3">
-            {findings.map((finding) => (
+            {filteredFindings.map((finding) => (
               <li
                 key={finding.id}
                 className="flex items-start justify-between gap-4 rounded-lg border border-brand-800/50 px-4 py-3"

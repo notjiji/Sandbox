@@ -12,6 +12,7 @@ export interface OrganizationSummary {
   id: string;
   name: string;
   slug: string;
+  logo_url?: string | null;
   role: OrganizationRole;
   membership_status: MemberStatus;
   is_active: boolean;

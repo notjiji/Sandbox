@@ -23,7 +23,9 @@ import {
   scanStatusClass,
 } from "../utils/format";
 import ActivityTimeline from "@/shared/components/activity/ActivityTimeline";
+import EmptyState from "@/shared/components/EmptyState";
 import FormAlert from "@/shared/components/FormAlert";
+import { PanelSkeleton, SkeletonLine } from "@/shared/components/ui/Skeleton";
 import { ApiError } from "@/shared/api/client";
 import type { OrganizationDetail } from "@/shared/types/organization";
 import type { OrganizationOverview } from "@/shared/types/organization-overview";
@@ -75,7 +77,18 @@ export default function Dashboard() {
       {alert && <FormAlert message={alert} />}
 
       {loading ? (
-        <p className="text-brand-500">Loading organization dashboard...</p>
+        <div className="space-y-6">
+          <PanelSkeleton lines={2} />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <SkeletonLine key={index} className="h-24 rounded-xl" />
+            ))}
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <PanelSkeleton lines={4} />
+            <PanelSkeleton lines={4} />
+          </div>
+        </div>
       ) : !overview || !security ? (
         <p className="text-brand-500">Dashboard data unavailable.</p>
       ) : (
@@ -228,7 +241,11 @@ export default function Dashboard() {
               }
             >
               {overview.recent_scans.length === 0 ? (
-                <EmptyState message="No scans yet. Run a scan from any project asset." />
+                <EmptyState
+                  compact
+                  title="No scans yet"
+                  description="Run a scan from any project asset."
+                />
               ) : (
                 <ul className="space-y-3">
                   {overview.recent_scans.map((scan) => (
@@ -314,7 +331,7 @@ export default function Dashboard() {
               }
             >
               {overview.recent_reports.length === 0 ? (
-                <EmptyState message="No reports generated yet." />
+                <EmptyState compact title="No reports yet" description="No reports generated yet." />
               ) : (
                 <ul className="space-y-3">
                   {overview.recent_reports.map((report) => (
@@ -356,7 +373,11 @@ export default function Dashboard() {
               }
             >
               {overview.recent_activity.length === 0 ? (
-                <EmptyState message="Activity will appear as your team works in this organization." />
+                <EmptyState
+                  compact
+                  title="No activity yet"
+                  description="Activity will appear as your team works in this organization."
+                />
               ) : (
                 <ActivityTimeline items={overview.recent_activity} compact />
               )}
@@ -394,10 +415,6 @@ export default function Dashboard() {
       )}
     </DashboardShell>
   );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return <p className="text-sm text-brand-600">{message}</p>;
 }
 
 function FindingSeverityCard({

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
+import { organizationsApi } from "@/features/organizations/api";
 import FormAlert from "@/shared/components/FormAlert";
 import { ApiError } from "@/shared/api/client";
+import type { OrganizationDetail } from "@/shared/types/organization";
 import type { ProjectOverview } from "@/shared/types/project-overview";
 import { projectsApi } from "../api";
 import ProjectDashboard from "../components/ProjectDashboard";
@@ -12,6 +14,7 @@ import ProjectNav from "../components/ProjectNav";
 export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
   const [overview, setOverview] = useState<ProjectOverview | null>(null);
+  const [organization, setOrganization] = useState<OrganizationDetail | null>(null);
   const [alert, setAlert] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -22,9 +25,13 @@ export default function ProjectDetail() {
 
     async function load() {
       try {
-        const response = await projectsApi.getOverview(projectId!);
+        const [overviewResponse, orgResponse] = await Promise.all([
+          projectsApi.getOverview(projectId!),
+          organizationsApi.getCurrent(),
+        ]);
         if (!active) return;
-        setOverview(response ?? null);
+        setOverview(overviewResponse ?? null);
+        setOrganization(orgResponse ?? null);
       } catch (error) {
         if (active) {
           setAlert(error instanceof ApiError ? error.message : "Unable to load project.");
@@ -63,7 +70,11 @@ export default function ProjectDetail() {
       ) : !overview ? (
         <p className="text-brand-500">Project not found.</p>
       ) : (
-        <ProjectDashboard overview={overview} projectId={projectId!} />
+        <ProjectDashboard
+          overview={overview}
+          projectId={projectId!}
+          organization={organization}
+        />
       )}
     </DashboardShell>
   );

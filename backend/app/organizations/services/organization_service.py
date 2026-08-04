@@ -13,8 +13,10 @@ from app.organizations.events import OrganizationAuditAction
 from app.organizations.models import Organization
 from app.organizations.repositories.organization_repository import (
     create_organization,
-    deactivate_organization,
     get_organization_by_slug,
+    get_restorable_organization_by_id,
+    restore_organization,
+    soft_delete_organization,
     update_organization,
 )
 from app.organizations.schemas import (
@@ -34,6 +36,7 @@ def to_organization_summary(membership: OrganizationMember) -> OrganizationSumma
         id=str(org.id),
         name=org.name,
         slug=org.slug,
+        logo_url=org.logo_url,
         role=membership.role,
         membership_status=membership.status,
         is_active=org.is_active,
@@ -62,7 +65,15 @@ def list_user_organizations(db: Session, user: User) -> list[OrganizationSummary
     from app.members.repositories.member_repository import list_memberships_for_user
 
     memberships = list_memberships_for_user(db, user.id)
-    return [to_organization_summary(membership) for membership in memberships]
+    summaries: list[OrganizationSummary] = []
+    for membership in memberships:
+        org = membership.organization
+        if org.deleted_at is not None:
+            continue
+        if membership.status == MemberStatus.REMOVED:
+            continue
+        summaries.append(to_organization_summary(membership))
+    return summaries
 
 
 def create_user_organization(
@@ -195,10 +206,12 @@ def delete_current_organization(db: Session, membership: OrganizationMember) -> 
     organization = membership.organization
     if membership.role != OrganizationRole.OWNER:
         raise ForbiddenError("Only the organization owner can delete the organization")
+    if organization.deleted_at is not None:
+        raise NotFoundError("Organization", "Organization is already deleted")
     if not organization.is_active:
-        raise NotFoundError("Organization", "Organization is inactive")
+        raise ValidationAppError("Organization is archived. Restore it before deleting permanently.")
 
-    deactivate_organization(db, organization)
+    soft_delete_organization(db, organization, deleted_at=datetime.now(UTC))
     record_audit_event(
         db,
         action=OrganizationAuditAction.DELETE,
@@ -208,3 +221,37 @@ def delete_current_organization(db: Session, membership: OrganizationMember) -> 
         resource_id=organization.id,
     )
     db.commit()
+
+
+def restore_archived_organization(
+    db: Session,
+    *,
+    user: User,
+    organization_id: uuid.UUID,
+) -> OrganizationDetail:
+    from app.members.repositories.member_repository import get_membership
+
+    organization = get_restorable_organization_by_id(db, organization_id)
+    if not organization:
+        raise NotFoundError("Organization")
+
+    membership = get_membership(db, organization_id=organization_id, user_id=user.id)
+    if not membership or membership.role != OrganizationRole.OWNER:
+        raise ForbiddenError("Only the organization owner can restore the organization")
+    if organization.is_active:
+        raise ValidationAppError("Organization is already active")
+    if organization.deleted_at is not None:
+        raise ValidationAppError("Deleted organizations cannot be restored")
+
+    restore_organization(db, organization)
+    record_audit_event(
+        db,
+        action=OrganizationAuditAction.RESTORE,
+        user_id=user.id,
+        organization_id=organization.id,
+        resource_type="organization",
+        resource_id=organization.id,
+    )
+    db.commit()
+    db.refresh(organization)
+    return to_organization_detail(organization)

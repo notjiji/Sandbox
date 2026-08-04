@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
-import FormAlert from "@/shared/components/FormAlert";
 import Pagination from "@/shared/components/Pagination";
+import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/client";
 import type { ValidationErrors } from "@/shared/types/api";
 import type { MemberFiltersState, RoleInfo } from "@/shared/types/member";
@@ -24,8 +24,6 @@ export default function Members() {
   const [limit, setLimit] = useState(20);
   const [form, setForm] = useState<InviteForm>({ email: "", role: "viewer" });
   const [errors, setErrors] = useState<ValidationErrors>({});
-  const [alert, setAlert] = useState("");
-  const [success, setSuccess] = useState("");
   const [inviting, setInviting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
@@ -73,7 +71,7 @@ export default function Members() {
   }, [filters.search, filters.status, filters.role, filters.sort, filters.order]);
 
   useEffect(() => {
-    if (error) setAlert(error);
+    if (error) toast.error(error);
   }, [error]);
 
   const refresh = () => setRefreshKey((value) => value + 1);
@@ -86,39 +84,35 @@ export default function Members() {
     }
 
     setInviting(true);
-    setAlert("");
-    setSuccess("");
     try {
       await membersApi.inviteMember({
         email: form.email.trim().toLowerCase(),
         role: form.role,
       });
-      setSuccess("Invitation sent successfully.");
+      toast.success("Invitation sent.");
       setForm({ email: "", role: "viewer" });
       refresh();
     } catch (err) {
-      setAlert(err instanceof ApiError ? err.message : "Unable to send invitation.");
+      toast.error(err instanceof ApiError ? err.message : "Unable to send invitation.");
     } finally {
       setInviting(false);
     }
   };
 
   const runAction = async (action: () => Promise<void>, successMessage: string) => {
-    setAlert("");
-    setSuccess("");
     try {
       await action();
-      setSuccess(successMessage);
+      toast.success(successMessage);
       refresh();
     } catch (err) {
-      setAlert(err instanceof ApiError ? err.message : "Action failed.");
+      toast.error(err instanceof ApiError ? err.message : "Action failed.");
     }
   };
 
   const handleEditRole = async (membershipId: string, role: OrganizationRole) => {
     await runAction(
       () => membersApi.updateMember(membershipId, { role }).then(() => undefined),
-      "Member role updated.",
+      "Role updated.",
     );
   };
 
@@ -151,16 +145,14 @@ export default function Members() {
   };
 
   const handleCopyInviteLink = async (inviteId: string) => {
-    setAlert("");
-    setSuccess("");
     try {
       const result = await membersApi.resendInvite(inviteId, false);
       if (result?.invite_link) {
         await navigator.clipboard.writeText(result.invite_link);
-        setSuccess("Invite link copied to clipboard.");
+        toast.success("Invite link copied to clipboard.");
       }
     } catch (err) {
-      setAlert(err instanceof ApiError ? err.message : "Unable to copy invite link.");
+      toast.error(err instanceof ApiError ? err.message : "Unable to copy invite link.");
     }
   };
 
@@ -173,9 +165,6 @@ export default function Members() {
 
   return (
     <DashboardShell title="Members" subtitle="Manage team access, roles, and invitations.">
-      {alert && <FormAlert message={alert} />}
-      {success && <FormAlert message={success} variant="success" />}
-
       <div className="grid gap-6 xl:grid-cols-[1fr_22rem]">
         <div className="space-y-4">
           <MemberFilters filters={filters} roles={roles} onChange={setFilters} />

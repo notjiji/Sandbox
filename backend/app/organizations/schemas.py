@@ -28,6 +28,7 @@ class OrganizationSummary(BaseSchema):
     id: str
     name: str
     slug: str
+    logo_url: str | None = None
     role: OrganizationRole
     membership_status: MemberStatus
     is_active: bool

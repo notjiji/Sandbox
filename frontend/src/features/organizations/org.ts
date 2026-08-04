@@ -9,10 +9,17 @@ function normalizeOrganizations(payload: OrganizationListData): OrganizationSumm
   return payload.items ?? [];
 }
 
-/** Only organizations where the user has an active membership. */
+/** Active organizations the user can switch into. */
 export function getActiveOrganizations(payload: OrganizationListData): OrganizationSummary[] {
   return normalizeOrganizations(payload).filter(
     (org) => org.membership_status === "active" && org.is_active,
+  );
+}
+
+/** Archived organizations that can be restored by the owner. */
+export function getArchivedOrganizations(payload: OrganizationListData): OrganizationSummary[] {
+  return normalizeOrganizations(payload).filter(
+    (org) => org.membership_status === "active" && !org.is_active,
   );
 }
 
@@ -41,6 +48,7 @@ export function resolveActiveOrganization(payload: OrganizationListData): string
   if (!firstOrg) return null;
 
   orgStorage.setActiveOrgId(firstOrg.id);
+  orgStorage.recordRecentOrg(firstOrg.id);
   return firstOrg.id;
 }
 
@@ -65,6 +73,7 @@ export function setValidatedActiveOrg(
     throw new Error("Organization not found in your active memberships");
   }
   orgStorage.setActiveOrgId(match.id);
+  orgStorage.recordRecentOrg(match.id);
   return match;
 }
 

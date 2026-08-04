@@ -70,6 +70,9 @@ def list_organization_members_paginated(
 ) -> MemberListResponse:
     rows = _build_member_rows(db, membership.organization_id)
 
+    if not query.status:
+        rows = [row for row in rows if row.status != MemberStatus.REMOVED.value]
+
     if query.role is not None:
         rows = [row for row in rows if row.role == query.role]
 

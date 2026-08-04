@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -11,7 +12,17 @@ def get_active_organization_by_id(
     organization_id: uuid.UUID,
 ) -> Organization | None:
     organization = get_organization_by_id(db, organization_id)
-    if organization is None or not organization.is_active:
+    if organization is None or not organization.is_active or organization.deleted_at is not None:
+        return None
+    return organization
+
+
+def get_restorable_organization_by_id(
+    db: Session,
+    organization_id: uuid.UUID,
+) -> Organization | None:
+    organization = get_organization_by_id(db, organization_id)
+    if organization is None or organization.deleted_at is not None:
         return None
     return organization
 
@@ -93,4 +104,21 @@ def update_organization(
 
 def deactivate_organization(db: Session, organization: Organization) -> None:
     organization.is_active = False
+    db.add(organization)
+
+
+def soft_delete_organization(
+    db: Session,
+    organization: Organization,
+    *,
+    deleted_at: datetime,
+) -> None:
+    organization.is_active = False
+    organization.deleted_at = deleted_at
+    db.add(organization)
+
+
+def restore_organization(db: Session, organization: Organization) -> None:
+    organization.is_active = True
+    organization.deleted_at = None
     db.add(organization)

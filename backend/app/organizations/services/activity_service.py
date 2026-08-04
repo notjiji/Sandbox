@@ -107,6 +107,8 @@ def _build_message(record: AuditLog, actor_name: str) -> str:
         return f"{actor_name} updated organization settings"
     if action == "org.archive":
         return f"{actor_name} archived the organization"
+    if action == "org.restore":
+        return f"{actor_name} restored the organization"
     if action == "org.delete":
         return f"{actor_name} deleted the organization"
     if action == "org.risk_score_changed":

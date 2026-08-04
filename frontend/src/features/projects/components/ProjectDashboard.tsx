@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Bot,
   Bug,
   Database,
   FileText,
@@ -10,6 +9,8 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import StatCard, { SectionPanel } from "@/features/organizations/components/dashboard/StatCard";
+import AiSummaryPanel from "@/shared/components/AiSummaryPanel";
+import type { OrganizationDetail } from "@/shared/types/organization";
 import {
   formatActionLabel,
   formatRelativeTime,
@@ -21,9 +22,10 @@ import type { ProjectOverview } from "@/shared/types/project-overview";
 interface ProjectDashboardProps {
   overview: ProjectOverview;
   projectId: string;
+  organization?: OrganizationDetail | null;
 }
 
-export default function ProjectDashboard({ overview, projectId }: ProjectDashboardProps) {
+export default function ProjectDashboard({ overview, projectId, organization }: ProjectDashboardProps) {
   const { stats, security, recent_scans, recent_reports, recent_activity, ai_summary } =
     overview;
 
@@ -199,16 +201,13 @@ export default function ProjectDashboard({ overview, projectId }: ProjectDashboa
         )}
       </SectionPanel>
 
-      <div className="glass-panel flex items-center gap-4 p-5 opacity-80">
-        <div className="rounded-lg border border-brand-800/50 bg-void-200/30 p-3">
-          <Bot size={18} className="text-brand-400" />
-        </div>
-        <div>
-          <p className="text-sm text-brand-500">{ai_summary.label}</p>
-          <p className="text-lg font-medium text-brand-100">{ai_summary.value}</p>
-          <p className="text-xs text-brand-600">Available in a future release</p>
-        </div>
-      </div>
+      <AiSummaryPanel
+        organizationName={organization?.name ?? "Organization"}
+        logoUrl={organization?.logo_url}
+        label={ai_summary.label}
+        value={ai_summary.value}
+        className="opacity-90"
+      />
     </div>
   );
 }

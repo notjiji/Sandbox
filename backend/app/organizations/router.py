@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -15,6 +17,7 @@ from app.organizations.services.organization_service import (
     delete_current_organization,
     get_current_organization,
     list_user_organizations,
+    restore_archived_organization,
     update_current_organization,
 )
 from app.organizations.services.activity_service import get_organization_activity
@@ -99,6 +102,20 @@ def archive_organization(
     membership: OrganizationMember = Depends(require_permission(Permission.ORG_DELETE)),
 ) -> JSONResponse:
     organization = archive_current_organization(db, membership)
+    return success_response(data=organization.model_dump(mode="json"))
+
+
+@router.patch("/{organization_id}/restore")
+def restore_organization_route(
+    organization_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> JSONResponse:
+    organization = restore_archived_organization(
+        db,
+        user=current_user,
+        organization_id=organization_id,
+    )
     return success_response(data=organization.model_dump(mode="json"))
 
 

@@ -50,4 +50,10 @@ export const organizationsApi = {
       method: "PATCH",
       auth: true,
     }),
+
+  restore: (organizationId: string) =>
+    apiRequest<OrganizationDetail>(`/organizations/${organizationId}/restore`, {
+      method: "PATCH",
+      auth: true,
+    }),
 };

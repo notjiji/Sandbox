@@ -15,6 +15,9 @@ import {
 import DashboardShell from "../components/DashboardShell";
 import FormAlert from "@/shared/components/FormAlert";
 import FormError from "@/shared/components/FormError";
+import { PanelSkeleton } from "@/shared/components/ui/Skeleton";
+import { useConfirm } from "@/shared/hooks/useConfirm";
+import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/client";
 import type { ValidationErrors } from "@/shared/types/api";
 import type { OrganizationDetail } from "@/shared/types/organization";
@@ -102,10 +105,10 @@ export default function OrgSettings() {
   const [isOwner, setIsOwner] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [alert, setAlert] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dangerLoading, setDangerLoading] = useState<string | null>(null);
+  const { confirm } = useConfirm();
 
   const setTab = (next: SettingsTab) => setSearchParams({ tab: next });
 
@@ -186,11 +189,10 @@ export default function OrgSettings() {
   const save = async (payload: Parameters<typeof organizationsApi.updateCurrent>[0]) => {
     setSaving(true);
     setAlert("");
-    setSuccess("");
     try {
       const updated = await organizationsApi.updateCurrent(payload);
       if (updated) applyOrg(updated);
-      setSuccess("Settings saved.");
+      toast.success("Settings saved.");
     } catch (error) {
       setAlert(error instanceof ApiError ? error.message : "Unable to save settings.");
     } finally {
@@ -236,10 +238,9 @@ export default function OrgSettings() {
   const runDangerAction = async (key: string, action: () => Promise<void>, message: string) => {
     setDangerLoading(key);
     setAlert("");
-    setSuccess("");
     try {
       await action();
-      setSuccess(message);
+      toast.success(message);
     } catch (error) {
       setAlert(error instanceof ApiError ? error.message : "Action failed.");
     } finally {
@@ -247,8 +248,19 @@ export default function OrgSettings() {
     }
   };
 
-  const handleTransfer = () => {
+  const handleTransfer = async () => {
     if (!transferTarget) return;
+    const target = members.find((member) => member.user_id === transferTarget);
+    const targetName = target
+      ? `${target.first_name ?? ""} ${target.last_name ?? ""}`.trim() || target.email
+      : "this member";
+    const confirmed = await confirm({
+      title: "Transfer ownership",
+      description: `Transfer organization ownership to ${targetName}? You will become an admin and lose owner-only controls.`,
+      confirmLabel: "Transfer ownership",
+      destructive: true,
+    });
+    if (!confirmed) return;
     void runDangerAction(
       "transfer",
       async () => {
@@ -259,10 +271,15 @@ export default function OrgSettings() {
     );
   };
 
-  const handleArchive = () => {
-    if (!window.confirm("Archive this organization? Members will lose access until restored.")) {
-      return;
-    }
+  const handleArchive = async () => {
+    const confirmed = await confirm({
+      title: "Archive organization",
+      description:
+        "Archive this organization? Members will lose access until it is restored.",
+      confirmLabel: "Archive organization",
+      destructive: true,
+    });
+    if (!confirmed) return;
     void runDangerAction(
       "archive",
       async () => {
@@ -274,14 +291,15 @@ export default function OrgSettings() {
     );
   };
 
-  const handleDelete = () => {
-    if (
-      !window.confirm(
+  const handleDelete = async () => {
+    const confirmed = await confirm({
+      title: "Delete organization",
+      description:
         "Delete this organization permanently? This deactivates the workspace and cannot be undone from the UI.",
-      )
-    ) {
-      return;
-    }
+      confirmLabel: "Delete organization",
+      destructive: true,
+    });
+    if (!confirmed) return;
     void runDangerAction(
       "delete",
       async () => {
@@ -296,7 +314,6 @@ export default function OrgSettings() {
   return (
     <DashboardShell title="Settings" subtitle="Manage organization profile and policies.">
       {alert && <FormAlert message={alert} />}
-      {success && <FormAlert message={success} variant="success" />}
 
       <div className="mb-6 flex flex-wrap gap-2">
         {TABS.map(({ key, label, icon: Icon }) => (
@@ -317,7 +334,7 @@ export default function OrgSettings() {
       </div>
 
       {loading ? (
-        <div className="glass-panel animate-pulse p-8">Loading settings...</div>
+        <PanelSkeleton lines={5} />
       ) : !org ? (
         <p className="text-brand-500">Organization not found.</p>
       ) : (

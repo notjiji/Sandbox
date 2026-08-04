@@ -71,6 +71,8 @@ def row_matches_status_filter(row: MemberListRow, status_filter: str | None) -> 
         return row.status == MemberStatus.SUSPENDED.value
     if normalized == "pending":
         return row.status in {MemberStatus.INVITED.value, "pending"}
+    if normalized == "removed":
+        return row.status == MemberStatus.REMOVED.value
     return row.status == normalized
 
 

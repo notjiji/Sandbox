@@ -4,6 +4,8 @@ import Logo from "@/shared/components/Logo";
 import { MAIN_NAV_ITEMS } from "@/shared/config/navigation";
 import { cn } from "@/shared/lib/utils";
 import OrgSwitcher from "./OrgSwitcher";
+import PinnedProjects from "./PinnedProjects";
+import QuickActions from "./QuickActions";
 import SidebarNavLink from "./SidebarNavLink";
 import SidebarUserSection from "./SidebarUserSection";
 
@@ -76,6 +78,16 @@ export default function Sidebar({
         <div className={cn("border-b border-brand-800/40 px-3 py-3", collapsed && "px-2")}>
           <OrgSwitcher collapsed={collapsed && !mobile} onNavigate={onCloseMobile} />
         </div>
+      )}
+
+      {showOrgSwitcher && (
+        <div className={cn("border-b border-brand-800/40 px-3 py-3", collapsed && "px-2")}>
+          <QuickActions collapsed={collapsed && !mobile} onNavigate={handleNavigate} />
+        </div>
+      )}
+
+      {showOrgSwitcher && (
+        <PinnedProjects collapsed={collapsed && !mobile} onNavigate={handleNavigate} />
       )}
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3" aria-label="Main">

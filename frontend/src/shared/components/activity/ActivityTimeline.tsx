@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { ActivityEvent } from "@/shared/types/activity";
 import { formatRelativeTime } from "@/features/organizations/utils/format";
+import EmptyState from "@/shared/components/EmptyState";
 import { cn } from "@/shared/lib/utils";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -129,7 +130,14 @@ export default function ActivityTimeline({
   compact = false,
 }: ActivityTimelineProps) {
   if (items.length === 0) {
-    return <p className="text-sm text-brand-600">{emptyMessage}</p>;
+    return (
+      <EmptyState
+        compact
+        icon={Activity}
+        title="No activity yet"
+        description={emptyMessage}
+      />
+    );
   }
 
   const groups = groupByDay(items);

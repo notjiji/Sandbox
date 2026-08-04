@@ -2,6 +2,8 @@ import { Archive, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import FormAlert from "@/shared/components/FormAlert";
+import { useConfirm } from "@/shared/hooks/useConfirm";
+import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/client";
 import type { ProjectSummary } from "@/shared/types/project";
 import { projectsApi } from "../api";
@@ -18,6 +20,7 @@ export default function ProjectLifecycleActions({
   compact = false,
 }: ProjectLifecycleActionsProps) {
   const navigate = useNavigate();
+  const { confirm } = useConfirm();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,26 +37,34 @@ export default function ProjectLifecycleActions({
     }
   };
 
-  const confirmDelete = () => {
-    if (
-      window.confirm(
-        `Delete "${project.name}"? This archives the project and hides it from active lists.`,
-      )
-    ) {
-      void run("delete", async () => {
-        await projectsApi.delete(project.id);
-        navigate("/projects");
-      });
-    }
+  const confirmDelete = async () => {
+    const confirmed = await confirm({
+      title: "Delete project",
+      description: `Delete "${project.name}"? This archives the project and hides it from active lists.`,
+      confirmLabel: "Delete project",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    void run("delete", async () => {
+      await projectsApi.delete(project.id);
+      toast.success("Project deleted.");
+      navigate("/projects");
+    });
   };
 
-  const confirmArchive = () => {
-    if (window.confirm(`Archive "${project.name}"? You can restore it later.`)) {
-      void run("archive", async () => {
-        await projectsApi.archive(project.id);
-        navigate("/projects");
-      });
-    }
+  const confirmArchive = async () => {
+    const confirmed = await confirm({
+      title: "Archive project",
+      description: `Archive "${project.name}"? You can restore it later.`,
+      confirmLabel: "Archive project",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    void run("archive", async () => {
+      await projectsApi.archive(project.id);
+      toast.success("Project archived.");
+      navigate("/projects");
+    });
   };
 
   return (
@@ -72,7 +83,7 @@ export default function ProjectLifecycleActions({
           <button
             type="button"
             disabled={loading !== null}
-            onClick={confirmArchive}
+            onClick={() => void confirmArchive()}
             className="btn-ghost inline-flex items-center gap-2 text-sm"
           >
             <Archive size={16} />
@@ -97,7 +108,7 @@ export default function ProjectLifecycleActions({
         <button
           type="button"
           disabled={loading !== null}
-          onClick={confirmDelete}
+          onClick={() => void confirmDelete()}
           className="btn-ghost inline-flex items-center gap-2 text-sm text-rose-300 hover:text-rose-200"
         >
           <Trash2 size={16} />

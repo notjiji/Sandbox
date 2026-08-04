@@ -87,6 +87,8 @@ def get_current_membership(
         raise ForbiddenError("You must accept the organization invitation first")
     if membership.status == MemberStatus.SUSPENDED:
         raise ForbiddenError("Your membership in this organization is suspended")
+    if membership.status == MemberStatus.REMOVED:
+        raise ForbiddenError("You are no longer a member of this organization")
 
     return membership
 

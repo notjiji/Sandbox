@@ -115,7 +115,9 @@ def update_member_role(
 
 
 def remove_organization_member(db: Session, membership: OrganizationMember) -> None:
-    db.delete(membership)
+    membership.status = MemberStatus.REMOVED
+    db.add(membership)
+    db.flush()
 
 
 def list_organization_roles() -> list[OrganizationRole]:

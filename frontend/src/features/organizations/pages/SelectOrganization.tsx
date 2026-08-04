@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, Plus } from "lucide-react";
+import { Building2, Plus, RotateCcw } from "lucide-react";
 import AppShell from "@/shared/layouts/AppShell";
 import FormAlert from "@/shared/components/FormAlert";
 import FormError from "@/shared/components/FormError";
+import EmptyState from "@/shared/components/EmptyState";
+import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/client";
 import type { ValidationErrors } from "@/shared/types/api";
 import type { OrganizationSummary } from "@/shared/types/organization";
 import { organizationsApi } from "../api";
 import { membersApi } from "@/features/members/api";
-import { getActiveOrganizations, getInvitedOrganizations, switchOrganization } from "../org";
+import { getActiveOrganizations, getArchivedOrganizations, getInvitedOrganizations, switchOrganization } from "../org";
 import { orgStorage } from "../storage";
 import { buildWelcomePath } from "@/shared/lib/welcome";
 
@@ -22,6 +24,7 @@ interface CreateOrgForm {
 export default function SelectOrganization() {
   const navigate = useNavigate();
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
+  const [archived, setArchived] = useState<OrganizationSummary[]>([]);
   const [invited, setInvited] = useState<OrganizationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -37,8 +40,10 @@ export default function SelectOrganization() {
         const payload = await organizationsApi.listMine();
         if (!active) return;
         const activeOrgs = getActiveOrganizations(payload);
+        const archivedOrgs = getArchivedOrganizations(payload);
         const invitedOrgs = getInvitedOrganizations(payload);
         setOrganizations(activeOrgs);
+        setArchived(archivedOrgs);
         setInvited(invitedOrgs);
 
         if (activeOrgs.length === 1 && activeOrgs[0]) {
@@ -91,6 +96,18 @@ export default function SelectOrganization() {
     }
   };
 
+  const handleRestore = async (organizationId: string) => {
+    try {
+      await organizationsApi.restore(organizationId);
+      toast.success("Organization restored.");
+      const payload = await organizationsApi.listMine();
+      setOrganizations(getActiveOrganizations(payload));
+      setArchived(getArchivedOrganizations(payload));
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Unable to restore organization.");
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
@@ -133,7 +150,12 @@ export default function SelectOrganization() {
           >
             <h2 className="mb-4 text-xl font-semibold text-brand-100">Your organizations</h2>
             {organizations.length === 0 ? (
-              <p className="text-brand-500">No active organizations yet.</p>
+              <EmptyState
+                compact
+                icon={Building2}
+                title="No active organizations yet"
+                description="Create a new workspace or restore an archived organization below."
+              />
             ) : (
               <ul className="space-y-3">
                 {organizations.map((org) => (
@@ -152,6 +174,37 @@ export default function SelectOrganization() {
                   </li>
                 ))}
               </ul>
+            )}
+
+            {archived.length > 0 && (
+              <div className="mt-6 border-t border-brand-800/50 pt-6">
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-brand-400">
+                  Archived organizations
+                </h3>
+                <ul className="space-y-3">
+                  {archived.map((org) => (
+                    <li
+                      key={org.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-brand-800/50 px-4 py-3"
+                    >
+                      <div>
+                        <span className="block font-medium text-brand-100">{org.name}</span>
+                        <span className="text-sm text-brand-500">Archived · {org.role}</span>
+                      </div>
+                      {org.role === "owner" && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRestore(org.id)}
+                          className="btn-ghost inline-flex items-center gap-1 text-sm"
+                        >
+                          <RotateCcw size={14} />
+                          Restore
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             {invited.length > 0 && (

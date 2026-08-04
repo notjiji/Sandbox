@@ -9,6 +9,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import { useConfirm } from "@/shared/hooks/useConfirm";
 import type { MemberSummary, RoleInfo } from "@/shared/types/member";
 import type { OrganizationRole } from "@/shared/types/organization";
 
@@ -43,6 +44,7 @@ export default function MemberRowActions({
   const [editingRole, setEditingRole] = useState(false);
   const [busy, setBusy] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { confirm } = useConfirm();
 
   const isOwner = member.role === "owner";
   const isSelf = currentUserId && member.user_id === currentUserId;
@@ -132,7 +134,19 @@ export default function MemberRowActions({
             <button
               type="button"
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-brand-200 hover:bg-brand-900/40"
-              onClick={() => void run(() => onSuspend(member.membership_id!))}
+              onClick={() =>
+                void run(async () => {
+                  const name =
+                    `${member.first_name ?? ""} ${member.last_name ?? ""}`.trim() || member.email;
+                  const confirmed = await confirm({
+                    title: "Suspend member",
+                    description: `Suspend ${name}? They will lose access until reactivated.`,
+                    confirmLabel: "Suspend member",
+                    destructive: true,
+                  });
+                  if (confirmed) await onSuspend(member.membership_id!);
+                })
+              }
             >
               <Ban size={14} />
               Suspend
@@ -143,7 +157,18 @@ export default function MemberRowActions({
             <button
               type="button"
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-brand-200 hover:bg-brand-900/40"
-              onClick={() => void run(() => onReactivate(member.membership_id!))}
+              onClick={() =>
+                void run(async () => {
+                  const name =
+                    `${member.first_name ?? ""} ${member.last_name ?? ""}`.trim() || member.email;
+                  const confirmed = await confirm({
+                    title: "Reactivate member",
+                    description: `Restore access for ${name}?`,
+                    confirmLabel: "Reactivate member",
+                  });
+                  if (confirmed) await onReactivate(member.membership_id!);
+                })
+              }
             >
               <CheckCircle2 size={14} />
               Reactivate
@@ -171,7 +196,17 @@ export default function MemberRowActions({
               <button
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-amber-300 hover:bg-brand-900/40"
-                onClick={() => void run(() => onRevokeInvite(member.invite_id!))}
+                onClick={() =>
+                  void run(async () => {
+                    const confirmed = await confirm({
+                      title: "Revoke invitation",
+                      description: `Revoke the invitation for ${member.email}? They will no longer be able to join with this link.`,
+                      confirmLabel: "Revoke invitation",
+                      destructive: true,
+                    });
+                    if (confirmed) await onRevokeInvite(member.invite_id!);
+                  })
+                }
               >
                 <XCircle size={14} />
                 Revoke invitation
@@ -183,7 +218,19 @@ export default function MemberRowActions({
             <button
               type="button"
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-rose-300 hover:bg-brand-900/40"
-              onClick={() => void run(() => onRemove(member.membership_id!))}
+              onClick={() =>
+                void run(async () => {
+                  const name =
+                    `${member.first_name ?? ""} ${member.last_name ?? ""}`.trim() || member.email;
+                  const confirmed = await confirm({
+                    title: "Remove member",
+                    description: `Remove ${name} from this organization? They will lose access immediately.`,
+                    confirmLabel: "Remove member",
+                    destructive: true,
+                  });
+                  if (confirmed) await onRemove(member.membership_id!);
+                })
+              }
             >
               <Trash2 size={14} />
               Remove

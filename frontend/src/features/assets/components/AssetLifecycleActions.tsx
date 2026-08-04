@@ -2,6 +2,8 @@ import { Archive, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import FormAlert from "@/shared/components/FormAlert";
+import { useConfirm } from "@/shared/hooks/useConfirm";
+import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/client";
 import type { AssetSummary } from "@/shared/types/asset";
 import { assetsApi } from "../api";
@@ -20,6 +22,7 @@ export default function AssetLifecycleActions({
   onChanged,
 }: AssetLifecycleActionsProps) {
   const navigate = useNavigate();
+  const { confirm } = useConfirm();
   const [loading, setLoading] = useState<LifecycleAction | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +34,7 @@ export default function AssetLifecycleActions({
       if (action === "restore") await assetsApi.restore(projectId, asset.id);
       if (action === "delete") {
         await assetsApi.delete(projectId, asset.id);
+        toast.success("Asset deleted.");
         navigate(`/projects/${projectId}/assets`);
         return;
       }
@@ -42,14 +46,15 @@ export default function AssetLifecycleActions({
     }
   };
 
-  const confirmDelete = () => {
-    if (
-      window.confirm(
-        `Delete "${asset.name}"? This soft-deletes the asset and preserves scan history.`,
-      )
-    ) {
-      void run("delete", "delete");
-    }
+  const confirmDelete = async () => {
+    const confirmed = await confirm({
+      title: "Delete asset",
+      description: `Delete "${asset.name}"? This soft-deletes the asset and preserves scan history.`,
+      confirmLabel: "Delete asset",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    void run("delete", "delete");
   };
 
   return (
@@ -82,7 +87,7 @@ export default function AssetLifecycleActions({
           <button
             type="button"
             disabled={loading !== null}
-            onClick={confirmDelete}
+            onClick={() => void confirmDelete()}
             className="btn-ghost inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300"
           >
             <Trash2 size={16} />

@@ -4,6 +4,7 @@ import { Building2, Check, ChevronDown, Plus } from "lucide-react";
 import { organizationsApi } from "@/features/organizations/api";
 import { switchOrganization, syncOrganizations } from "@/features/organizations/org";
 import { orgStorage } from "@/features/organizations/storage";
+import OrganizationLogo from "@/shared/components/OrganizationLogo";
 import type { OrganizationSummary } from "@/shared/types/organization";
 import { cn } from "@/shared/lib/utils";
 
@@ -12,12 +13,20 @@ interface OrgSwitcherProps {
   onNavigate?: () => void;
 }
 
-function OrgInitial({ name }: { name: string }) {
-  return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-brand-600/50 bg-brand-900/60 text-sm font-semibold text-brand-200">
-      {name.charAt(0).toUpperCase()}
-    </span>
+function partitionOrganizations(
+  organizations: OrganizationSummary[],
+  activeOrgId: string | null,
+  recentIds: string[],
+) {
+  const recentSet = new Set(recentIds.filter((id) => id !== activeOrgId));
+  const recent = recentIds
+    .map((id) => organizations.find((org) => org.id === id))
+    .filter((org): org is OrganizationSummary => Boolean(org && org.id !== activeOrgId));
+  const recentIdSet = new Set(recent.map((org) => org.id));
+  const others = organizations.filter(
+    (org) => org.id !== activeOrgId && !recentIdSet.has(org.id),
   );
+  return { recent, others };
 }
 
 export default function OrgSwitcher({ collapsed = false, onNavigate }: OrgSwitcherProps) {
@@ -25,11 +34,13 @@ export default function OrgSwitcher({ collapsed = false, onNavigate }: OrgSwitch
   const containerRef = useRef<HTMLDivElement>(null);
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [activeOrgId, setActiveOrgId] = useState<string | null>(orgStorage.getActiveOrgId());
+  const [recentIds, setRecentIds] = useState<string[]>(orgStorage.getRecentOrgIds());
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
 
   const activeOrg = organizations.find((org) => org.id === activeOrgId) ?? organizations[0];
+  const { recent, others } = partitionOrganizations(organizations, activeOrgId, recentIds);
 
   useEffect(() => {
     let active = true;
@@ -40,6 +51,10 @@ export default function OrgSwitcher({ collapsed = false, onNavigate }: OrgSwitch
         if (!active) return;
         setOrganizations(synced.activeOrganizations);
         setActiveOrgId(synced.activeOrgId);
+        setRecentIds(orgStorage.getRecentOrgIds());
+        if (synced.activeOrgId) {
+          orgStorage.recordRecentOrg(synced.activeOrgId);
+        }
       } catch {
         if (active) setOrganizations([]);
       } finally {
@@ -80,7 +95,9 @@ export default function OrgSwitcher({ collapsed = false, onNavigate }: OrgSwitch
     setSwitching(true);
     try {
       await switchOrganization(organizationsApi, organizationId);
+      orgStorage.recordRecentOrg(organizationId);
       setActiveOrgId(organizationId);
+      setRecentIds(orgStorage.getRecentOrgIds());
       setOpen(false);
       onNavigate?.();
       navigate("/dashboard", { replace: true });
@@ -89,6 +106,31 @@ export default function OrgSwitcher({ collapsed = false, onNavigate }: OrgSwitch
     } finally {
       setSwitching(false);
     }
+  };
+
+  const renderOrgOption = (org: OrganizationSummary) => {
+    const isActive = org.id === activeOrgId;
+    return (
+      <li key={org.id}>
+        <button
+          type="button"
+          role="option"
+          aria-selected={isActive}
+          disabled={switching}
+          onClick={() => void handleSelect(org.id)}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition",
+            isActive
+              ? "bg-brand-900/50 text-brand-100"
+              : "text-brand-300 hover:bg-brand-900/30 hover:text-brand-100",
+          )}
+        >
+          <OrganizationLogo name={org.name} logoUrl={org.logo_url} size="sm" />
+          <span className="min-w-0 flex-1 truncate font-medium">{org.name}</span>
+          {isActive && <Check size={16} className="shrink-0 text-brand-400" />}
+        </button>
+      </li>
+    );
   };
 
   if (loading || organizations.length === 0 || !activeOrg) {
@@ -104,38 +146,32 @@ export default function OrgSwitcher({ collapsed = false, onNavigate }: OrgSwitch
       role="listbox"
       aria-label="Organizations"
     >
-      <div className="px-3 py-2">
-        <p className="text-[10px] font-medium uppercase tracking-wider text-brand-600">
-          Organizations
-        </p>
-      </div>
+      {recent.length > 0 && (
+        <>
+          <div className="px-3 py-2">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-brand-600">
+              Recent
+            </p>
+          </div>
+          <ul className="max-h-40 overflow-y-auto px-1">{recent.map(renderOrgOption)}</ul>
+          {others.length > 0 && <div className="my-2 border-t border-brand-800/50" />}
+        </>
+      )}
 
-      <ul className="max-h-56 overflow-y-auto px-1">
-        {organizations.map((org) => {
-          const isActive = org.id === activeOrgId;
-          return (
-            <li key={org.id}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={isActive}
-                disabled={switching}
-                onClick={() => void handleSelect(org.id)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition",
-                  isActive
-                    ? "bg-brand-900/50 text-brand-100"
-                    : "text-brand-300 hover:bg-brand-900/30 hover:text-brand-100",
-                )}
-              >
-                <OrgInitial name={org.name} />
-                <span className="min-w-0 flex-1 truncate font-medium">{org.name}</span>
-                {isActive && <Check size={16} className="shrink-0 text-brand-400" />}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      {others.length > 0 && (
+        <>
+          <div className="px-3 py-2">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-brand-600">
+              {recent.length > 0 ? "All organizations" : "Organizations"}
+            </p>
+          </div>
+          <ul className="max-h-56 overflow-y-auto px-1">{others.map(renderOrgOption)}</ul>
+        </>
+      )}
+
+      {recent.length === 0 && others.length === 0 && activeOrg && (
+        <ul className="px-1">{renderOrgOption(activeOrg)}</ul>
+      )}
 
       <div className="my-2 border-t border-brand-800/50" />
 
@@ -165,7 +201,11 @@ export default function OrgSwitcher({ collapsed = false, onNavigate }: OrgSwitch
           aria-expanded={open}
           aria-haspopup="listbox"
         >
-          <Building2 size={16} />
+          {activeOrg.logo_url ? (
+            <OrganizationLogo name={activeOrg.name} logoUrl={activeOrg.logo_url} size="xs" />
+          ) : (
+            <Building2 size={16} />
+          )}
         </button>
         {dropdown}
       </div>
@@ -187,7 +227,7 @@ export default function OrgSwitcher({ collapsed = false, onNavigate }: OrgSwitch
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <OrgInitial name={activeOrg.name} />
+        <OrganizationLogo name={activeOrg.name} logoUrl={activeOrg.logo_url} size="sm" />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-brand-100">
           {activeOrg.name}
         </span>

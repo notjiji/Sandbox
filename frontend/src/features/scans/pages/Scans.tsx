@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Play, Plus, Radar, Square } from "lucide-react";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
-import FormAlert from "@/shared/components/FormAlert";
+import EmptyState from "@/shared/components/EmptyState";
+import ListSearchBar from "@/shared/components/ListSearchBar";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/client";
 import type { AssetSummary } from "@/shared/types/asset";
 import type { ProjectSummary } from "@/shared/types/project";
@@ -62,8 +65,7 @@ export default function Scans() {
   const [profiles, setProfiles] = useState<ScanProfileOption[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<ScanType>("full");
   const [selectedPlugins, setSelectedPlugins] = useState<string[]>([]);
-  const [alert, setAlert] = useState("");
-  const [success, setSuccess] = useState("");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -95,7 +97,7 @@ export default function Scans() {
         await loadData();
       } catch (error) {
         if (active) {
-          setAlert(error instanceof ApiError ? error.message : "Unable to load scans.");
+          toast.error(error instanceof ApiError ? error.message : "Unable to load scans.");
         }
       } finally {
         if (active) setLoading(false);
@@ -130,25 +132,34 @@ export default function Scans() {
     );
   };
 
+  const filteredScans = useMemo(() => {
+    if (!search.trim()) return scans;
+    const needle = search.toLowerCase();
+    return scans.filter(
+      (scan) =>
+        scan.scan_type.toLowerCase().includes(needle) ||
+        scan.status.toLowerCase().includes(needle) ||
+        (scan.profile_plugins ?? []).some((plugin) => plugin.toLowerCase().includes(needle)),
+    );
+  }, [scans, search]);
+
   const handleCreate = async () => {
     if (!projectId || !assetId) return;
     setCreating(true);
-    setAlert("");
-    setSuccess("");
     try {
       const payload: CreateScanRequest = { scan_type: selectedProfile };
       if (selectedProfile === "custom") {
         if (selectedPlugins.length === 0) {
-          setAlert("Select at least one plugin for a custom scan.");
+          toast.error("Select at least one plugin for a custom scan.");
           return;
         }
         payload.plugins = selectedPlugins;
       }
       await scansApi.create(projectId, assetId, payload);
-      setSuccess("Scan created.");
+      toast.success("Scan created.");
       await loadData();
     } catch (error) {
-      setAlert(error instanceof ApiError ? error.message : "Unable to create scan.");
+      toast.error(error instanceof ApiError ? error.message : "Unable to create scan.");
     } finally {
       setCreating(false);
     }
@@ -157,14 +168,12 @@ export default function Scans() {
   const handleRun = async (scanId: string) => {
     if (!projectId || !assetId) return;
     setActionId(scanId);
-    setAlert("");
-    setSuccess("");
     try {
       await scansApi.run(projectId, assetId, scanId);
-      setSuccess("Scan started.");
+      toast.success("Scan started.");
       await loadData();
     } catch (error) {
-      setAlert(error instanceof ApiError ? error.message : "Unable to run scan.");
+      toast.error(error instanceof ApiError ? error.message : "Unable to run scan.");
     } finally {
       setActionId(null);
     }
@@ -173,14 +182,12 @@ export default function Scans() {
   const handleCancel = async (scanId: string) => {
     if (!projectId || !assetId) return;
     setActionId(scanId);
-    setAlert("");
-    setSuccess("");
     try {
       await scansApi.cancel(projectId, assetId, scanId);
-      setSuccess("Scan cancelled.");
+      toast.success("Scan cancelled.");
       await loadData();
     } catch (error) {
-      setAlert(error instanceof ApiError ? error.message : "Unable to cancel scan.");
+      toast.error(error instanceof ApiError ? error.message : "Unable to cancel scan.");
     } finally {
       setActionId(null);
     }
@@ -193,8 +200,6 @@ export default function Scans() {
       title="Scans"
       subtitle={asset ? `Scan history for ${asset.name}` : "Asset scan history"}
     >
-      {alert && <FormAlert message={alert} />}
-      {success && <FormAlert message={success} variant="success" />}
       <ProjectNav projectName={project?.name} assetName={asset?.name} active="scans" />
 
       <div className="mb-4 space-y-4 rounded-lg border border-brand-800/50 p-4">
@@ -279,15 +284,28 @@ export default function Scans() {
         className="glass-panel p-6"
       >
         <h2 className="mb-4 text-lg font-semibold text-brand-100">Scan history</h2>
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search scans..."
+          className="mb-4"
+        />
         {loading ? (
-          <p className="text-brand-500">Loading...</p>
-        ) : scans.length === 0 ? (
-          <p className="text-brand-500">
-            No scans yet. Create a scan to run plugins against this asset.
-          </p>
+          <ListSkeleton rows={4} />
+        ) : filteredScans.length === 0 ? (
+          <EmptyState
+            compact
+            icon={Radar}
+            title={search ? "No matching scans" : "No scans yet"}
+            description={
+              search
+                ? "Try a different search term."
+                : "Create a scan to run plugins against this asset."
+            }
+          />
         ) : (
           <ul className="space-y-3">
-            {scans.map((scan) => (
+            {filteredScans.map((scan) => (
               <li
                 key={scan.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand-800/50 px-4 py-3"
