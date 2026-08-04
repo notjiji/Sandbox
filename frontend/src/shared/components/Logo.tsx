@@ -6,6 +6,8 @@ type LogoSize = "sm" | "md" | "lg";
 
 interface LogoProps {
   size?: LogoSize;
+  to?: string;
+  showText?: boolean;
 }
 
 const sizes: Record<LogoSize, string> = {
@@ -14,16 +16,18 @@ const sizes: Record<LogoSize, string> = {
   lg: "text-4xl",
 };
 
-export default function Logo({ size = "md" }: LogoProps) {
+export default function Logo({ size = "md", to = "/", showText = true }: LogoProps) {
   return (
-    <Link to="/" className="group inline-flex items-center gap-2">
+    <Link to={to} className="group inline-flex items-center gap-2">
       <motion.span className="font-terminal text-brand-400" whileHover={{ scale: 1.05 }}>
         [//]
       </motion.span>
-      <GlitchText
-        text="SANDBOX"
-        className={`font-dyslexic font-bold tracking-wider text-brand-200 ${sizes[size]}`}
-      />
+      {showText && (
+        <GlitchText
+          text="SANDBOX"
+          className={`font-dyslexic font-bold tracking-wider text-brand-200 ${sizes[size]}`}
+        />
+      )}
     </Link>
   );
 }

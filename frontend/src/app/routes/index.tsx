@@ -24,6 +24,7 @@ import AssetNew from "@/features/assets/pages/AssetNew";
 import Scans from "@/features/scans/pages/Scans";
 import Findings from "@/features/findings/pages/Findings";
 import Reports from "@/features/reports/pages/Reports";
+import AiAssistant from "@/features/ai/pages/AiAssistant";
 
 export default function AppRoutes() {
   return (
@@ -54,6 +55,7 @@ export default function AppRoutes() {
           <Route path="/projects/:projectId/assets/:assetId/scans" element={<Scans />} />
           <Route path="/projects/:projectId/findings" element={<Findings />} />
           <Route path="/projects/:projectId/reports" element={<Reports />} />
+          <Route path="/ai-assistant" element={<AiAssistant />} />
         </Route>
       </Route>
 
