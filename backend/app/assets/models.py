@@ -45,6 +45,7 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[AssetStatus] = mapped_column(
         Enum(AssetStatus, name="asset_status", native_enum=True),
         nullable=False,

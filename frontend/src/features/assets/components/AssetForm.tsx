@@ -42,6 +42,7 @@ const EDITABLE_STATUSES: AssetStatus[] = ["pending", "active"];
 const EMPTY_FORM: AssetFormState = {
   name: "",
   description: "",
+  notes: "",
   primary_value: "",
   external_identifier: "",
   business_unit: "",
@@ -144,7 +145,8 @@ export default function AssetForm({
 
       const payload: CreateAssetPayload & UpdateAssetRequest = {
         name: form.name.trim(),
-        description: form.description.trim() || undefined,
+        description: form.description?.trim() || undefined,
+        notes: form.notes?.trim() || undefined,
         type: form.type,
         environment: form.environment,
         criticality: form.criticality,
@@ -267,9 +269,22 @@ export default function AssetForm({
         </label>
         <textarea
           id="description"
-          value={form.description}
+          value={form.description ?? ""}
           onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
           className="input-field min-h-20"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="notes" className="terminal-text mb-2 block">
+          notes
+        </label>
+        <textarea
+          id="notes"
+          value={form.notes ?? ""}
+          onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+          className="input-field min-h-24"
+          placeholder="Internal notes for your team (optional)"
         />
       </div>
 

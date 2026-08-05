@@ -83,6 +83,7 @@ def _apply_list_filters(
                 or_(
                     Asset.name.ilike(term),
                     Asset.description.ilike(term),
+                    Asset.notes.ilike(term),
                     Asset.owner.ilike(term),
                     Asset.external_identifier.ilike(term),
                     Asset.business_unit.ilike(term),
@@ -264,6 +265,7 @@ def create_asset(
     type: AssetType = AssetType.WEBSITE,
     parent_id: uuid.UUID | None = None,
     description: str | None = None,
+    notes: str | None = None,
     status: AssetStatus = AssetStatus.PENDING,
     environment: AssetEnvironment = AssetEnvironment.PRODUCTION,
     criticality: AssetCriticality = AssetCriticality.MEDIUM,
@@ -280,6 +282,7 @@ def create_asset(
         name=name,
         type=type,
         description=description,
+        notes=notes,
         status=status,
         environment=environment,
         criticality=criticality,
@@ -300,6 +303,7 @@ def update_asset(
     *,
     name: str | None = None,
     description: str | None = None,
+    notes: str | None = None,
     type: AssetType | None = None,
     status: AssetStatus | None = None,
     environment: AssetEnvironment | None = None,
@@ -316,6 +320,8 @@ def update_asset(
         asset.name = name
     if description is not None:
         asset.description = description
+    if notes is not None:
+        asset.notes = notes
     if type is not None:
         asset.type = type
     if status is not None:

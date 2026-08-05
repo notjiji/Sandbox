@@ -36,6 +36,7 @@ class AssetSummary(BaseSchema):
     name: str
     type: AssetType
     description: str | None = None
+    notes: str | None = None
     external_identifier: str | None = None
 
     criticality: AssetCriticality
@@ -123,6 +124,7 @@ class AssetChildrenResponse(BaseSchema):
 class CreateAssetRequest(BaseSchema):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
+    notes: str | None = Field(default=None, max_length=10000)
     type: AssetType = AssetType.WEBSITE
     status: AssetStatus = AssetStatus.PENDING
     environment: AssetEnvironment = AssetEnvironment.PRODUCTION
@@ -149,6 +151,7 @@ class CreateAssetRequest(BaseSchema):
 class UpdateAssetRequest(BaseSchema):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
+    notes: str | None = Field(default=None, max_length=10000)
     type: AssetType | None = None
     status: AssetStatus | None = None
     environment: AssetEnvironment | None = None

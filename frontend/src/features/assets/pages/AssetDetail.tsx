@@ -9,16 +9,19 @@ import type { AssetOverview } from "@/shared/types/asset-overview";
 import type { ProjectSummary } from "@/shared/types/project";
 import { projectsApi } from "@/features/projects/api";
 import ProjectNav from "@/features/projects/components/ProjectNav";
+import AssetDashboard from "../components/AssetDashboard";
+import AssetLifecycleActions from "../components/AssetLifecycleActions";
+import AssetNotesPanel from "../components/AssetNotesPanel";
+import AssetRelationshipsPanel from "../components/AssetRelationshipsPanel";
+import AssetTagList from "../components/AssetTagList";
+import AssetTimelinePanel from "../components/AssetTimelinePanel";
 import {
   AssetCriticalityBadge,
   AssetEnvironmentBadge,
+  AssetHealthBadge,
   AssetStatusBadge,
   AssetTypeBadge,
 } from "../components/AssetBadges";
-import AssetDashboard from "../components/AssetDashboard";
-import AssetLifecycleActions from "../components/AssetLifecycleActions";
-import AssetRelationshipsPanel from "../components/AssetRelationshipsPanel";
-import AssetTimelinePanel from "../components/AssetTimelinePanel";
 import { assetsApi } from "../api";
 import {
   ASSET_CATEGORY_LABELS,
@@ -117,11 +120,17 @@ export default function AssetDetail() {
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <AssetTypeBadge type={asset.type} />
                   <AssetStatusBadge status={asset.status} />
+                  <AssetHealthBadge healthStatus={asset.health_status ?? "Unscanned"} />
                   <AssetCriticalityBadge criticality={asset.criticality} />
                   <AssetEnvironmentBadge environment={asset.environment} />
                 </div>
                 <h2 className="text-2xl font-semibold text-brand-50">{asset.name}</h2>
                 {primaryValue && <p className="mt-1 text-brand-400">{primaryValue}</p>}
+                {asset.tags.length > 0 && (
+                  <div className="mt-3">
+                    <AssetTagList tags={asset.tags} />
+                  </div>
+                )}
                 {asset.description && (
                   <p className="mt-3 max-w-3xl text-sm leading-relaxed text-brand-300">
                     {asset.description}
@@ -157,6 +166,8 @@ export default function AssetDetail() {
           </motion.div>
 
           <AssetDashboard overview={overview} projectId={projectId} assetId={assetId} />
+
+          <AssetNotesPanel projectId={projectId} asset={asset} onSaved={load} />
 
           <AssetTimelinePanel projectId={projectId} assetId={assetId} />
 

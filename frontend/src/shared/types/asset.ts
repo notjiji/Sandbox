@@ -104,6 +104,7 @@ export interface AssetSummary {
   parent_name?: string | null;
   name: string;
   description?: string | null;
+  notes?: string | null;
   type: AssetType;
   external_identifier?: string | null;
   status: AssetStatus;
@@ -237,7 +238,8 @@ export interface AssetListQuery {
 
 export interface CreateAssetRequest {
   name: string;
-  description?: string;
+  description?: string | null;
+  notes?: string | null;
   type: AssetType;
   status?: AssetStatus;
   environment?: AssetEnvironment;
@@ -254,6 +256,7 @@ export interface CreateAssetRequest {
 export interface UpdateAssetRequest {
   name?: string;
   description?: string;
+  notes?: string;
   type?: AssetType;
   status?: AssetStatus;
   environment?: AssetEnvironment;
@@ -269,7 +272,8 @@ export interface UpdateAssetRequest {
 
 export interface AssetFormState {
   name: string;
-  description: string;
+  description?: string | null;
+  notes?: string | null;
   primary_value: string;
   external_identifier: string;
   business_unit: string;

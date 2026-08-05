@@ -45,7 +45,7 @@ export default function AssetFilters({ projectId, filters, onChange }: AssetFilt
             value={filters.search}
             onChange={(e) => set("search", e.target.value)}
             className="input-field pl-9"
-            placeholder="Search name, identifier, owner, business unit, tags..."
+            placeholder="Search name, identifier, owner, notes, tags..."
           />
         </div>
         <AssetSavedFiltersMenu projectId={projectId} filters={filters} onApply={onChange} />

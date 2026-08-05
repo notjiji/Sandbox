@@ -280,6 +280,7 @@ export function assetToFormState(asset: AssetSummary): AssetFormState {
   return {
     name: asset.name ?? "",
     description: asset.description ?? "",
+    notes: asset.notes ?? "",
     primary_value: primaryKey ? (asset.metadata?.[primaryKey] ?? "") : "",
     external_identifier: asset.external_identifier ?? "",
     business_unit: asset.business_unit ?? "",

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ChevronDown, ChevronRight, CornerDownRight } from "lucide-react";
 import type { AssetSummary } from "@/shared/types/asset";
 import AssetEmptyState from "./AssetEmptyState";
+import AssetTagList from "./AssetTagList";
 import {
   AssetCriticalityBadge,
   AssetEnvironmentBadge,
@@ -184,6 +185,9 @@ function AssetDataRow({
       <td className="px-4 py-3">
         <AssetHealthBadge healthStatus={asset.health_status ?? "Unscanned"} />
       </td>
+      <td className="px-4 py-3">
+        <AssetTagList tags={asset.tags ?? []} maxVisible={3} />
+      </td>
       <td className="px-4 py-3 text-brand-300">{asset.owner || "—"}</td>
       <td className="px-4 py-3 text-brand-300">
         {assetLastScan(asset) ? formatDateTime(assetLastScan(asset)) : UNAVAILABLE}
@@ -271,6 +275,7 @@ export default function AssetTable({
               <th className="px-4 py-3 font-medium">Environment</th>
               <th className="px-4 py-3 font-medium">Lifecycle</th>
               <th className="px-4 py-3 font-medium">Health</th>
+              <th className="px-4 py-3 font-medium">Tags</th>
               <th className="px-4 py-3 font-medium">Owner</th>
               <th className="px-4 py-3 font-medium">Last Scan</th>
               <th className="px-4 py-3 font-medium">Security Score</th>
@@ -281,7 +286,7 @@ export default function AssetTable({
               if (row.kind === "loading") {
                 return (
                   <tr key={`loading-${row.parentId}`} className="bg-brand-950/10">
-                    <td colSpan={11} className="px-4 py-2 pl-16 text-xs text-brand-500">
+                    <td colSpan={12} className="px-4 py-2 pl-16 text-xs text-brand-500">
                       Loading child assets...
                     </td>
                   </tr>
@@ -291,7 +296,7 @@ export default function AssetTable({
               if (row.kind === "empty") {
                 return (
                   <tr key={`empty-${row.parentId}`} className="bg-brand-950/10">
-                    <td colSpan={11} className="px-4 py-2 pl-16 text-xs text-brand-500">
+                    <td colSpan={12} className="px-4 py-2 pl-16 text-xs text-brand-500">
                       No child assets match the current filters.
                     </td>
                   </tr>
