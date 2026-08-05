@@ -16,6 +16,7 @@ import type { ProjectSummary } from "@/shared/types/project";
 import { projectsApi } from "@/features/projects/api";
 import ProjectNav from "@/features/projects/components/ProjectNav";
 import AssetFilters from "../components/AssetFilters";
+import AssetBulkActionsBar from "../components/AssetBulkActionsBar";
 import AssetPagination from "../components/AssetPagination";
 import AssetTable from "../components/AssetTable";
 import AssetViewToggle from "../components/AssetViewToggle";
@@ -51,6 +52,7 @@ export default function Assets() {
   const [childrenByParentId, setChildrenByParentId] = useState<Record<string, AssetSummary[]>>({});
   const [loadingChildren, setLoadingChildren] = useState<Record<string, boolean>>({});
   const [expandError, setExpandError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const treeAvailable = canUseTreeView(filters);
   const effectiveMode: ViewMode = treeAvailable && viewMode === "tree" ? "tree" : "flat";
@@ -93,7 +95,19 @@ export default function Assets() {
     filters.order,
   ]);
 
-  const { assets, total, loading, error } = useProjectAssets(projectId, query);
+  const handleToggleSelect = useCallback((assetId: string) => {
+    setSelectedIds((current) =>
+      current.includes(assetId)
+        ? current.filter((id) => id !== assetId)
+        : [...current, assetId],
+    );
+  }, []);
+
+  const handleToggleSelectAll = useCallback((assetIds: string[]) => {
+    setSelectedIds(assetIds);
+  }, []);
+
+  const { assets, total, loading, error, reload } = useProjectAssets(projectId, query);
 
   useEffect(() => {
     if (!projectId) return undefined;
@@ -114,6 +128,7 @@ export default function Assets() {
     setChildrenByParentId({});
     setLoadingChildren({});
     setExpandError(null);
+    setSelectedIds([]);
   }, [filters, page, effectiveMode]);
 
   useEffect(() => {
@@ -215,6 +230,13 @@ export default function Assets() {
 
         <AssetFilters projectId={projectId} filters={filters} onChange={handleFiltersChange} />
 
+        <AssetBulkActionsBar
+          projectId={projectId}
+          selectedIds={selectedIds}
+          onClear={() => setSelectedIds([])}
+          onComplete={() => void reload()}
+        />
+
         {loading ? (
           <p className="text-brand-500">Loading assets...</p>
         ) : (
@@ -228,6 +250,9 @@ export default function Assets() {
               childrenByParentId={childrenByParentId}
               loadingChildren={loadingChildren}
               onToggleExpand={handleToggleExpand}
+              selectedIds={selectedIds}
+              onToggleSelect={handleToggleSelect}
+              onToggleSelectAll={handleToggleSelectAll}
             />
             <AssetPagination
               page={page}

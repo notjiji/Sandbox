@@ -37,12 +37,14 @@ from app.assets.services import (
     update_project_asset,
 )
 from app.assets.schemas import (
+    AssetBulkActionRequest,
     AssetListQuery,
     CreateAssetLinkRequest,
     CreateAssetRequest,
     CreateAssetSavedFilterRequest,
     UpdateAssetRequest,
 )
+from app.assets.services.bulk_service import execute_bulk_action
 from app.assets.tag_filters import normalize_tags
 from app.core.database import get_db
 from app.core.responses import success_response
@@ -147,6 +149,19 @@ def delete_asset_saved_filter(
         db, membership, project_id=project_id, filter_id=filter_id
     )
     return success_response(data={"message": "Saved filter deleted"})
+
+
+@router.post("/bulk")
+def bulk_asset_actions(
+    project_id: uuid.UUID,
+    body: AssetBulkActionRequest,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_UPDATE)),
+) -> JSONResponse:
+    result = execute_bulk_action(
+        db, membership, project_id=project_id, body=body
+    )
+    return success_response(data=result.model_dump(mode="json"))
 
 
 router.include_router(asset_scans_router, prefix="/{asset_id}/scans", tags=["scans"])

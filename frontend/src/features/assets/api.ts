@@ -11,6 +11,8 @@ import type {
   CreateAssetLinkRequest,
   CreateAssetRequest,
   CreateAssetSavedFilterRequest,
+  AssetBulkActionRequest,
+  AssetBulkActionResponse,
   UpdateAssetRequest,
 } from "@/shared/types/asset";
 import type { AssetOverview } from "@/shared/types/asset-overview";
@@ -136,6 +138,13 @@ export const assetsApi = {
   deleteSavedFilter: (projectId: string, filterId: string) =>
     apiRequest<void>(`${base(projectId)}/saved-filters/${filterId}`, {
       method: "DELETE",
+      auth: true,
+    }),
+
+  bulk: (projectId: string, data: AssetBulkActionRequest) =>
+    apiRequest<AssetBulkActionResponse>(`${base(projectId)}/bulk`, {
+      method: "POST",
+      body: data,
       auth: true,
     }),
 };

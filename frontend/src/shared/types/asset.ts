@@ -174,6 +174,39 @@ export interface CreateAssetSavedFilterRequest {
   filters: AssetSavedFilterState;
 }
 
+export type AssetBulkAction =
+  | "archive"
+  | "delete"
+  | "assign_tags"
+  | "change_owner"
+  | "launch_scan"
+  | "export";
+
+export interface AssetBulkActionRequest {
+  asset_ids: string[];
+  action: AssetBulkAction;
+  tags?: string[];
+  tag_mode?: "add" | "replace";
+  owner?: string;
+  scan_type?: import("@/shared/types/scan").ScanType;
+}
+
+export interface AssetBulkActionItemResult {
+  asset_id: string;
+  success: boolean;
+  message?: string | null;
+  scan_id?: string | null;
+}
+
+export interface AssetBulkActionResponse {
+  action: AssetBulkAction;
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: AssetBulkActionItemResult[];
+  export_items: AssetSummary[];
+}
+
 export interface AssetListQuery {
   page?: number;
   limit?: number;

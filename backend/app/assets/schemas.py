@@ -13,7 +13,7 @@ from app.assets.enums import (
     AssetType,
     SortOrder,
 )
-from app.scans.enums import ScanStatus
+from app.scans.enums import ScanStatus, ScanType
 from app.shared.schemas.base import BaseSchema
 
 
@@ -249,4 +249,29 @@ class AssetSavedFilterListResponse(BaseSchema):
 class CreateAssetSavedFilterRequest(BaseSchema):
     name: str = Field(min_length=1, max_length=100)
     filters: AssetSavedFilterState
+
+
+class AssetBulkActionRequest(BaseSchema):
+    asset_ids: list[str] = Field(min_length=1, max_length=100)
+    action: str
+    tags: list[str] = Field(default_factory=list)
+    tag_mode: str = Field(default="add", pattern="^(add|replace)$")
+    owner: str | None = Field(default=None, max_length=255)
+    scan_type: ScanType = ScanType.QUICK
+
+
+class AssetBulkActionItemResult(BaseSchema):
+    asset_id: str
+    success: bool
+    message: str | None = None
+    scan_id: str | None = None
+
+
+class AssetBulkActionResponse(BaseSchema):
+    action: str
+    total: int
+    succeeded: int
+    failed: int
+    results: list[AssetBulkActionItemResult]
+    export_items: list[AssetSummary] = Field(default_factory=list)
 

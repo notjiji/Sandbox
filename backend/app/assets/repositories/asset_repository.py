@@ -422,3 +422,12 @@ def replace_tags(db: Session, *, asset_id: uuid.UUID, tags: list[str]) -> list[A
         created.append(entry)
     db.flush()
     return created
+
+
+def merge_tags(db: Session, *, asset_id: uuid.UUID, tags: list[str]) -> list[AssetTag]:
+    existing = {
+        row[0]
+        for row in db.query(AssetTag.tag).filter(AssetTag.asset_id == asset_id).all()
+    }
+    merged = sorted(existing | {tag.strip().lower() for tag in tags if tag.strip()})
+    return replace_tags(db, asset_id=asset_id, tags=merged)

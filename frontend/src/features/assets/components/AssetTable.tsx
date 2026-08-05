@@ -119,6 +119,9 @@ interface AssetDataRowProps {
   mode: ViewMode;
   expanded: boolean;
   onToggleExpand: (assetId: string) => void;
+  selected: boolean;
+  onToggleSelect: (assetId: string) => void;
+  selectable: boolean;
 }
 
 function AssetDataRow({
@@ -130,11 +133,24 @@ function AssetDataRow({
   mode,
   expanded,
   onToggleExpand,
+  selected,
+  onToggleSelect,
+  selectable,
 }: AssetDataRowProps) {
   const child = isChildAsset(asset) || depth > 0;
 
   return (
     <tr className={child ? "bg-brand-950/20 hover:bg-brand-900/30" : "hover:bg-brand-900/20"}>
+      <td className="px-4 py-3">
+        <input
+          type="checkbox"
+          checked={selected}
+          disabled={!selectable}
+          onChange={() => onToggleSelect(asset.id)}
+          aria-label={`Select ${asset.name}`}
+          className="rounded border-brand-700 bg-brand-950 text-brand-400"
+        />
+      </td>
       <td className="px-4 py-3">
         <AssetTypeBadge type={asset.type} />
       </td>
@@ -177,6 +193,9 @@ interface AssetTableProps {
   childrenByParentId?: Record<string, AssetSummary[]>;
   loadingChildren?: Record<string, boolean>;
   onToggleExpand?: (assetId: string) => void;
+  selectedIds?: string[];
+  onToggleSelect?: (assetId: string) => void;
+  onToggleSelectAll?: (assetIds: string[]) => void;
 }
 
 export default function AssetTable({
@@ -188,6 +207,9 @@ export default function AssetTable({
   childrenByParentId = {},
   loadingChildren = {},
   onToggleExpand = () => {},
+  selectedIds = [],
+  onToggleSelect = () => {},
+  onToggleSelectAll = () => {},
 }: AssetTableProps) {
   if (assets.length === 0) {
     return (
@@ -208,12 +230,29 @@ export default function AssetTable({
           depth: isChildAsset(asset) ? 1 : 0,
         }));
 
+  const selectableIds = rows
+    .filter((row): row is Extract<typeof row, { kind: "asset" }> => row.kind === "asset")
+    .map((row) => row.asset.id);
+  const allSelected =
+    selectableIds.length > 0 && selectableIds.every((id) => selectedIds.includes(id));
+
   return (
     <div className="glass-panel overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-brand-800/50 bg-brand-950/30 text-xs uppercase tracking-wide text-brand-500">
             <tr>
+              <th className="px-4 py-3 font-medium">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={() =>
+                    onToggleSelectAll(allSelected ? [] : selectableIds)
+                  }
+                  aria-label="Select all assets on this page"
+                  className="rounded border-brand-700 bg-brand-950 text-brand-400"
+                />
+              </th>
               <th className="px-4 py-3 font-medium">Type</th>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Project</th>
@@ -230,7 +269,7 @@ export default function AssetTable({
               if (row.kind === "loading") {
                 return (
                   <tr key={`loading-${row.parentId}`} className="bg-brand-950/10">
-                    <td colSpan={9} className="px-4 py-2 pl-16 text-xs text-brand-500">
+                    <td colSpan={10} className="px-4 py-2 pl-16 text-xs text-brand-500">
                       Loading child assets...
                     </td>
                   </tr>
@@ -240,7 +279,7 @@ export default function AssetTable({
               if (row.kind === "empty") {
                 return (
                   <tr key={`empty-${row.parentId}`} className="bg-brand-950/10">
-                    <td colSpan={9} className="px-4 py-2 pl-16 text-xs text-brand-500">
+                    <td colSpan={10} className="px-4 py-2 pl-16 text-xs text-brand-500">
                       No child assets match the current filters.
                     </td>
                   </tr>
@@ -259,6 +298,9 @@ export default function AssetTable({
                   mode={mode}
                   expanded={expandedIds.has(asset.id)}
                   onToggleExpand={onToggleExpand}
+                  selected={selectedIds.includes(asset.id)}
+                  onToggleSelect={onToggleSelect}
+                  selectable={asset.status !== "deleted"}
                 />
               );
             })}
