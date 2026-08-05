@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
 import FormAlert from "@/shared/components/FormAlert";
+import ErrorState from "@/shared/components/ErrorState";
 import { ApiError } from "@/shared/api/client";
 import type {
   AssetCategory,
@@ -187,6 +188,16 @@ export default function Assets() {
     [childQuery, childrenByParentId, expandedIds, projectId],
   );
 
+  const hasActiveFilters = Boolean(
+    filters.search.trim() ||
+      filters.tags.length > 0 ||
+      filters.type ||
+      filters.status ||
+      filters.environment ||
+      filters.criticality ||
+      filters.asset_category,
+  );
+
   const countLabel = loading
     ? "Loading assets..."
     : effectiveMode === "tree"
@@ -197,7 +208,14 @@ export default function Assets() {
 
   return (
     <DashboardShell title="Assets" subtitle="Search, filter, and manage digital assets.">
-      {error && <FormAlert message={error} />}
+      {error && !loading && (
+        <ErrorState
+          title="Couldn't load assets"
+          description={error}
+          onRetry={() => void reload()}
+          className="mb-4"
+        />
+      )}
       {expandError && <FormAlert message={expandError} />}
       <ProjectNav projectName={project?.name} active="assets" />
 
@@ -253,6 +271,7 @@ export default function Assets() {
               selectedIds={selectedIds}
               onToggleSelect={handleToggleSelect}
               onToggleSelectAll={handleToggleSelectAll}
+              hasActiveFilters={hasActiveFilters}
             />
             <AssetPagination
               page={page}

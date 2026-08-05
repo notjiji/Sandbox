@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ChevronDown, ChevronRight, CornerDownRight } from "lucide-react";
 import type { AssetSummary } from "@/shared/types/asset";
+import AssetEmptyState from "./AssetEmptyState";
 import {
   AssetCriticalityBadge,
   AssetEnvironmentBadge,
@@ -196,6 +197,7 @@ interface AssetTableProps {
   selectedIds?: string[];
   onToggleSelect?: (assetId: string) => void;
   onToggleSelectAll?: (assetIds: string[]) => void;
+  hasActiveFilters?: boolean;
 }
 
 export default function AssetTable({
@@ -210,12 +212,11 @@ export default function AssetTable({
   selectedIds = [],
   onToggleSelect = () => {},
   onToggleSelectAll = () => {},
+  hasActiveFilters = false,
 }: AssetTableProps) {
   if (assets.length === 0) {
     return (
-      <div className="glass-panel p-8 text-center">
-        <p className="text-brand-400">No assets match your filters.</p>
-      </div>
+      <AssetEmptyState projectId={projectId} filtered={hasActiveFilters} />
     );
   }
 

@@ -67,7 +67,7 @@ export function useProjectAssets(projectId: string | undefined, filters: AssetLi
       setAssets(response?.items ?? []);
       setTotal(response?.total ?? 0);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to load assets.");
+      setError(err instanceof ApiError ? err.message : "We couldn't load assets right now.");
     } finally {
       setLoading(false);
     }

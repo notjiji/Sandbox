@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronDown, Pencil, Radar } from "lucide-react";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
-import FormAlert from "@/shared/components/FormAlert";
+import ErrorState from "@/shared/components/ErrorState";
 import { ApiError } from "@/shared/api/client";
 import type { AssetOverview } from "@/shared/types/asset-overview";
 import type { ProjectSummary } from "@/shared/types/project";
@@ -82,7 +82,14 @@ export default function AssetDetail() {
       title={asset?.name ?? "Asset"}
       subtitle={asset ? (ASSET_TYPE_LABELS[asset.type] ?? asset.type) : "Asset command center"}
     >
-      {error && <FormAlert message={error} />}
+      {error && !loading && (
+        <ErrorState
+          title="Couldn't load asset"
+          description={error}
+          onRetry={() => void load()}
+          className="mb-4"
+        />
+      )}
       <ProjectNav projectName={project?.name} assetName={asset?.name} active="overview" />
 
       {loading ? (

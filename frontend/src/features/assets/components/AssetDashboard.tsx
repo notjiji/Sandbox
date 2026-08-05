@@ -152,7 +152,9 @@ export default function AssetDashboard({
           }
         >
           {!latestScan ? (
-            <p className="text-sm text-brand-600">No scans yet. Run a scan to assess this asset.</p>
+            <p className="text-sm text-brand-600">
+              No scans yet. Run a scan to assess headers, SSL, DNS, and more.
+            </p>
           ) : (
             <Link
               to={`/projects/${projectId}/assets/${assetId}/scans`}
@@ -238,7 +240,7 @@ export default function AssetDashboard({
           }
         >
           {recent_reports.length === 0 ? (
-            <p className="text-sm text-brand-600">No reports yet.</p>
+            <p className="text-sm text-brand-600">No reports yet. Generate one from the Reports tab.</p>
           ) : (
             <ul className="space-y-3">
               {recent_reports.map((report) => (

@@ -361,8 +361,8 @@ export default function Scans() {
               }
               description={
                 filters.search || filters.status || filters.scan_type
-                  ? "Try adjusting your filters."
-                  : "Create a scan to run plugins against this asset."
+                  ? "Try adjusting your search or filters to find the scan you're looking for."
+                  : "Run your first scan to assess this asset's security posture."
               }
             />
           ) : (
