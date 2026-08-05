@@ -10,8 +10,7 @@ import {
 } from "lucide-react";
 import StatCard, { SectionPanel } from "@/features/organizations/components/dashboard/StatCard";
 import AssetRiskHistoryPanel from "./AssetRiskHistoryPanel";
-import AiSummaryPanel from "@/shared/components/AiSummaryPanel";
-import type { OrganizationDetail } from "@/shared/types/organization";
+import AssetAskAiPanel from "@/features/ai/components/AssetAskAiPanel";
 import type { AssetOverview } from "@/shared/types/asset-overview";
 import {
   formatActionLabel,
@@ -27,7 +26,6 @@ interface AssetDashboardProps {
   overview: AssetOverview;
   projectId: string;
   assetId: string;
-  organization?: OrganizationDetail | null;
 }
 
 function severityClass(severity: string): string {
@@ -49,9 +47,8 @@ export default function AssetDashboard({
   overview,
   projectId,
   assetId,
-  organization,
 }: AssetDashboardProps) {
-  const { asset, stats, risk, recent_scans, top_findings, recent_reports, recent_activity, ai_summary } =
+  const { asset, stats, risk, recent_scans, top_findings, recent_reports, recent_activity } =
     overview;
 
   const latestScan = recent_scans[0] ?? null;
@@ -320,13 +317,7 @@ export default function AssetDashboard({
         />
       </div>
 
-      <AiSummaryPanel
-        organizationName={organization?.name ?? asset.organization_name ?? "Organization"}
-        logoUrl={organization?.logo_url}
-        label={ai_summary.label}
-        value={ai_summary.value}
-        className="opacity-90"
-      />
+      <AssetAskAiPanel assetName={asset.name} />
     </div>
   );
 }

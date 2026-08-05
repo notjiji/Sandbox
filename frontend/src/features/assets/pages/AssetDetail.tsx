@@ -3,11 +3,9 @@ import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronDown, Pencil, Radar } from "lucide-react";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
-import { organizationsApi } from "@/features/organizations/api";
 import FormAlert from "@/shared/components/FormAlert";
 import { ApiError } from "@/shared/api/client";
 import type { AssetOverview } from "@/shared/types/asset-overview";
-import type { OrganizationDetail } from "@/shared/types/organization";
 import type { ProjectSummary } from "@/shared/types/project";
 import { projectsApi } from "@/features/projects/api";
 import ProjectNav from "@/features/projects/components/ProjectNav";
@@ -46,7 +44,6 @@ function DetailField({ label, children }: DetailFieldProps) {
 export default function AssetDetail() {
   const { projectId, assetId } = useParams<{ projectId: string; assetId: string }>();
   const [project, setProject] = useState<ProjectSummary | null>(null);
-  const [organization, setOrganization] = useState<OrganizationDetail | null>(null);
   const [overview, setOverview] = useState<AssetOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,14 +54,12 @@ export default function AssetDetail() {
     setLoading(true);
     setError(null);
     try {
-      const [projectResponse, overviewResponse, organizationResponse] = await Promise.all([
+      const [projectResponse, overviewResponse] = await Promise.all([
         projectsApi.get(projectId),
         assetsApi.overview(projectId, assetId),
-        organizationsApi.getCurrent(),
       ]);
       setProject(projectResponse ?? null);
       setOverview(overviewResponse ?? null);
-      setOrganization(organizationResponse ?? null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load asset dashboard.");
     } finally {
@@ -154,12 +149,7 @@ export default function AssetDetail() {
             </div>
           </motion.div>
 
-          <AssetDashboard
-            overview={overview}
-            projectId={projectId}
-            assetId={assetId}
-            organization={organization}
-          />
+          <AssetDashboard overview={overview} projectId={projectId} assetId={assetId} />
 
           <AssetTimelinePanel projectId={projectId} assetId={assetId} />
 

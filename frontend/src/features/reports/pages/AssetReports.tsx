@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FileText, Sparkles } from "lucide-react";
+import AssetAskAiPanel from "@/features/ai/components/AssetAskAiPanel";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
 import EmptyState from "@/shared/components/EmptyState";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
@@ -233,6 +234,8 @@ export default function AssetReports() {
           </>
         )}
       </motion.div>
+
+      {asset && <AssetAskAiPanel assetName={asset.name} variant="compact" className="mt-6" />}
     </DashboardShell>
   );
 }
