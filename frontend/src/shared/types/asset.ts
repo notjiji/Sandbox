@@ -15,6 +15,12 @@ export type AssetType =
   | "azure_subscription";
 
 export type AssetStatus = "pending" | "active" | "archived" | "deleted";
+export type AssetHealthStatus =
+  | "Healthy"
+  | "At Risk"
+  | "Critical"
+  | "Unscanned"
+  | "Inactive";
 export type AssetEnvironment = "production" | "staging" | "development" | "testing";
 export type AssetCriticality = "critical" | "high" | "medium" | "low";
 export type AssetCategory =
@@ -117,6 +123,12 @@ export interface AssetSummary {
   last_scan_status?: ScanStatus | string | null;
   findings_count?: number;
   critical_findings_count?: number;
+
+  security_score?: number | null;
+  critical_findings?: number;
+  last_scan?: string | null;
+  next_scan?: string | null;
+  health_status?: AssetHealthStatus;
 
   created_at?: string | null;
   updated_at?: string | null;

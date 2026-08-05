@@ -20,7 +20,7 @@ import {
 } from "@/features/organizations/utils/format";
 import PlaceholderPanel from "./PlaceholderPanel";
 import { SCAN_STATUS_LABELS } from "../types";
-import { formatDateTime, formatRiskScore } from "../utils";
+import { formatDateTime, formatRiskScore, assetLastScan, assetNextScan, assetSecurityScore, assetCriticalFindings } from "../utils";
 
 interface AssetDashboardProps {
   overview: AssetOverview;
@@ -52,8 +52,13 @@ export default function AssetDashboard({
     overview;
 
   const latestScan = recent_scans[0] ?? null;
-  const riskScore = risk.scanned && risk.score != null ? risk.score : asset.current_risk_score;
+  const riskScore =
+    assetSecurityScore(asset) ??
+    (risk.scanned && risk.score != null ? Math.round(risk.score) : null);
   const riskGrade = risk.scanned && risk.grade ? risk.grade : asset.security_grade;
+  const criticalCount = assetCriticalFindings(asset) || stats.critical_findings;
+  const lastScanAt = latestScan?.lifecycle?.completed_at ?? assetLastScan(asset);
+  const nextScanAt = assetNextScan(asset);
 
   return (
     <div className="space-y-6">
@@ -67,16 +72,16 @@ export default function AssetDashboard({
             <ShieldAlert size={28} className="text-brand-400" />
           </div>
           <div>
-            <p className="text-sm text-brand-500">Risk score</p>
+            <p className="text-sm text-brand-500">Security score</p>
             <p className="text-4xl font-semibold tabular-nums text-brand-50">
-              {formatRiskScore(riskScore ?? null)}
+              {formatRiskScore(riskScore)}
             </p>
             <p className="mt-1 text-sm text-brand-400">
-              {risk.scanned ? "Based on latest scan" : "Run a scan to calculate risk"}
+              {asset.health_status ?? (risk.scanned ? "Based on latest scan" : "Run a scan to calculate risk")}
             </p>
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <div className="rounded-lg border border-brand-800/50 px-4 py-3">
             <p className="text-xs text-brand-500">Grade</p>
             <p className="text-lg font-semibold text-brand-100">{riskGrade ?? "—"}</p>
@@ -91,7 +96,13 @@ export default function AssetDashboard({
                   : "No scans"}
             </p>
             <p className="text-xs text-brand-500">
-              {formatDateTime(latestScan?.lifecycle?.completed_at ?? asset.last_scan_at)}
+              {formatDateTime(lastScanAt)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-brand-800/50 px-4 py-3">
+            <p className="text-xs text-brand-500">Next scan</p>
+            <p className="text-sm font-medium text-brand-100">
+              {nextScanAt ? formatDateTime(nextScanAt) : "Not scheduled"}
             </p>
           </div>
           <div className="rounded-lg border border-brand-800/50 px-4 py-3">
@@ -100,7 +111,7 @@ export default function AssetDashboard({
           </div>
           <div className="rounded-lg border border-brand-800/50 px-4 py-3">
             <p className="text-xs text-brand-500">Critical</p>
-            <p className="text-lg font-semibold text-red-300">{stats.critical_findings}</p>
+            <p className="text-lg font-semibold text-red-300">{criticalCount}</p>
           </div>
         </div>
       </motion.div>

@@ -29,7 +29,7 @@ from app.assets.schemas import (
     AssetSummary,
     CreateAssetLinkRequest,
 )
-from app.assets.services.asset_service import AssetService, _user_to_actor
+from app.assets.services.asset_service import AssetService
 from app.audit.service import record_audit_event
 from app.core.exceptions import NotFoundError, ValidationAppError
 from app.members.models import OrganizationMember
@@ -38,37 +38,46 @@ _asset_service = AssetService()
 MAX_GRAPH_DEPTH = 6
 
 
-def _summary(asset: Asset) -> AssetSummary:
-    metadata = metadata_to_dict(asset.metadata_entries)
-    tags = [entry.tag for entry in asset.tags]
-    return AssetSummary(
-        id=str(asset.id),
-        organization_id=str(asset.organization_id),
-        organization_name=asset.organization.name if asset.organization else None,
-        project_id=str(asset.project_id),
-        project_name=asset.project.name if asset.project else None,
-        parent_id=str(asset.parent_id) if asset.parent_id else None,
-        parent_name=asset.parent.name if asset.parent else None,
-        name=asset.name,
-        description=asset.description,
-        type=asset.type,
-        external_identifier=asset.external_identifier
-        or resolve_external_identifier(asset.type, metadata, fallback_name=asset.name),
-        criticality=asset.criticality,
-        business_unit=asset.business_unit,
-        environment=asset.environment,
-        owner=asset.owner,
-        asset_category=asset.asset_category,
-        status=asset.status,
-        metadata=metadata,
-        tags=tags,
-        created_at=asset.created_at,
-        updated_at=asset.updated_at,
-        archived_at=asset.archived_at,
-        archived_by=_user_to_actor(asset.archiver),
-        created_by=_user_to_actor(asset.creator),
-        last_modified_by=_user_to_actor(asset.updater),
-    )
+def _summaries_map(db: Session, assets: list[Asset]) -> dict[str, AssetSummary]:
+    unique = {asset.id: asset for asset in assets if asset}
+    if not unique:
+        return {}
+    summaries = _asset_service._summaries_for_assets(db, list(unique.values()))
+    return {summary.id: summary for summary in summaries}
+
+
+def _summary_from_map(
+    asset: Asset | None,
+    summaries: dict[str, AssetSummary],
+    *,
+    db: Session,
+) -> AssetSummary | None:
+    if not asset:
+        return None
+    cached = summaries.get(str(asset.id))
+    if cached:
+        return cached
+    return _asset_service.summary_for_asset(db, asset)
+
+
+def _collect_related_assets(
+    *,
+    parent: Asset | None,
+    ancestors: list[Asset],
+    children: list[Asset],
+    outbound_links,
+    inbound_links,
+) -> list[Asset]:
+    related: list[Asset] = []
+    if parent:
+        related.append(parent)
+    related.extend(ancestors)
+    related.extend(children)
+    for link in outbound_links:
+        related.append(link.target_asset)
+    for link in inbound_links:
+        related.append(link.source_asset)
+    return related
 
 
 def _collect_ancestors(db: Session, asset: Asset) -> list[Asset]:
@@ -201,29 +210,52 @@ class AssetRelationshipService:
         children = list_child_assets(db, parent_id=asset.id)
         outbound, inbound = list_links_for_asset(db, asset_id=asset.id)
 
-        parent_summary = _summary(parent) if parent else None
-        ancestor_summaries = [_summary(item) for item in ancestors]
-        child_summaries = _asset_service._summaries_for_assets(db, children)
+        related_assets = _collect_related_assets(
+            parent=parent,
+            ancestors=ancestors,
+            children=children,
+            outbound_links=outbound,
+            inbound_links=inbound,
+        )
+        summaries = _summaries_map(db, related_assets)
+
+        parent_summary = _summary_from_map(parent, summaries, db=db)
+        ancestor_summaries = [
+            summary
+            for item in ancestors
+            if (summary := _summary_from_map(item, summaries, db=db))
+        ]
+        child_summaries = [
+            summary
+            for item in children
+            if (summary := _summary_from_map(item, summaries, db=db))
+        ]
 
         link_summaries: list[AssetLinkSummary] = []
         for link in outbound:
+            target_summary = _summary_from_map(link.target_asset, summaries, db=db)
+            if not target_summary:
+                continue
             link_summaries.append(
                 AssetLinkSummary(
                     id=str(link.id),
                     link_type=link.link_type,
                     label=link.label,
                     direction="outbound",
-                    asset=_summary(link.target_asset),
+                    asset=target_summary,
                 )
             )
         for link in inbound:
+            source_summary = _summary_from_map(link.source_asset, summaries, db=db)
+            if not source_summary:
+                continue
             link_summaries.append(
                 AssetLinkSummary(
                     id=str(link.id),
                     link_type=link.link_type,
                     label=link.label,
                     direction="inbound",
-                    asset=_summary(link.source_asset),
+                    asset=source_summary,
                 )
             )
 
@@ -301,12 +333,13 @@ class AssetRelationshipService:
 
         outbound, _ = list_links_for_asset(db, asset_id=asset_id)
         created = next((item for item in outbound if item.id == link.id), reloaded)
+        target_summary = _asset_service.summary_for_asset(db, target)
         return AssetLinkSummary(
             id=str(created.id),
             link_type=created.link_type,
             label=created.label,
             direction="outbound",
-            asset=_summary(target),
+            asset=target_summary,
         )
 
     def delete_link(

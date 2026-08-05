@@ -1,4 +1,10 @@
-import type { AssetCriticality, AssetEnvironment, AssetStatus } from "@/shared/types/asset";
+import type {
+  AssetCriticality,
+  AssetEnvironment,
+  AssetHealthStatus,
+  AssetStatus,
+  AssetSummary,
+} from "@/shared/types/asset";
 
 export const UNAVAILABLE = "Not available";
 
@@ -29,6 +35,41 @@ export function formatActor(actor: { name?: string | null; email?: string | null
 export function formatRiskScore(score: number | null | undefined): string {
   if (score == null || Number.isNaN(score)) return UNAVAILABLE;
   return score.toFixed(1);
+}
+
+export function assetSecurityScore(asset: AssetSummary): number | null {
+  if (asset.security_score != null) return asset.security_score;
+  if (asset.current_risk_score == null) return null;
+  return Math.round(asset.current_risk_score);
+}
+
+export function assetLastScan(asset: AssetSummary): string | null | undefined {
+  return asset.last_scan ?? asset.last_scan_at;
+}
+
+export function assetNextScan(asset: AssetSummary): string | null | undefined {
+  return asset.next_scan ?? null;
+}
+
+export function assetCriticalFindings(asset: AssetSummary): number {
+  return asset.critical_findings ?? asset.critical_findings_count ?? 0;
+}
+
+export function healthStatusClass(health: AssetHealthStatus | string): string {
+  switch (health) {
+    case "Healthy":
+      return "border-emerald-500/40 bg-emerald-950/40 text-emerald-300";
+    case "At Risk":
+      return "border-yellow-500/40 bg-yellow-950/40 text-yellow-200";
+    case "Critical":
+      return "border-red-500/40 bg-red-950/40 text-red-300";
+    case "Unscanned":
+      return "border-sky-500/40 bg-sky-950/40 text-sky-300";
+    case "Inactive":
+      return "border-brand-600/40 bg-brand-900/40 text-brand-300";
+    default:
+      return "border-brand-700/40 bg-brand-900/40 text-brand-300";
+  }
 }
 
 export function formatCount(value: number | null | undefined): string {

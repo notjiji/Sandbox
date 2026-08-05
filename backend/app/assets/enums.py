@@ -100,6 +100,16 @@ class AssetStatus(str, enum.Enum):
     DELETED = "deleted"
 
 
+class AssetHealthStatus(str, enum.Enum):
+    """Security posture label for asset cards and dashboards."""
+
+    HEALTHY = "Healthy"
+    AT_RISK = "At Risk"
+    CRITICAL = "Critical"
+    UNSCANNED = "Unscanned"
+    INACTIVE = "Inactive"
+
+
 class AssetEnvironment(str, enum.Enum):
     PRODUCTION = "production"
     STAGING = "staging"

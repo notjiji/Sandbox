@@ -5,6 +5,7 @@ import AssetEmptyState from "./AssetEmptyState";
 import {
   AssetCriticalityBadge,
   AssetEnvironmentBadge,
+  AssetHealthBadge,
   AssetStatusBadge,
   AssetTypeBadge,
 } from "./AssetBadges";
@@ -15,7 +16,13 @@ import {
   isChildAsset,
   orderAssetsHierarchically,
 } from "../utils/hierarchy";
-import { formatDateTime, formatRiskScore, UNAVAILABLE } from "../utils";
+import {
+  assetLastScan,
+  assetSecurityScore,
+  formatDateTime,
+  formatRiskScore,
+  UNAVAILABLE,
+} from "../utils";
 
 type ViewMode = "tree" | "flat";
 
@@ -174,12 +181,15 @@ function AssetDataRow({
       <td className="px-4 py-3">
         <AssetStatusBadge status={asset.status} />
       </td>
+      <td className="px-4 py-3">
+        <AssetHealthBadge healthStatus={asset.health_status ?? "Unscanned"} />
+      </td>
       <td className="px-4 py-3 text-brand-300">{asset.owner || "—"}</td>
       <td className="px-4 py-3 text-brand-300">
-        {asset.last_scan_at ? formatDateTime(asset.last_scan_at) : UNAVAILABLE}
+        {assetLastScan(asset) ? formatDateTime(assetLastScan(asset)) : UNAVAILABLE}
       </td>
       <td className="px-4 py-3 text-brand-300">
-        {formatRiskScore(asset.current_risk_score ?? null)}
+        {formatRiskScore(assetSecurityScore(asset))}
       </td>
     </tr>
   );
@@ -259,10 +269,11 @@ export default function AssetTable({
               <th className="px-4 py-3 font-medium">Project</th>
               <th className="px-4 py-3 font-medium">Criticality</th>
               <th className="px-4 py-3 font-medium">Environment</th>
-              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Lifecycle</th>
+              <th className="px-4 py-3 font-medium">Health</th>
               <th className="px-4 py-3 font-medium">Owner</th>
               <th className="px-4 py-3 font-medium">Last Scan</th>
-              <th className="px-4 py-3 font-medium">Risk Score</th>
+              <th className="px-4 py-3 font-medium">Security Score</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-800/40">
@@ -270,7 +281,7 @@ export default function AssetTable({
               if (row.kind === "loading") {
                 return (
                   <tr key={`loading-${row.parentId}`} className="bg-brand-950/10">
-                    <td colSpan={10} className="px-4 py-2 pl-16 text-xs text-brand-500">
+                    <td colSpan={11} className="px-4 py-2 pl-16 text-xs text-brand-500">
                       Loading child assets...
                     </td>
                   </tr>
@@ -280,7 +291,7 @@ export default function AssetTable({
               if (row.kind === "empty") {
                 return (
                   <tr key={`empty-${row.parentId}`} className="bg-brand-950/10">
-                    <td colSpan={10} className="px-4 py-2 pl-16 text-xs text-brand-500">
+                    <td colSpan={11} className="px-4 py-2 pl-16 text-xs text-brand-500">
                       No child assets match the current filters.
                     </td>
                   </tr>

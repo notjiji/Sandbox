@@ -7,6 +7,7 @@ from app.assets.enums import (
     AssetCategory,
     AssetCriticality,
     AssetEnvironment,
+    AssetHealthStatus,
     AssetLinkType,
     AssetSortField,
     AssetStatus,
@@ -55,6 +56,27 @@ class AssetSummary(BaseSchema):
     last_scan_status: ScanStatus | str | None = None
     findings_count: int = 0
     critical_findings_count: int = 0
+
+    security_score: int | None = Field(
+        default=None,
+        description="Rounded security score for asset cards (alias of current_risk_score)",
+    )
+    critical_findings: int = Field(
+        default=0,
+        description="Open critical findings count for asset cards",
+    )
+    last_scan: datetime | None = Field(
+        default=None,
+        description="Latest successful scan timestamp, or latest scan if none completed",
+    )
+    next_scan: datetime | None = Field(
+        default=None,
+        description="Earliest enabled scheduled scan for this asset",
+    )
+    health_status: AssetHealthStatus = Field(
+        default=AssetHealthStatus.UNSCANNED,
+        description="Security posture label for asset cards (Healthy, At Risk, etc.)",
+    )
 
     created_at: datetime | None = None
     updated_at: datetime | None = None

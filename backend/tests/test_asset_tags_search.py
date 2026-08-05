@@ -66,13 +66,15 @@ def test_multi_tag_filter_and_sort(client, db) -> None:
     assert ubuntu_only.json()["data"]["total"] == 1
     assert ubuntu_only.json()["data"]["items"][0]["name"] == "Prod Medium Site"
 
+    # Flat name sort applies when listing roots only; the default project list
+    # keeps hierarchy groups together, so sort=name is tertiary there.
     sorted_response = client.get(
-        f"/api/v1/projects/{project_id}/assets?sort=name&order=desc",
+        f"/api/v1/projects/{project_id}/assets?sort=name&order=desc&roots_only=true",
         headers=headers,
     )
     assert sorted_response.status_code == 200
     names = [item["name"] for item in sorted_response.json()["data"]["items"]]
-    assert names == sorted(names, reverse=True)
+    assert names == ["Prod Medium Site", "Prod Critical Site"]
 
     tags_response = client.get(
         f"/api/v1/projects/{project_id}/assets/tags",

@@ -76,7 +76,7 @@ def execute_bulk_action(
 
     asset_ids = _parse_asset_ids(body.asset_ids)
     results: list[AssetBulkActionItemResult] = []
-    export_items = []
+    export_assets = []
 
     if action == AssetBulkAction.ASSIGN_TAGS and not body.tags:
         raise ValidationAppError("tags are required for assign_tags")
@@ -118,7 +118,7 @@ def execute_bulk_action(
                 continue
 
             if action == AssetBulkAction.EXPORT:
-                export_items.append(asset_service.to_summary(asset))
+                export_assets.append(asset)
                 savepoint.commit()
                 results.append(_result(asset_id, success=True))
                 continue
@@ -186,11 +186,17 @@ def execute_bulk_action(
     if succeeded and action != AssetBulkAction.LAUNCH_SCAN:
         db.commit()
 
+    export_items = (
+        asset_service._summaries_for_assets(db, export_assets)
+        if action == AssetBulkAction.EXPORT
+        else []
+    )
+
     return AssetBulkActionResponse(
         action=action.value,
         total=len(results),
         succeeded=succeeded,
         failed=failed,
         results=results,
-        export_items=export_items if action == AssetBulkAction.EXPORT else [],
+        export_items=export_items,
     )

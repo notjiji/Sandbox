@@ -40,7 +40,13 @@ from app.assets.schemas import (
     NormalizedScanTarget,
     UpdateAssetRequest,
 )
-from app.assets.services.asset_enrichment import AssetSecurityStats, load_security_stats_batch
+from app.assets.services.asset_enrichment import (
+    AssetSecurityStats,
+    card_last_scan,
+    card_security_score,
+    compute_health_status,
+    load_security_stats_batch,
+)
 from app.assets.validators import (
     parse_parent_id,
     require_active_project,
@@ -87,6 +93,9 @@ class AssetService:
         metadata = metadata_to_dict(asset.metadata_entries)
         tags = [entry.tag for entry in asset.tags]
         security = security or AssetSecurityStats()
+        health_status = compute_health_status(asset.status, security)
+        last_scan = card_last_scan(security)
+        security_score = card_security_score(security)
         return AssetSummary(
             id=str(asset.id),
             organization_id=str(asset.organization_id),
@@ -115,6 +124,11 @@ class AssetService:
             last_scan_status=security.last_scan_status,
             findings_count=security.findings_count,
             critical_findings_count=security.critical_findings_count,
+            security_score=security_score,
+            critical_findings=security.critical_findings_count,
+            last_scan=last_scan,
+            next_scan=security.next_scan_at,
+            health_status=health_status,
             created_at=asset.created_at,
             updated_at=asset.updated_at,
             archived_at=asset.archived_at,
@@ -122,6 +136,26 @@ class AssetService:
             created_by=_user_to_actor(asset.creator),
             last_modified_by=_user_to_actor(asset.updater),
         )
+
+    def summary_for_asset(
+        self,
+        db: Session,
+        asset: Asset,
+        *,
+        children_count: int | None = None,
+    ) -> AssetSummary:
+        if children_count is None:
+            children_count = (
+                len(list_child_assets(db, parent_id=asset.id))
+                if asset.type in PARENT_ASSET_TYPES
+                else 0
+            )
+        security = load_security_stats_batch(
+            db,
+            organization_id=asset.organization_id,
+            asset_ids=[asset.id],
+        ).get(asset.id)
+        return self.to_summary(asset, children_count=children_count, security=security)
 
     def _summaries_for_assets(
         self,
@@ -236,15 +270,7 @@ class AssetService:
             asset_id=asset_id,
             include_deleted=True,
         )
-        children_count = 0
-        if asset.type in PARENT_ASSET_TYPES:
-            children_count = len(list_child_assets(db, parent_id=asset.id))
-        security = load_security_stats_batch(
-            db,
-            organization_id=asset.organization_id,
-            asset_ids=[asset.id],
-        ).get(asset.id)
-        return self.to_summary(asset, children_count=children_count, security=security)
+        return self.summary_for_asset(db, asset)
 
     def create_for_project(
         self,
@@ -301,7 +327,7 @@ class AssetService:
         reloaded = get_asset_by_id(db, project_id=project_id, asset_id=asset.id)
         if not reloaded:
             raise NotFoundError("Asset")
-        return self.to_summary(reloaded)
+        return self.summary_for_asset(db, reloaded)
 
     def update_for_project(
         self,
@@ -392,7 +418,7 @@ class AssetService:
         reloaded = get_asset_by_id(db, project_id=project_id, asset_id=asset.id)
         if not reloaded:
             raise NotFoundError("Asset")
-        return self.to_summary(reloaded)
+        return self.summary_for_asset(db, reloaded)
 
     def delete_for_project(
         self,
@@ -433,7 +459,7 @@ class AssetService:
         reloaded = get_asset_by_id(db, project_id=project_id, asset_id=asset.id)
         if not reloaded:
             raise NotFoundError("Asset")
-        return self.to_summary(reloaded)
+        return self.summary_for_asset(db, reloaded)
 
     def restore_for_project(
         self,
@@ -464,7 +490,7 @@ class AssetService:
         reloaded = get_asset_by_id(db, project_id=project_id, asset_id=asset.id)
         if not reloaded:
             raise NotFoundError("Asset")
-        return self.to_summary(reloaded)
+        return self.summary_for_asset(db, reloaded)
 
     def list_audit_history(
         self,

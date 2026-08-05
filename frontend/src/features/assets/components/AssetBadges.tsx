@@ -8,9 +8,11 @@ import { criticalityClass, environmentClass, statusClass } from "../utils";
 import type {
   AssetCriticality,
   AssetEnvironment,
+  AssetHealthStatus,
   AssetStatus,
   AssetType,
 } from "@/shared/types/asset";
+import { healthStatusClass } from "../utils";
 
 interface BadgeProps {
   label: string;
@@ -73,6 +75,19 @@ export function AssetEnvironmentBadge({ environment }: AssetEnvironmentBadgeProp
     <Badge
       label={ASSET_ENVIRONMENT_LABELS[environment] ?? environment}
       className={environmentClass(environment)}
+    />
+  );
+}
+
+interface AssetHealthBadgeProps {
+  healthStatus: AssetHealthStatus;
+}
+
+export function AssetHealthBadge({ healthStatus }: AssetHealthBadgeProps) {
+  return (
+    <Badge
+      label={healthStatus}
+      className={healthStatusClass(healthStatus)}
     />
   );
 }
