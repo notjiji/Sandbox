@@ -9,6 +9,8 @@ from app.assets.enums import AssetCategory, AssetCriticality, AssetEnvironment, 
 from app.assets.permissions import ASSET_CREATE, ASSET_DELETE, ASSET_READ, ASSET_UPDATE
 from app.assets.services.relationship_service import asset_relationship_service
 from app.assets.services.overview_service import get_asset_overview
+from app.assets.services.risk_history_service import get_asset_risk_history
+from app.assets.services.timeline_service import get_asset_timeline
 from app.assets.services import (
     archive_project_asset,
     create_project_asset,
@@ -104,6 +106,42 @@ def list_asset_children(
             asset_category=asset_category,
             search=search,
         ),
+    )
+    return success_response(data=result.model_dump(mode="json"))
+
+
+@router.get("/{asset_id}/risk-history")
+def get_asset_risk_history_route(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    limit: int = Query(20, ge=2, le=50),
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    result = get_asset_risk_history(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+        limit=limit,
+    )
+    return success_response(data=result.model_dump(mode="json"))
+
+
+@router.get("/{asset_id}/timeline")
+def get_asset_timeline_route(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    result = get_asset_timeline(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+        limit=limit,
     )
     return success_response(data=result.model_dump(mode="json"))
 

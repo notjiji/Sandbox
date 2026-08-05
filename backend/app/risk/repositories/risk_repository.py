@@ -141,6 +141,29 @@ def get_latest_asset_risk_for_organization(
     )
 
 
+def get_asset_risks_for_scans(
+    db: Session,
+    *,
+    scan_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, AssetRisk]:
+    if not scan_ids:
+        return {}
+
+    rows = (
+        db.query(AssetRisk)
+        .filter(AssetRisk.scan_id.in_(scan_ids))
+        .order_by(AssetRisk.calculated_at.desc())
+        .all()
+    )
+    latest: dict[uuid.UUID, AssetRisk] = {}
+    for row in rows:
+        if row.scan_id is None:
+            continue
+        if row.scan_id not in latest:
+            latest[row.scan_id] = row
+    return latest
+
+
 def get_latest_asset_risk(db: Session, *, asset_id: uuid.UUID) -> AssetRisk | None:
     """Internal use only — prefer get_latest_asset_risk_for_organization."""
     return (

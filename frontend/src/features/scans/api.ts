@@ -1,7 +1,10 @@
 import { apiRequest } from "@/shared/api/client";
 import type {
   CreateScanRequest,
+  ScanCompareData,
+  ScanExportData,
   ScanListData,
+  ScanListQuery,
   ScanProfilesData,
   ScanSummary,
 } from "@/shared/types/scan";
@@ -9,9 +12,22 @@ import type {
 const base = (projectId: string, assetId: string) =>
   `/projects/${projectId}/assets/${assetId}/scans`;
 
+function toQuery(params: ScanListQuery = {}): string {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      search.set(key, String(value));
+    }
+  });
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
 export const scansApi = {
-  list: (projectId: string, assetId: string) =>
-    apiRequest<ScanListData>(base(projectId, assetId), { auth: true }),
+  list: (projectId: string, assetId: string, params?: ScanListQuery) =>
+    apiRequest<ScanListData>(`${base(projectId, assetId)}${toQuery(params)}`, {
+      auth: true,
+    }),
 
   profiles: (projectId: string, assetId: string) =>
     apiRequest<ScanProfilesData>(`${base(projectId, assetId)}/profiles`, {
@@ -30,6 +46,17 @@ export const scansApi = {
       auth: true,
     }),
 
+  compare: (projectId: string, assetId: string, scanA: string, scanB: string) =>
+    apiRequest<ScanCompareData>(
+      `${base(projectId, assetId)}/compare?scan_a=${scanA}&scan_b=${scanB}`,
+      { auth: true },
+    ),
+
+  export: (projectId: string, assetId: string, scanId: string) =>
+    apiRequest<ScanExportData>(`${base(projectId, assetId)}/${scanId}/export`, {
+      auth: true,
+    }),
+
   run: (projectId: string, assetId: string, scanId: string) =>
     apiRequest<ScanSummary>(`${base(projectId, assetId)}/${scanId}/run`, {
       method: "POST",
@@ -42,3 +69,20 @@ export const scansApi = {
       auth: true,
     }),
 };
+
+export async function downloadScanReport(
+  projectId: string,
+  assetId: string,
+  scanId: string,
+): Promise<void> {
+  const payload = await scansApi.export(projectId, assetId, scanId);
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `scan-${scanId.slice(0, 8)}-report.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}

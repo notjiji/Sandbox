@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -9,7 +9,8 @@ from app.core.database import get_db
 from app.core.permissions import Permission
 from app.core.responses import success_response
 from app.members.models import OrganizationMember
-from app.scans.schemas import CreateAssetScanRequest
+from app.scans.enums import ScanStatus, ScanType
+from app.scans.schemas import CreateAssetScanRequest, ScanListQuery
 from app.scans.services import scan_service
 
 router = APIRouter()
@@ -31,11 +32,46 @@ def list_scan_profiles(
 def list_scans(
     project_id: uuid.UUID,
     asset_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    status: ScanStatus | None = None,
+    scan_type: ScanType | None = None,
+    search: str | None = Query(None, max_length=255),
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(Permission.SCAN_READ)),
 ) -> JSONResponse:
     result = scan_service.list_asset_scans(
-        db, membership, project_id=project_id, asset_id=asset_id
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+        query=ScanListQuery(
+            page=page,
+            limit=limit,
+            status=status,
+            scan_type=scan_type,
+            search=search,
+        ),
+    )
+    return success_response(data=result.model_dump(mode="json"))
+
+
+@router.get("/compare")
+def compare_scans(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    scan_a: uuid.UUID = Query(...),
+    scan_b: uuid.UUID = Query(...),
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.SCAN_READ)),
+) -> JSONResponse:
+    result = scan_service.compare_asset_scans(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+        scan_a_id=scan_a,
+        scan_b_id=scan_b,
     )
     return success_response(data=result.model_dump(mode="json"))
 
@@ -52,6 +88,24 @@ def create_scan(
         db, membership, project_id=project_id, asset_id=asset_id, body=body
     )
     return success_response(data=scan.model_dump(mode="json"), status_code=201)
+
+
+@router.get("/{scan_id}/export")
+def export_scan(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    scan_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.SCAN_READ)),
+) -> JSONResponse:
+    result = scan_service.export_asset_scan(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+        scan_id=scan_id,
+    )
+    return success_response(data=result.model_dump(mode="json"))
 
 
 @router.get("/{scan_id}")

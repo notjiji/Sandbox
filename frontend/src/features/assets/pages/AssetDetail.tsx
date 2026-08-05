@@ -20,6 +20,7 @@ import {
 import AssetDashboard from "../components/AssetDashboard";
 import AssetLifecycleActions from "../components/AssetLifecycleActions";
 import AssetRelationshipsPanel from "../components/AssetRelationshipsPanel";
+import AssetTimelinePanel from "../components/AssetTimelinePanel";
 import { assetsApi } from "../api";
 import {
   ASSET_CATEGORY_LABELS,
@@ -159,6 +160,8 @@ export default function AssetDetail() {
             assetId={assetId}
             organization={organization}
           />
+
+          <AssetTimelinePanel projectId={projectId} assetId={assetId} />
 
           <div className="glass-panel overflow-hidden">
             <button

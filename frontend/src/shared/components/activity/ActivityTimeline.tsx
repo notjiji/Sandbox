@@ -25,27 +25,28 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   projects: FolderKanban,
   organization: Building2,
   findings: Bug,
+  monitoring: Activity,
   system: Activity,
 };
 
-function sameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
 
 function dayLabel(iso: string): string {
   const date = new Date(iso);
   const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  if (sameDay(date, today)) return "Today";
-  if (sameDay(date, yesterday)) return "Yesterday";
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((today.getTime() - target.getTime()) / 86_400_000);
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays === 2) return "2 days ago";
+  if (diffDays >= 3 && diffDays <= 6) return `${diffDays} days ago`;
+  if (diffDays >= 7 && diffDays <= 13) return "Last week";
+  if (diffDays >= 14 && diffDays <= 30) return "Last month";
   return date.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "short",
+    month: "long",
+    year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
     day: "numeric",
   });
 }

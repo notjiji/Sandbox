@@ -1,10 +1,73 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.findings.enums import FindingSeverity, FindingStatus
 from app.findings.models import Finding
+
+
+def list_findings_for_scan(
+    db: Session,
+    *,
+    project_id: uuid.UUID,
+    scan_id: uuid.UUID,
+) -> list[Finding]:
+    return (
+        db.query(Finding)
+        .filter(Finding.project_id == project_id, Finding.scan_id == scan_id)
+        .order_by(Finding.risk_score.desc(), Finding.created_at.desc())
+        .all()
+    )
+
+
+def count_findings_for_scans(
+    db: Session,
+    *,
+    scan_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, int]:
+    if not scan_ids:
+        return {}
+
+    rows = (
+        db.query(Finding.scan_id, func.count(Finding.id))
+        .filter(Finding.scan_id.in_(scan_ids))
+        .group_by(Finding.scan_id)
+        .all()
+    )
+    return {scan_id: int(count) for scan_id, count in rows if scan_id is not None}
+
+
+def list_finding_changes_between(
+    db: Session,
+    *,
+    asset_id: uuid.UUID,
+    since: datetime,
+    until: datetime,
+) -> tuple[list[Finding], list[Finding]]:
+    new_findings = (
+        db.query(Finding)
+        .filter(
+            Finding.asset_id == asset_id,
+            Finding.created_at > since,
+            Finding.created_at <= until,
+        )
+        .order_by(Finding.risk_score.desc())
+        .all()
+    )
+    resolved_findings = (
+        db.query(Finding)
+        .filter(
+            Finding.asset_id == asset_id,
+            Finding.status == FindingStatus.RESOLVED,
+            Finding.updated_at > since,
+            Finding.updated_at <= until,
+        )
+        .order_by(Finding.risk_score.desc())
+        .all()
+    )
+    return new_findings, resolved_findings
 
 
 def list_findings_for_asset(db: Session, *, asset_id: uuid.UUID) -> list[Finding]:

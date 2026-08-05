@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -14,15 +15,27 @@ from app.scans.lifecycle import lifecycle_timestamps, transition_scan_status
 from app.scans.models import Scan
 from app.scans.profiles import list_scan_profiles, resolve_profile_plugins
 from app.scans.repositories.scan_plugin_repository import list_plugin_runs_for_scan
+from app.findings.repositories.finding_repository import (
+    count_findings_for_scans,
+    list_findings_for_scan,
+)
+from app.risk.repositories.risk_repository import get_asset_risks_for_scans
 from app.scans.repositories.scan_repository import (
     create_scan,
     get_scan_for_asset,
     list_scans_for_asset,
+    list_scans_for_asset_paginated,
 )
 from app.scans.schemas import (
     CreateAssetScanRequest,
+    ScanCompareDiff,
+    ScanCompareResponse,
+    ScanExportFindingSummary,
+    ScanExportResponse,
     ScanLifecycleTimestamps,
+    ScanListQuery,
     ScanListResponse,
+    ScanMetrics,
     ScanPluginRunSummary,
     ScanProfileListResponse,
     ScanProfileSummary,
@@ -76,7 +89,35 @@ def to_plugin_run_summary(plugin_run) -> ScanPluginRunSummary:
     )
 
 
-def to_scan_summary(scan: Scan, *, include_plugin_runs: bool = False) -> ScanSummary:
+def _compute_duration_seconds(scan: Scan) -> float | None:
+    start = scan.running_at or scan.queued_at or scan.pending_at
+    end = scan.completed_at or scan.failed_at or scan.cancelled_at
+    if start and end:
+        return max((end - start).total_seconds(), 0.0)
+    return None
+
+
+def _build_metrics(
+    scan: Scan,
+    *,
+    risk=None,
+    findings_count: int = 0,
+) -> ScanMetrics:
+    return ScanMetrics(
+        duration_seconds=_compute_duration_seconds(scan),
+        risk_score=float(risk.score) if risk else None,
+        grade=risk.grade if risk else None,
+        critical_count=int(risk.critical_count) if risk else 0,
+        findings_count=findings_count,
+    )
+
+
+def to_scan_summary(
+    scan: Scan,
+    *,
+    include_plugin_runs: bool = False,
+    metrics: ScanMetrics | None = None,
+) -> ScanSummary:
     plugin_runs = []
     if include_plugin_runs and hasattr(scan, "plugin_runs"):
         plugin_runs = [to_plugin_run_summary(run) for run in scan.plugin_runs]
@@ -90,9 +131,37 @@ def to_scan_summary(scan: Scan, *, include_plugin_runs: bool = False) -> ScanSum
         selected_plugins=selected_plugins,
         profile_plugins=_profile_plugins_for_scan(scan),
         created_by=str(scan.created_by) if scan.created_by else None,
+        created_at=scan.created_at,
         lifecycle=ScanLifecycleTimestamps(**lifecycle_timestamps(scan)),
         plugin_runs=plugin_runs,
+        metrics=metrics or ScanMetrics(),
     )
+
+
+def _summaries_with_metrics(
+    db: Session,
+    scans: list[Scan],
+    *,
+    include_plugin_runs: bool = False,
+) -> list[ScanSummary]:
+    if not scans:
+        return []
+
+    scan_ids = [scan.id for scan in scans]
+    risks = get_asset_risks_for_scans(db, scan_ids=scan_ids)
+    finding_counts = count_findings_for_scans(db, scan_ids=scan_ids)
+    return [
+        to_scan_summary(
+            scan,
+            include_plugin_runs=include_plugin_runs,
+            metrics=_build_metrics(
+                scan,
+                risk=risks.get(scan.id),
+                findings_count=finding_counts.get(scan.id, 0),
+            ),
+        )
+        for scan in scans
+    ]
 
 
 def _require_asset(
@@ -120,11 +189,18 @@ def list_asset_scans(
     *,
     project_id: uuid.UUID,
     asset_id: uuid.UUID,
+    query: ScanListQuery | None = None,
 ) -> ScanListResponse:
     _require_asset(db, membership, project_id=project_id, asset_id=asset_id)
-    scans = list_scans_for_asset(db, project_id=project_id, asset_id=asset_id)
-    items = [to_scan_summary(scan) for scan in scans]
-    return ScanListResponse(items=items, total=len(items))
+    params = query or ScanListQuery()
+    scans, total = list_scans_for_asset_paginated(
+        db,
+        project_id=project_id,
+        asset_id=asset_id,
+        query=params,
+    )
+    items = _summaries_with_metrics(db, scans)
+    return ScanListResponse(items=items, total=total, page=params.page, limit=params.limit)
 
 
 def create_asset_scan(
@@ -179,7 +255,82 @@ def get_asset_scan(
     if not scan:
         raise NotFoundError("Scan")
     scan.plugin_runs = list_plugin_runs_for_scan(db, scan_id=scan.id)
-    return to_scan_summary(scan, include_plugin_runs=True)
+    summaries = _summaries_with_metrics(db, [scan], include_plugin_runs=True)
+    return summaries[0]
+
+
+def compare_asset_scans(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    scan_a_id: uuid.UUID,
+    scan_b_id: uuid.UUID,
+) -> ScanCompareResponse:
+    _require_asset(db, membership, project_id=project_id, asset_id=asset_id)
+    if scan_a_id == scan_b_id:
+        raise ValidationAppError("Select two different scans to compare")
+
+    scan_a = get_scan_for_asset(
+        db, project_id=project_id, asset_id=asset_id, scan_id=scan_a_id
+    )
+    scan_b = get_scan_for_asset(
+        db, project_id=project_id, asset_id=asset_id, scan_id=scan_b_id
+    )
+    if not scan_a or not scan_b:
+        raise NotFoundError("Scan")
+
+    summaries = _summaries_with_metrics(db, [scan_a, scan_b])
+    left, right = summaries[0], summaries[1]
+
+    score_a = left.metrics.risk_score
+    score_b = right.metrics.risk_score
+    duration_a = left.metrics.duration_seconds
+    duration_b = right.metrics.duration_seconds
+
+    diff = ScanCompareDiff(
+        risk_score_delta=(score_b - score_a) if score_a is not None and score_b is not None else None,
+        critical_count_delta=right.metrics.critical_count - left.metrics.critical_count,
+        findings_count_delta=right.metrics.findings_count - left.metrics.findings_count,
+        duration_seconds_delta=(
+            (duration_b - duration_a) if duration_a is not None and duration_b is not None else None
+        ),
+    )
+    return ScanCompareResponse(scan_a=left, scan_b=right, diff=diff)
+
+
+def export_asset_scan(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    scan_id: uuid.UUID,
+) -> ScanExportResponse:
+    scan = get_asset_scan(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+        scan_id=scan_id,
+    )
+    findings = list_findings_for_scan(db, project_id=project_id, scan_id=scan_id)
+    return ScanExportResponse(
+        scan=scan,
+        findings=[
+            ScanExportFindingSummary(
+                id=str(finding.id),
+                title=finding.title,
+                severity=finding.severity.value,
+                status=finding.status.value,
+                risk_score=float(finding.risk_score),
+                plugin=finding.plugin,
+            )
+            for finding in findings
+        ],
+        exported_at=datetime.now(UTC),
+    )
 
 
 def run_asset_scan(

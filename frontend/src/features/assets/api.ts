@@ -10,6 +10,8 @@ import type {
   UpdateAssetRequest,
 } from "@/shared/types/asset";
 import type { AssetOverview } from "@/shared/types/asset-overview";
+import type { ActivityEvent } from "@/shared/types/activity";
+import type { AssetRiskHistory } from "@/shared/types/risk-history";
 
 const base = (projectId: string) => `/projects/${projectId}/assets`;
 
@@ -42,6 +44,18 @@ export const assetsApi = {
 
   overview: (projectId: string, assetId: string) =>
     apiRequest<AssetOverview>(`${base(projectId)}/${assetId}/overview`, { auth: true }),
+
+  timeline: (projectId: string, assetId: string, limit = 50) =>
+    apiRequest<{ items: ActivityEvent[]; total: number }>(
+      `${base(projectId)}/${assetId}/timeline?limit=${limit}`,
+      { auth: true },
+    ),
+
+  riskHistory: (projectId: string, assetId: string, limit = 20) =>
+    apiRequest<AssetRiskHistory>(
+      `${base(projectId)}/${assetId}/risk-history?limit=${limit}`,
+      { auth: true },
+    ),
 
   update: (projectId: string, assetId: string, data: UpdateAssetRequest) =>
     apiRequest<AssetSummary>(`${base(projectId)}/${assetId}`, {

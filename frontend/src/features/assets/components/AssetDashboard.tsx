@@ -9,7 +9,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import StatCard, { SectionPanel } from "@/features/organizations/components/dashboard/StatCard";
-import RiskTrendChart from "@/features/organizations/components/dashboard/RiskTrendChart";
+import AssetRiskHistoryPanel from "./AssetRiskHistoryPanel";
 import AiSummaryPanel from "@/shared/components/AiSummaryPanel";
 import type { OrganizationDetail } from "@/shared/types/organization";
 import type { AssetOverview } from "@/shared/types/asset-overview";
@@ -51,7 +51,7 @@ export default function AssetDashboard({
   assetId,
   organization,
 }: AssetDashboardProps) {
-  const { asset, stats, risk, scan_trend, recent_scans, top_findings, recent_reports, recent_activity, ai_summary } =
+  const { asset, stats, risk, recent_scans, top_findings, recent_reports, recent_activity, ai_summary } =
     overview;
 
   const latestScan = recent_scans[0] ?? null;
@@ -94,11 +94,7 @@ export default function AssetDashboard({
                   : "No scans"}
             </p>
             <p className="text-xs text-brand-500">
-              {formatDateTime(
-                latestScan?.lifecycle?.completed_at ??
-                  latestScan?.completed_at ??
-                  asset.last_scan_at,
-              )}
+              {formatDateTime(latestScan?.lifecycle?.completed_at ?? asset.last_scan_at)}
             </p>
           </div>
           <div className="rounded-lg border border-brand-800/50 px-4 py-3">
@@ -143,19 +139,7 @@ export default function AssetDashboard({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionPanel
-          title="Scan Trend"
-          action={
-            <Link
-              to={`/projects/${projectId}/assets/${assetId}/scans`}
-              className="text-xs text-brand-400 hover:text-brand-200"
-            >
-              View scans
-            </Link>
-          }
-        >
-          <RiskTrendChart points={scan_trend} />
-        </SectionPanel>
+        <AssetRiskHistoryPanel projectId={projectId} assetId={assetId} />
 
         <SectionPanel
           title="Latest Scan"
@@ -182,9 +166,7 @@ export default function AssetDashboard({
                   <p className="text-sm capitalize text-brand-100">{latestScan.scan_type} scan</p>
                   <p className="text-xs text-brand-600">
                     {formatRelativeTime(
-                      latestScan.lifecycle?.completed_at ??
-                        latestScan.completed_at ??
-                        new Date().toISOString(),
+                      latestScan.lifecycle?.completed_at ?? new Date().toISOString(),
                     )}
                   </p>
                 </div>

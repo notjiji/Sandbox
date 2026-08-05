@@ -1,20 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Play, Plus, Radar, Square } from "lucide-react";
+import { Plus, Radar } from "lucide-react";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
 import EmptyState from "@/shared/components/EmptyState";
-import ListSearchBar from "@/shared/components/ListSearchBar";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import AssetPagination from "@/features/assets/components/AssetPagination";
 import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/client";
 import type { AssetSummary } from "@/shared/types/asset";
 import type { ProjectSummary } from "@/shared/types/project";
-import type { CreateScanRequest, ScanStatus, ScanSummary, ScanType } from "@/shared/types/scan";
+import type { CreateScanRequest, ScanCompareData, ScanSummary, ScanType } from "@/shared/types/scan";
 import { assetsApi } from "@/features/assets/api";
 import { projectsApi } from "@/features/projects/api";
 import ProjectNav from "@/features/projects/components/ProjectNav";
-import { scansApi } from "../api";
+import ScanComparePanel from "../components/ScanComparePanel";
+import ScanDetailPanel from "../components/ScanDetailPanel";
+import ScanFilters, { filtersToQuery, type ScanFiltersState } from "../components/ScanFilters";
+import ScanHistoryTable from "../components/ScanHistoryTable";
+import { downloadScanReport, scansApi } from "../api";
+import { profileLabel } from "../utils";
+
+const PAGE_SIZE = 10;
 
 interface ScanProfileOption {
   profile: ScanType;
@@ -23,76 +30,66 @@ interface ScanProfileOption {
   plugins: string[];
 }
 
-interface ScanWithPlugins extends ScanSummary {
-  profile_plugins?: string[];
-}
-
-function statusClass(status: ScanStatus | string): string {
-  switch (status) {
-    case "completed":
-      return "text-brand-300";
-    case "running":
-      return "text-yellow-400";
-    case "queued":
-      return "text-blue-400";
-    case "failed":
-      return "text-red-400";
-    case "cancelled":
-      return "text-brand-500";
-    default:
-      return "text-brand-400";
-  }
-}
-
-function profileLabel(scanType: ScanType | string): string {
-  switch (scanType) {
-    case "quick":
-      return "Quick Scan";
-    case "full":
-      return "Full Scan";
-    case "custom":
-      return "Custom Scan";
-    default:
-      return `${scanType} scan`;
-  }
-}
-
 export default function Scans() {
   const { projectId, assetId } = useParams<{ projectId: string; assetId: string }>();
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [asset, setAsset] = useState<AssetSummary | null>(null);
-  const [scans, setScans] = useState<ScanWithPlugins[]>([]);
+  const [scans, setScans] = useState<ScanSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [filters, setFilters] = useState<ScanFiltersState>({
+    search: "",
+    status: "",
+    scan_type: "",
+  });
   const [profiles, setProfiles] = useState<ScanProfileOption[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<ScanType>("full");
   const [selectedPlugins, setSelectedPlugins] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [detailScan, setDetailScan] = useState<ScanSummary | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [compareData, setCompareData] = useState<ScanCompareData | null>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
 
   const customProfile = profiles.find((profile) => profile.profile === "custom");
   const availablePlugins = customProfile?.plugins ?? [];
 
-  const loadData = async () => {
+  const loadScans = useCallback(async () => {
     if (!projectId || !assetId) return;
-    const [projectResponse, assetResponse, scansResponse, profilesResponse] = await Promise.all([
+    const response = await scansApi.list(
+      projectId,
+      assetId,
+      filtersToQuery(filters, page, limit),
+    );
+    setScans(response?.items ?? []);
+    setTotal(response?.total ?? 0);
+  }, [assetId, filters, limit, page, projectId]);
+
+  const loadMeta = useCallback(async () => {
+    if (!projectId || !assetId) return;
+    const [projectResponse, assetResponse, profilesResponse] = await Promise.all([
       projectsApi.get(projectId),
       assetsApi.get(projectId, assetId),
-      scansApi.list(projectId, assetId),
       scansApi.profiles(projectId, assetId),
     ]);
     setProject(projectResponse ?? null);
     setAsset(assetResponse ?? null);
-    setScans((scansResponse?.items ?? []) as ScanWithPlugins[]);
-    const profileItems =
-      (profilesResponse as { items?: ScanProfileOption[] } | undefined)?.items ?? [];
-    setProfiles(profileItems);
-  };
+    setProfiles(profilesResponse?.items ?? []);
+  }, [assetId, projectId]);
+
+  const loadData = useCallback(async () => {
+    await Promise.all([loadMeta(), loadScans()]);
+  }, [loadMeta, loadScans]);
 
   useEffect(() => {
     let active = true;
 
     async function load() {
+      setLoading(true);
       try {
         await loadData();
       } catch (error) {
@@ -108,7 +105,7 @@ export default function Scans() {
     return () => {
       active = false;
     };
-  }, [projectId, assetId]);
+  }, [loadData]);
 
   const hasActiveScans = scans.some(
     (scan) => scan.status === "queued" || scan.status === "running",
@@ -118,11 +115,71 @@ export default function Scans() {
     if (!hasActiveScans) return undefined;
 
     const interval = setInterval(() => {
-      loadData().catch(() => {});
+      loadScans().catch(() => {});
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [hasActiveScans, projectId, assetId]);
+  }, [hasActiveScans, loadScans]);
+
+  const handleFiltersChange = (next: ScanFiltersState) => {
+    setFilters(next);
+    setPage(1);
+  };
+
+  const toggleSelect = (scanId: string) => {
+    setSelectedIds((current) => {
+      if (current.includes(scanId)) {
+        return current.filter((id) => id !== scanId);
+      }
+      if (current.length >= 2) {
+        return [current[1]!, scanId];
+      }
+      return [...current, scanId];
+    });
+  };
+
+  const openDetail = async (scan: ScanSummary) => {
+    if (!projectId || !assetId) return;
+    setDetailScan(scan);
+    setDetailLoading(true);
+    try {
+      const full = await scansApi.get(projectId, assetId, scan.id);
+      setDetailScan(full ?? scan);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Unable to load scan details.");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleCompare = async () => {
+    if (!projectId || !assetId || selectedIds.length !== 2) return;
+    setCompareLoading(true);
+    setCompareData(null);
+    try {
+      const result = await scansApi.compare(
+        projectId,
+        assetId,
+        selectedIds[0]!,
+        selectedIds[1]!,
+      );
+      setCompareData(result ?? null);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Unable to compare scans.");
+    } finally {
+      setCompareLoading(false);
+    }
+  };
+
+  const handleDownload = async (scanId: string) => {
+    if (!projectId || !assetId) return;
+    try {
+      await downloadScanReport(projectId, assetId, scanId);
+      toast.success("Scan report downloaded.");
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Unable to download report.");
+    }
+  };
 
   const togglePlugin = (pluginName: string) => {
     setSelectedPlugins((current) =>
@@ -131,17 +188,6 @@ export default function Scans() {
         : [...current, pluginName],
     );
   };
-
-  const filteredScans = useMemo(() => {
-    if (!search.trim()) return scans;
-    const needle = search.toLowerCase();
-    return scans.filter(
-      (scan) =>
-        scan.scan_type.toLowerCase().includes(needle) ||
-        scan.status.toLowerCase().includes(needle) ||
-        (scan.profile_plugins ?? []).some((plugin) => plugin.toLowerCase().includes(needle)),
-    );
-  }, [scans, search]);
 
   const handleCreate = async () => {
     if (!projectId || !assetId) return;
@@ -157,6 +203,7 @@ export default function Scans() {
       }
       await scansApi.create(projectId, assetId, payload);
       toast.success("Scan created.");
+      setPage(1);
       await loadData();
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Unable to create scan.");
@@ -171,7 +218,7 @@ export default function Scans() {
     try {
       await scansApi.run(projectId, assetId, scanId);
       toast.success("Scan started.");
-      await loadData();
+      await loadScans();
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Unable to run scan.");
     } finally {
@@ -185,7 +232,7 @@ export default function Scans() {
     try {
       await scansApi.cancel(projectId, assetId, scanId);
       toast.success("Scan cancelled.");
-      await loadData();
+      await loadScans();
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Unable to cancel scan.");
     } finally {
@@ -283,72 +330,82 @@ export default function Scans() {
         animate={{ opacity: 1, y: 0 }}
         className="glass-panel p-6"
       >
-        <h2 className="mb-4 text-lg font-semibold text-brand-100">Scan history</h2>
-        <ListSearchBar
-          value={search}
-          onChange={setSearch}
-          placeholder="Search scans..."
-          className="mb-4"
-        />
-        {loading ? (
-          <ListSkeleton rows={4} />
-        ) : filteredScans.length === 0 ? (
-          <EmptyState
-            compact
-            icon={Radar}
-            title={search ? "No matching scans" : "No scans yet"}
-            description={
-              search
-                ? "Try a different search term."
-                : "Create a scan to run plugins against this asset."
-            }
-          />
-        ) : (
-          <ul className="space-y-3">
-            {filteredScans.map((scan) => (
-              <li
-                key={scan.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand-800/50 px-4 py-3"
-              >
-                <div>
-                  <p className="font-medium text-brand-100">{profileLabel(scan.scan_type)}</p>
-                  <p className="text-xs text-brand-500">
-                    {(scan.profile_plugins ?? []).join(", ") || "No plugins"}
-                  </p>
-                  <p className={`text-sm capitalize ${statusClass(scan.status)}`}>{scan.status}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Radar size={18} className="text-brand-400" />
-                  {(scan.status === "pending" || scan.status === "failed") && (
-                    <button
-                      type="button"
-                      disabled={actionId === scan.id}
-                      onClick={() => handleRun(scan.id)}
-                      className="btn-primary inline-flex items-center gap-1 text-sm"
-                    >
-                      <Play size={14} />
-                      Run
-                    </button>
-                  )}
-                  {(scan.status === "pending" ||
-                    scan.status === "queued" ||
-                    scan.status === "running") && (
-                    <button
-                      type="button"
-                      disabled={actionId === scan.id}
-                      onClick={() => handleCancel(scan.id)}
-                      className="btn-ghost inline-flex items-center gap-1 text-sm"
-                    >
-                      <Square size={14} />
-                      Cancel
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold text-brand-100">Scan history</h2>
+          <p className="text-sm text-brand-500">
+            {total} scan{total === 1 ? "" : "s"} total
+          </p>
+        </div>
+
+        <ScanFilters filters={filters} onChange={handleFiltersChange} />
+
+        <div className="mt-4">
+          {loading ? (
+            <ListSkeleton rows={5} />
+          ) : scans.length === 0 ? (
+            <EmptyState
+              compact
+              icon={Radar}
+              title={
+                filters.search || filters.status || filters.scan_type
+                  ? "No matching scans"
+                  : "No scans yet"
+              }
+              description={
+                filters.search || filters.status || filters.scan_type
+                  ? "Try adjusting your filters."
+                  : "Create a scan to run plugins against this asset."
+              }
+            />
+          ) : (
+            <>
+              <ScanHistoryTable
+                scans={scans}
+                selectedIds={selectedIds}
+                actionId={actionId}
+                onToggleSelect={toggleSelect}
+                onOpen={openDetail}
+                onRun={handleRun}
+                onCancel={handleCancel}
+                onDownload={handleDownload}
+                onCompare={handleCompare}
+              />
+              <div className="mt-6">
+                <AssetPagination
+                  page={page}
+                  limit={limit}
+                  total={total}
+                  pageSizeOptions={[10, 20, 50]}
+                  onPageChange={setPage}
+                  onLimitChange={(nextLimit) => {
+                    setLimit(nextLimit);
+                    setPage(1);
+                  }}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </motion.div>
+
+      <ScanDetailPanel
+        scan={detailScan}
+        loading={detailLoading}
+        projectId={projectId ?? ""}
+        onClose={() => setDetailScan(null)}
+        onDownload={handleDownload}
+      />
+
+      {(compareLoading || compareData) && (
+        <ScanComparePanel
+          data={compareData}
+          loading={compareLoading}
+          onClose={() => {
+            setCompareData(null);
+            setCompareLoading(false);
+          }}
+        />
+      )}
     </DashboardShell>
   );
 }
