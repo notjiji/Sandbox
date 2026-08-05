@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
-from app.reports.enums import ReportStatus
+from app.reports.enums import ReportStatus, ReportType
 
 
 class Report(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -16,6 +16,17 @@ class Report(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
+    )
+    asset_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    report_type: Mapped[ReportType] = mapped_column(
+        Enum(ReportType, name="report_type", native_enum=True),
+        nullable=False,
+        default=ReportType.EXECUTIVE,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -32,4 +43,5 @@ class Report(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     project: Mapped["Project"] = relationship("Project", back_populates="reports")
+    asset: Mapped["Asset | None"] = relationship("Asset")
     creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])

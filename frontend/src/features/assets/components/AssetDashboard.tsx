@@ -121,20 +121,20 @@ export default function AssetDashboard({
           icon={Bug}
           accent={stats.open_findings > 0 ? "danger" : "default"}
           suffix={`${stats.total_findings} total`}
-          href={`/projects/${projectId}/findings`}
+          href={`/projects/${projectId}/assets/${assetId}/findings`}
         />
         <StatCard
           label="Critical findings"
           value={stats.critical_findings}
           icon={AlertTriangle}
           accent={stats.critical_findings > 0 ? "danger" : "default"}
-          href={`/projects/${projectId}/findings`}
+          href={`/projects/${projectId}/assets/${assetId}/findings`}
         />
         <StatCard
-          label="Project reports"
+          label="Reports"
           value={stats.reports}
           icon={FileText}
-          href={`/projects/${projectId}/reports`}
+          href={`/projects/${projectId}/assets/${assetId}/reports`}
         />
       </div>
 
@@ -206,7 +206,7 @@ export default function AssetDashboard({
               {top_findings.map((finding) => (
                 <li key={finding.id}>
                   <Link
-                    to={`/projects/${projectId}/findings`}
+                    to={`/projects/${projectId}/assets/${assetId}/findings`}
                     className="block rounded-lg border border-brand-800/40 bg-void-200/20 px-4 py-3 transition hover:border-brand-500/40"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -233,7 +233,7 @@ export default function AssetDashboard({
           title="Recent Reports"
           action={
             <Link
-              to={`/projects/${projectId}/reports`}
+              to={`/projects/${projectId}/assets/${assetId}/reports`}
               className="text-xs text-brand-400 hover:text-brand-200"
             >
               View all
@@ -241,13 +241,13 @@ export default function AssetDashboard({
           }
         >
           {recent_reports.length === 0 ? (
-            <p className="text-sm text-brand-600">No project reports yet.</p>
+            <p className="text-sm text-brand-600">No reports yet.</p>
           ) : (
             <ul className="space-y-3">
               {recent_reports.map((report) => (
                 <li key={report.id}>
                   <Link
-                    to={`/projects/${projectId}/reports`}
+                    to={`/projects/${projectId}/assets/${assetId}/reports`}
                     className="flex items-center justify-between gap-3 rounded-lg border border-brand-800/40 bg-void-200/20 px-4 py-3 transition hover:border-brand-500/40"
                   >
                     <div>

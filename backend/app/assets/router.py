@@ -27,10 +27,14 @@ from app.core.database import get_db
 from app.core.responses import success_response
 from app.members.models import OrganizationMember
 from app.scans.asset_router import router as asset_scans_router
+from app.findings.asset_router import router as asset_findings_router
+from app.reports.asset_router import router as asset_reports_router
 
 router = APIRouter()
 
 router.include_router(asset_scans_router, prefix="/{asset_id}/scans", tags=["scans"])
+router.include_router(asset_findings_router, prefix="/{asset_id}/findings", tags=["findings"])
+router.include_router(asset_reports_router, prefix="/{asset_id}/reports", tags=["reports"])
 
 
 @router.get("")

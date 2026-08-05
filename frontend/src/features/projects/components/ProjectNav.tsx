@@ -44,6 +44,18 @@ export default function ProjectNav({ projectName, assetName, active }: ProjectNa
       path: `/projects/${projectId}/assets/${assetId}`,
     },
     {
+      key: "findings",
+      label: "Findings",
+      icon: Bug,
+      path: `/projects/${projectId}/assets/${assetId}/findings`,
+    },
+    {
+      key: "reports",
+      label: "Reports",
+      icon: FileText,
+      path: `/projects/${projectId}/assets/${assetId}/reports`,
+    },
+    {
       key: "scans",
       label: "Scans",
       icon: Radar,

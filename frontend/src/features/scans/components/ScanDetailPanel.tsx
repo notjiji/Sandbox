@@ -14,6 +14,7 @@ interface ScanDetailPanelProps {
   scan: ScanSummary | null;
   loading: boolean;
   projectId: string;
+  assetId: string;
   onClose: () => void;
   onDownload: (scanId: string) => void;
 }
@@ -34,6 +35,7 @@ export default function ScanDetailPanel({
   scan,
   loading,
   projectId,
+  assetId,
   onClose,
   onDownload,
 }: ScanDetailPanelProps) {
@@ -148,7 +150,7 @@ export default function ScanDetailPanel({
 
               <div className="flex flex-wrap gap-3">
                 <Link
-                  to={`/projects/${projectId}/findings`}
+                  to={`/projects/${projectId}/assets/${assetId}/findings`}
                   className="btn-ghost text-sm"
                 >
                   View findings

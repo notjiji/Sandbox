@@ -31,6 +31,22 @@ class FindingSummary(BaseSchema):
 class FindingListResponse(BaseSchema):
     items: list[FindingSummary]
     total: int
+    page: int = 1
+    limit: int = 20
+
+
+class FindingListQuery(BaseSchema):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+    status_group: str | None = Field(
+        default=None,
+        description="open | resolved | ignored",
+    )
+    status: FindingStatus | None = None
+    severity: FindingSeverity | None = None
+    search: str | None = Field(default=None, max_length=255)
+    sort: str = Field(default="risk_score", description="risk_score | severity | title | created_at")
+    order: str = Field(default="desc", description="asc | desc")
 
 
 class UpdateFindingRequest(BaseSchema):

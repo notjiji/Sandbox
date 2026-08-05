@@ -392,6 +392,7 @@ export default function Scans() {
         scan={detailScan}
         loading={detailLoading}
         projectId={projectId ?? ""}
+        assetId={assetId ?? ""}
         onClose={() => setDetailScan(null)}
         onDownload={handleDownload}
       />

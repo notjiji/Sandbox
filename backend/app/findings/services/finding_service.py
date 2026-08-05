@@ -2,11 +2,17 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from app.assets.repositories.asset_repository import get_asset_by_id
 from app.core.exceptions import NotFoundError, ValidationAppError
 from app.findings.events import FindingAuditAction
 from app.findings.models import Finding
-from app.findings.repositories.finding_repository import get_finding_by_id, list_findings_for_project, update_finding
-from app.findings.schemas import FindingListResponse, FindingSummary, UpdateFindingRequest
+from app.findings.repositories.finding_repository import (
+    get_finding_by_id,
+    list_findings_for_asset_paginated,
+    list_findings_for_project,
+    update_finding,
+)
+from app.findings.schemas import FindingListQuery, FindingListResponse, FindingSummary, UpdateFindingRequest
 from app.members.models import OrganizationMember
 from app.projects.validators import require_active_project
 from app.audit.service import record_audit_event
@@ -33,6 +39,40 @@ def to_finding_summary(finding: Finding) -> FindingSummary:
         raw_data=finding.raw_data or {},
         confidence=finding.confidence,
         detected_at=finding.detected_at,
+    )
+
+
+def list_asset_findings(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    query: FindingListQuery | None = None,
+) -> FindingListResponse:
+    require_active_project(db, membership, project_id)
+    asset = get_asset_by_id(
+        db,
+        project_id=project_id,
+        asset_id=asset_id,
+        include_deleted=True,
+    )
+    if not asset:
+        raise NotFoundError("Asset")
+
+    params = query or FindingListQuery()
+    findings, total = list_findings_for_asset_paginated(
+        db,
+        project_id=project_id,
+        asset_id=asset_id,
+        query=params,
+    )
+    items = [to_finding_summary(finding) for finding in findings]
+    return FindingListResponse(
+        items=items,
+        total=total,
+        page=params.page,
+        limit=params.limit,
     )
 
 
