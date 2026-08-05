@@ -9,13 +9,13 @@ from app.core.logging import get_logger
 from app.core.risk_engine.engine import risk_engine
 from app.core.scan_engine.dispatcher import ScanDispatcher
 from app.core.scan_engine.normalizer import ScanNormalizer
-from app.core.scan_engine.plugin_loader import PluginLoader
 from app.core.scan_engine.result_combiner import combine_normalized_findings, resolve_scan_status
 from app.core.scan_engine.types import CombinedScanResults, PluginExecutionRecord
 from app.findings.enums import FindingStatus
 from app.findings.repositories.finding_repository import create_finding
-from app.plugins.base import ScanTarget, ScannerPlugin
-from app.plugins.output import PluginOutputStatus
+from app.plugins.base.loader import plugin_loader
+from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+from app.plugins.base.output import PluginOutputStatus
 from app.scans.enums import PluginRunStatus, ScanStatus
 from app.scans.models import Scan
 from app.scans.repositories.scan_plugin_repository import (
@@ -31,7 +31,7 @@ class ScanOrchestrator:
     """Entry point for running scans through the engine pipeline."""
 
     def __init__(self) -> None:
-        self._loader = PluginLoader()
+        self._loader = plugin_loader
         self._dispatcher = ScanDispatcher()
         self._normalizer = ScanNormalizer()
 

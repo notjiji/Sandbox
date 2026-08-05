@@ -1,11 +1,5 @@
-from abc import ABC, abstractmethod
+"""Backward-compatible re-exports — prefer app.plugins.base.interfaces."""
 
-from app.plugins.base import ScannerPlugin
+from app.plugins.base.interfaces import PluginInterface
 
-
-class PluginInterface(ABC):
-    """Application-level plugin interface."""
-
-    @abstractmethod
-    def get_scanner(self) -> ScannerPlugin:
-        """Return the scanner implementation for this plugin."""
+__all__ = ["PluginInterface"]

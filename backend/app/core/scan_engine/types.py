@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass, field
 
-from app.plugins.base import ScanTarget
-from app.plugins.output import PluginFinding, PluginOutput
+from app.plugins.base.plugin import ScanTarget
+from app.plugins.base.output import PluginFinding, PluginOutput
 from app.scans.enums import PluginRunStatus
 
 

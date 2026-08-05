@@ -1,6 +1,5 @@
-class PluginError(Exception):
-    """Raised when a plugin operation fails."""
+"""Backward-compatible re-exports — prefer app.plugins.base.exceptions."""
 
+from app.plugins.base.exceptions import PluginError, PluginNotFoundError
 
-class PluginNotFoundError(PluginError):
-    """Raised when a requested plugin is not registered."""
+__all__ = ["PluginError", "PluginNotFoundError"]

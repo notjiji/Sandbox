@@ -1,6 +1,6 @@
 """Resolves final scan status from plugin execution records."""
 
-from app.plugins.output import PluginFinding
+from app.plugins.base.output import PluginFinding
 from app.scans.enums import PluginRunStatus, ScanStatus
 from app.core.scan_engine.types import PluginExecutionRecord
 

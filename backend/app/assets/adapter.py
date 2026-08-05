@@ -16,7 +16,7 @@ from app.assets.repositories.asset_repository import get_asset_by_id, list_child
 from app.assets.schemas import NormalizedScanTarget, RelatedScanTarget
 from app.assets.validators import validate_asset_scannable
 from app.core.exceptions import NotFoundError
-from app.plugins.base import ScanTarget
+from app.plugins.base.plugin import ScanTarget
 
 
 class AssetAdapter:

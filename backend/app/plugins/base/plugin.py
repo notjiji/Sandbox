@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from app.plugins.config import PluginConfig
-from app.plugins.output import PluginOutput
+from app.plugins.base.config import PluginConfig
+from app.plugins.base.output import PluginOutput
 from app.scans.enums import ScanType
 
 

@@ -5,8 +5,17 @@ from app.scans.enums import ScanType
 
 # Plugin slugs per profile (order = execution order)
 SCAN_PROFILE_PLUGINS: dict[ScanType, list[str]] = {
-    ScanType.QUICK: ["http_headers", "ssl", "dns"],
-    ScanType.FULL: ["http_headers", "ssl", "dns", "whois", "ports"],
+    ScanType.QUICK: ["http_headers", "ssl", "dns", "cookies"],
+    ScanType.FULL: [
+        "http_headers",
+        "ssl",
+        "tls",
+        "dns",
+        "whois",
+        "ports",
+        "robots",
+        "cookies",
+    ],
 }
 
 SCAN_PROFILE_LABELS: dict[ScanType, str] = {
@@ -16,8 +25,8 @@ SCAN_PROFILE_LABELS: dict[ScanType, str] = {
 }
 
 SCAN_PROFILE_DESCRIPTIONS: dict[ScanType, str] = {
-    ScanType.QUICK: "Fast baseline checks — HTTP headers, SSL, and DNS.",
-    ScanType.FULL: "Comprehensive scan — HTTP, SSL, DNS, WHOIS, and port checks.",
+    ScanType.QUICK: "Fast baseline checks — HTTP headers, SSL, DNS, and cookies.",
+    ScanType.FULL: "Comprehensive scan — HTTP, SSL/TLS, DNS, WHOIS, ports, robots, and cookies.",
     ScanType.CUSTOM: "Choose exactly which scanners to run.",
 }
 

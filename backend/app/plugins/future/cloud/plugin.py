@@ -7,22 +7,22 @@ from app.plugins.base.plugin import ScanTarget, ScannerPlugin
 from app.scans.enums import ScanType
 
 
-class PortsPlugin(ScannerPlugin):
-    name = "ports"
-    description = "Port Scanner"
-    supported_assets = ["public_ip", "server", "windows_server", "docker_host"]
-    supported_scan_types = [ScanType.FULL.value]
-    default_config = PluginConfig(enabled=True, timeout=60.0, retries=1, parallel=True, version="0.1.0")
+class CloudPlugin(ScannerPlugin):
+    name = "cloud"
+    description = "Cloud Posture Scanner (preview)"
+    supported_assets = ["cloud_account", "s3_bucket", "azure_subscription"]
+    supported_scan_types = [ScanType.FULL.value, ScanType.CUSTOM.value]
+    default_config = PluginConfig(enabled=False, timeout=120.0, retries=1, parallel=False, version="0.1.0")
 
     async def scan(self, asset: ScanTarget) -> PluginOutput:
         started = time.perf_counter()
         findings = [
             report_finding(
                 plugin=self.name,
-                code="PORT_TELNET_OPEN",
-                title="Telnet Port Open",
+                code="CLOUD_PUBLIC_BUCKET",
+                title="Public Storage Exposure",
                 status=PluginFindingStatus.FAILED,
-                evidence="TCP port 23 is open",
+                evidence="Bucket policy allows public read",
                 severity=FindingSeverity.CRITICAL,
             ),
         ]
@@ -30,5 +30,5 @@ class PortsPlugin(ScannerPlugin):
             plugin=self.name,
             duration=round(time.perf_counter() - started, 2),
             findings=findings,
-            metadata={"open_ports": [22, 23, 80, 443]},
+            metadata={"preview": True},
         )

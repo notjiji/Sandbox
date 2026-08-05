@@ -7,8 +7,8 @@ from app.assets.services.asset_service import asset_service
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationAppError
 from app.members.models import OrganizationMember
-from app.plugins.builtin import discover_plugins
-from app.plugins.registry import registry
+from app.plugins.base.loader import plugin_loader
+from app.plugins.base.registry import registry
 from app.scans.enums import ScanStatus, ScanType
 from app.scans.events import ScanAuditAction
 from app.scans.lifecycle import lifecycle_timestamps, transition_scan_status
@@ -46,8 +46,7 @@ from app.audit.service import record_audit_event
 
 
 def _ensure_plugins_loaded() -> None:
-    if not registry.list_names():
-        discover_plugins(registry)
+    plugin_loader.discover()
 
 
 def _validate_create_scan(body: CreateAssetScanRequest) -> list[str] | None:

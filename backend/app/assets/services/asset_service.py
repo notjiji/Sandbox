@@ -65,7 +65,7 @@ from app.audit.schemas import AuditLogListResponse, AuditLogSummary
 from app.audit.service import record_audit_event
 from app.core.exceptions import NotFoundError
 from app.members.models import OrganizationMember
-from app.plugins.base import ScanTarget
+from app.plugins.base.plugin import ScanTarget
 from app.users.models import User
 
 

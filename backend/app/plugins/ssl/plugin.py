@@ -1,9 +1,9 @@
 import time
 
 from app.findings.enums import FindingSeverity
-from app.plugins.base import ScanTarget, ScannerPlugin
-from app.plugins.config import PluginConfig
-from app.plugins.output import PluginOutput, PluginFindingStatus, report_finding
+from app.plugins.base.config import PluginConfig
+from app.plugins.base.output import PluginFindingStatus, PluginOutput, report_finding
+from app.plugins.base.plugin import ScanTarget, ScannerPlugin
 from app.scans.enums import ScanType
 
 

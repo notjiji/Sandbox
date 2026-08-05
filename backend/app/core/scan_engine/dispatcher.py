@@ -5,9 +5,9 @@ import inspect
 import time
 
 from app.core.logging import get_logger
-from app.plugins.base import ScanTarget, ScannerPlugin
-from app.plugins.exceptions import PluginNotFoundError
-from app.plugins.output import PluginOutput, PluginOutputStatus
+from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+from app.plugins.base.exceptions import PluginNotFoundError
+from app.plugins.base.output import PluginOutput, PluginOutputStatus
 
 logger = get_logger("sandbox.scan_engine.dispatcher")
 

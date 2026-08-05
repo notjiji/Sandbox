@@ -1,6 +1,6 @@
 """Normalizes and validates standard plugin output."""
 
-from app.plugins.output import PluginFinding, PluginOutput
+from app.plugins.base.output import PluginFinding, PluginOutput
 
 
 class ScanNormalizer:

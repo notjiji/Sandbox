@@ -7,9 +7,9 @@ from app.plugins.base.plugin import ScanTarget, ScannerPlugin
 from app.scans.enums import ScanType
 
 
-class HttpHeadersPlugin(ScannerPlugin):
-    name = "http_headers"
-    description = "HTTP Headers Scanner"
+class CookiesPlugin(ScannerPlugin):
+    name = "cookies"
+    description = "Cookie Security Scanner"
     supported_assets = ["website", "api_endpoint"]
     supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
     default_config = PluginConfig(enabled=True, timeout=20.0, retries=1, parallel=False, version="0.1.0")
@@ -19,24 +19,24 @@ class HttpHeadersPlugin(ScannerPlugin):
         findings = [
             report_finding(
                 plugin=self.name,
-                code="HTTP_NO_CSP",
-                title="Missing Content Security Policy",
+                code="COOKIE_MISSING_SECURE",
+                title="Session Cookie Missing Secure Flag",
                 status=PluginFindingStatus.FAILED,
-                evidence="Header not present",
-                severity=FindingSeverity.MEDIUM,
+                evidence="Set-Cookie: sessionid without Secure",
+                severity=FindingSeverity.HIGH,
             ),
             report_finding(
                 plugin=self.name,
-                code="HTTP_NO_HSTS",
-                title="Missing Strict Transport Security",
+                code="COOKIE_MISSING_HTTPONLY",
+                title="Session Cookie Missing HttpOnly Flag",
                 status=PluginFindingStatus.FAILED,
-                evidence="HSTS header not present",
-                severity=FindingSeverity.HIGH,
+                evidence="Set-Cookie: sessionid without HttpOnly",
+                severity=FindingSeverity.MEDIUM,
             ),
         ]
         return PluginOutput.completed(
             plugin=self.name,
             duration=round(time.perf_counter() - started, 2),
             findings=findings,
-            metadata={"status_code": 200, "headers": {"server": "nginx"}},
+            metadata={"cookies_checked": 4},
         )

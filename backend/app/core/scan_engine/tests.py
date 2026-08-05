@@ -4,8 +4,8 @@
 def test_resolve_scan_status_completed_when_any_plugin_succeeds() -> None:
     from app.core.scan_engine.result_combiner import resolve_scan_status
     from app.core.scan_engine.types import PluginExecutionRecord
-    from app.plugins.base import ScanTarget
-    from app.plugins.output import PluginFinding, PluginFindingStatus
+    from app.plugins.base.plugin import ScanTarget
+    from app.plugins.base.output import PluginFinding, PluginFindingStatus
     from app.scans.enums import PluginRunStatus, ScanStatus
 
     target = ScanTarget(asset_id="00000000-0000-4000-8000-000000000001", identifier="example.com", asset_type="website")
@@ -31,8 +31,8 @@ def test_resolve_scan_status_completed_when_any_plugin_succeeds() -> None:
 def test_combine_normalized_findings() -> None:
     from app.core.scan_engine.result_combiner import combine_normalized_findings
     from app.core.scan_engine.types import PluginExecutionRecord
-    from app.plugins.base import ScanTarget
-    from app.plugins.output import PluginFinding, PluginFindingStatus
+    from app.plugins.base.plugin import ScanTarget
+    from app.plugins.base.output import PluginFinding, PluginFindingStatus
     from app.scans.enums import PluginRunStatus
 
     target = ScanTarget(asset_id="00000000-0000-4000-8000-000000000001", identifier="example.com", asset_type="website")
@@ -61,7 +61,7 @@ def test_combine_normalized_findings() -> None:
 
 
 def test_plugin_output_schema() -> None:
-    from app.plugins.output import PluginOutput, PluginOutputStatus, report_finding
+    from app.plugins.base.output import PluginOutput, PluginOutputStatus, report_finding
 
     output = PluginOutput(
         plugin="ssl",
@@ -79,44 +79,61 @@ def test_plugin_output_schema() -> None:
 def test_profile_resolves_quick_scan_plugins() -> None:
     from types import SimpleNamespace
 
-    from app.core.scan_engine.plugin_loader import PluginLoader
-    from app.plugins.registry import registry
+    from app.plugins.base.loader import plugin_loader
+    from app.plugins.base.registry import registry
     from app.scans.enums import ScanType
 
     registry._plugins.clear()
     try:
         scan = SimpleNamespace(scan_type=ScanType.QUICK, selected_plugins=None)
-        selection = PluginLoader().select_for_scan(scan)
+        selection = plugin_loader.select_for_scan(scan)
         enabled_names = {plugin.name for plugin in selection.enabled}
-        assert enabled_names == {"http_headers", "ssl", "dns"}
+        assert enabled_names == {"http_headers", "ssl", "dns", "cookies"}
     finally:
         registry._plugins.clear()
-        PluginLoader().ensure_loaded()
+        plugin_loader.discover()
 
 
 def test_profile_resolves_custom_scan_plugins() -> None:
     from types import SimpleNamespace
 
-    from app.core.scan_engine.plugin_loader import PluginLoader
-    from app.plugins.registry import registry
+    from app.plugins.base.loader import plugin_loader
+    from app.plugins.base.registry import registry
     from app.scans.enums import ScanType
 
     registry._plugins.clear()
     try:
         scan = SimpleNamespace(scan_type=ScanType.CUSTOM, selected_plugins=["dns", "whois"])
-        selection = PluginLoader().select_for_scan(scan)
+        selection = plugin_loader.select_for_scan(scan)
         enabled_names = {plugin.name for plugin in selection.enabled}
         assert enabled_names == {"dns", "whois"}
     finally:
         registry._plugins.clear()
-        PluginLoader().ensure_loaded()
+        plugin_loader.discover()
+
+
+def test_plugin_loader_discovers_all_builtin_plugins() -> None:
+    from app.plugins.base.loader import BUILTIN_PLUGIN_CLASSES, plugin_loader
+    from app.plugins.base.registry import registry
+
+    registry._plugins.clear()
+    try:
+        names = plugin_loader.discover()
+        assert len(names) == len(BUILTIN_PLUGIN_CLASSES)
+        assert "robots" in names
+        assert "tls" in names
+        assert "cookies" in names
+        assert "malware" in names
+    finally:
+        registry._plugins.clear()
+        plugin_loader.discover()
 
 
 def test_dispatcher_runs_async_plugins() -> None:
     from app.core.scan_engine.dispatcher import ScanDispatcher
-    from app.plugins.base import ScanTarget, ScannerPlugin
-    from app.plugins.config import PluginConfig
-    from app.plugins.output import PluginOutput
+    from app.plugins.base.config import PluginConfig
+    from app.plugins.base.output import PluginOutput
+    from app.plugins.base.plugin import ScanTarget, ScannerPlugin
     from app.scans.enums import ScanType
 
     class AsyncPlugin(ScannerPlugin):
@@ -144,8 +161,8 @@ def test_dispatcher_runs_async_plugins() -> None:
 
 def test_dispatcher_catches_plugin_errors() -> None:
     from app.core.scan_engine.dispatcher import ScanDispatcher
-    from app.plugins.base import ScanTarget, ScannerPlugin
-    from app.plugins.config import PluginConfig
+    from app.plugins.base.config import PluginConfig
+    from app.plugins.base.plugin import ScanTarget, ScannerPlugin
     from app.scans.enums import ScanType
 
     class BrokenPlugin(ScannerPlugin):

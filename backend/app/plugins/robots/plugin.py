@@ -7,10 +7,10 @@ from app.plugins.base.plugin import ScanTarget, ScannerPlugin
 from app.scans.enums import ScanType
 
 
-class HttpHeadersPlugin(ScannerPlugin):
-    name = "http_headers"
-    description = "HTTP Headers Scanner"
-    supported_assets = ["website", "api_endpoint"]
+class RobotsPlugin(ScannerPlugin):
+    name = "robots"
+    description = "Robots.txt Scanner"
+    supported_assets = ["website", "domain", "api_endpoint"]
     supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
     default_config = PluginConfig(enabled=True, timeout=20.0, retries=1, parallel=False, version="0.1.0")
 
@@ -19,24 +19,16 @@ class HttpHeadersPlugin(ScannerPlugin):
         findings = [
             report_finding(
                 plugin=self.name,
-                code="HTTP_NO_CSP",
-                title="Missing Content Security Policy",
+                code="ROBOTS_ADMIN_DISALLOW_MISSING",
+                title="Admin Paths Not Disallowed",
                 status=PluginFindingStatus.FAILED,
-                evidence="Header not present",
+                evidence="robots.txt does not disallow /admin",
                 severity=FindingSeverity.MEDIUM,
-            ),
-            report_finding(
-                plugin=self.name,
-                code="HTTP_NO_HSTS",
-                title="Missing Strict Transport Security",
-                status=PluginFindingStatus.FAILED,
-                evidence="HSTS header not present",
-                severity=FindingSeverity.HIGH,
             ),
         ]
         return PluginOutput.completed(
             plugin=self.name,
             duration=round(time.perf_counter() - started, 2),
             findings=findings,
-            metadata={"status_code": 200, "headers": {"server": "nginx"}},
+            metadata={"path": "/robots.txt", "rules": 3},
         )
