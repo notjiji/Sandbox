@@ -9,10 +9,14 @@ function buildQuery(filters: AssetListQuery = {}): AssetListQuery {
     limit: filters.limit ?? 50,
   };
   if (filters.search?.trim()) query.search = filters.search.trim();
+  if (filters.tags?.length) query.tags = filters.tags;
   if (filters.type) query.type = filters.type;
   if (filters.status) query.status = filters.status;
   if (filters.environment) query.environment = filters.environment;
   if (filters.criticality) query.criticality = filters.criticality;
+  if (filters.asset_category) query.asset_category = filters.asset_category;
+  if (filters.sort) query.sort = filters.sort;
+  if (filters.order) query.order = filters.order;
   if (filters.roots_only) query.roots_only = true;
   return query;
 }
@@ -40,10 +44,14 @@ export function useProjectAssets(projectId: string | undefined, filters: AssetLi
     () => buildQuery({ ...filters, search: debouncedSearch }),
     [
       debouncedSearch,
+      filters.tags,
       filters.type,
       filters.status,
       filters.environment,
       filters.criticality,
+      filters.asset_category,
+      filters.sort,
+      filters.order,
       filters.page,
       filters.limit,
       filters.roots_only,

@@ -68,27 +68,27 @@ export default function Assets() {
     if (filters.environment) result.environment = filters.environment as AssetEnvironment;
     if (filters.criticality) result.criticality = filters.criticality as AssetCriticality;
     if (filters.asset_category) result.asset_category = filters.asset_category as AssetCategory;
-    result.sort = filters.sort;
-    result.order = filters.order;
+    if (filters.sort) result.sort = filters.sort;
+    if (filters.order) result.order = filters.order;
     return result;
   }, [filters, page, pageSize, effectiveMode]);
 
   const childQuery = useMemo((): AssetListQuery => {
     const result: AssetListQuery = {};
+    if (filters.tags.length > 0) result.tags = filters.tags;
     if (filters.status) result.status = filters.status as AssetStatus;
     if (filters.environment) result.environment = filters.environment as AssetEnvironment;
     if (filters.criticality) result.criticality = filters.criticality as AssetCriticality;
     if (filters.asset_category) result.asset_category = filters.asset_category as AssetCategory;
-    if (filters.tags.length > 0) result.tags = filters.tags;
-    result.sort = filters.sort;
-    result.order = filters.order;
+    if (filters.sort) result.sort = filters.sort;
+    if (filters.order) result.order = filters.order;
     return result;
   }, [
+    filters.tags,
     filters.status,
     filters.environment,
     filters.criticality,
     filters.asset_category,
-    filters.tags,
     filters.sort,
     filters.order,
   ]);

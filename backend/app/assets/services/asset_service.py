@@ -24,7 +24,6 @@ from app.assets.repositories.asset_repository import (
     get_asset_by_id,
     list_assets_for_project,
     list_child_assets,
-    list_project_tag_facets,
     replace_tags,
     restore_asset,
     soft_delete_asset,
@@ -37,8 +36,6 @@ from app.assets.schemas import (
     AssetListQuery,
     AssetListResponse,
     AssetSummary,
-    AssetTagFacet,
-    AssetTagFacetListResponse,
     CreateAssetRequest,
     NormalizedScanTarget,
     UpdateAssetRequest,
@@ -191,20 +188,6 @@ class AssetService:
             total=total,
             page=params.page,
             limit=params.limit,
-        )
-
-    def list_tag_facets(
-        self,
-        db: Session,
-        membership: OrganizationMember,
-        *,
-        project_id: uuid.UUID,
-        limit: int = 50,
-    ) -> AssetTagFacetListResponse:
-        require_active_project(db, membership, project_id)
-        facets = list_project_tag_facets(db, project_id=project_id, limit=limit)
-        return AssetTagFacetListResponse(
-            items=[AssetTagFacet(tag=tag, count=count) for tag, count in facets]
         )
 
     def list_children_for_project(

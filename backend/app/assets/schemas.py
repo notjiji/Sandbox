@@ -1,3 +1,4 @@
+import enum
 from datetime import datetime
 
 from pydantic import Field
@@ -79,10 +80,7 @@ class AssetListQuery(BaseSchema):
     environment: AssetEnvironment | None = None
     asset_category: AssetCategory | None = None
     search: str | None = Field(default=None, max_length=255)
-    tags: list[str] = Field(
-        default_factory=list,
-        description="AND filter — asset must match every tag (tag or structured field)",
-    )
+    tags: list[str] = Field(default_factory=list)
     sort: AssetSortField = AssetSortField.CREATED_AT
     order: SortOrder = SortOrder.ASC
     roots_only: bool = Field(
@@ -220,7 +218,7 @@ class AssetTagFacet(BaseSchema):
     count: int
 
 
-class AssetTagFacetListResponse(BaseSchema):
+class AssetTagListResponse(BaseSchema):
     items: list[AssetTagFacet]
 
 

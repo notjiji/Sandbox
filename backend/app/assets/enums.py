@@ -125,6 +125,20 @@ class AssetCategory(str, enum.Enum):
     OTHER = "other"
 
 
+class AssetSortField(str, enum.Enum):
+    NAME = "name"
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    CRITICALITY = "criticality"
+    ENVIRONMENT = "environment"
+    TYPE = "type"
+
+
+class SortOrder(str, enum.Enum):
+    ASC = "asc"
+    DESC = "desc"
+
+
 DEFAULT_ASSET_CATEGORY_BY_TYPE: dict[AssetType, AssetCategory] = {
     AssetType.WEBSITE: AssetCategory.APPLICATION,
     AssetType.API_ENDPOINT: AssetCategory.APPLICATION,
@@ -150,17 +164,3 @@ CRITICALITY_RISK_MULTIPLIERS: dict[AssetCriticality, float] = {
     AssetCriticality.MEDIUM: 1.0,
     AssetCriticality.LOW: 0.25,
 }
-
-
-class AssetSortField(str, enum.Enum):
-    NAME = "name"
-    CREATED_AT = "created_at"
-    UPDATED_AT = "updated_at"
-    CRITICALITY = "criticality"
-    ENVIRONMENT = "environment"
-    TYPE = "type"
-
-
-class SortOrder(str, enum.Enum):
-    ASC = "asc"
-    DESC = "desc"

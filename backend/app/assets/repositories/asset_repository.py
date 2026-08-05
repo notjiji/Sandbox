@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import case, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.assets.enums import (
@@ -14,6 +14,15 @@ from app.assets.enums import (
 )
 from app.assets.models import Asset, AssetMetadataEntry, AssetTag
 from app.assets.tag_filters import normalize_tags, tag_match_condition
+
+_SORT_COLUMNS = {
+    AssetSortField.NAME: Asset.name,
+    AssetSortField.CREATED_AT: Asset.created_at,
+    AssetSortField.UPDATED_AT: Asset.updated_at,
+    AssetSortField.CRITICALITY: Asset.criticality,
+    AssetSortField.ENVIRONMENT: Asset.environment,
+    AssetSortField.TYPE: Asset.type,
+}
 
 
 def _asset_query(db: Session, *, include_deleted: bool = False):
@@ -29,6 +38,12 @@ def _asset_query(db: Session, *, include_deleted: bool = False):
     )
     if not include_deleted:
         query = query.filter(Asset.deleted_at.is_(None))
+    return query
+
+
+def _apply_tag_filters(query, tags: list[str] | None):
+    for tag in normalize_tags(tags):
+        query = query.filter(tag_match_condition(tag))
     return query
 
 
@@ -77,47 +92,37 @@ def _apply_list_filters(
             )
             .distinct()
         )
-
-    for tag in normalize_tags(tags):
-        query = query.filter(tag_match_condition(tag))
-
+    query = _apply_tag_filters(query, tags)
     return query
-
-
-def _sort_expression(sort: AssetSortField):
-    if sort == AssetSortField.NAME:
-        return Asset.name
-    if sort == AssetSortField.UPDATED_AT:
-        return Asset.updated_at
-    if sort == AssetSortField.CRITICALITY:
-        return case(
-            (Asset.criticality == AssetCriticality.CRITICAL, 4),
-            (Asset.criticality == AssetCriticality.HIGH, 3),
-            (Asset.criticality == AssetCriticality.MEDIUM, 2),
-            (Asset.criticality == AssetCriticality.LOW, 1),
-            else_=0,
-        )
-    if sort == AssetSortField.ENVIRONMENT:
-        return Asset.environment
-    if sort == AssetSortField.TYPE:
-        return Asset.type
-    return Asset.created_at
 
 
 def _resolve_order_by(
     *,
-    sort: AssetSortField,
-    order: SortOrder,
-    roots_only: bool,
-    parent_id: uuid.UUID | None,
+    sort: AssetSortField = AssetSortField.CREATED_AT,
+    order: SortOrder = SortOrder.ASC,
+    roots_only: bool = False,
+    parent_id: uuid.UUID | None = None,
 ):
-    column = _sort_expression(sort)
-    direction = column.desc() if order == SortOrder.DESC else column.asc()
-    if parent_id is not None:
-        return (direction, Asset.id.asc())
-    if roots_only:
-        return (direction, Asset.id.asc())
-    return (direction, Asset.id.asc())
+    if parent_id is not None or roots_only:
+        column = _SORT_COLUMNS.get(sort, Asset.created_at)
+        if order == SortOrder.DESC:
+            return (column.desc(), Asset.id.asc())
+        return (column.asc(), Asset.id.asc())
+
+    column = _SORT_COLUMNS.get(sort, Asset.created_at)
+    if order == SortOrder.DESC:
+        return (
+            func.coalesce(Asset.parent_id, Asset.id),
+            Asset.parent_id.asc().nullsfirst(),
+            column.desc(),
+            Asset.id.asc(),
+        )
+    return (
+        func.coalesce(Asset.parent_id, Asset.id),
+        Asset.parent_id.asc().nullsfirst(),
+        column.asc(),
+        Asset.id.asc(),
+    )
 
 
 def list_assets_for_project(
@@ -214,73 +219,12 @@ def list_child_assets(
         search=search,
         tags=tags,
     )
-    column = _sort_expression(sort)
-    direction = column.desc() if order == SortOrder.DESC else column.asc()
-    return query.order_by(direction, Asset.id.asc()).all()
-
-
-def list_project_tag_facets(
-    db: Session,
-    *,
-    project_id: uuid.UUID,
-    limit: int = 50,
-) -> list[tuple[str, int]]:
-    custom_rows = (
-        db.query(AssetTag.tag, func.count(func.distinct(AssetTag.asset_id)))
-        .join(Asset, Asset.id == AssetTag.asset_id)
-        .filter(Asset.project_id == project_id, Asset.deleted_at.is_(None))
-        .group_by(AssetTag.tag)
-        .all()
-    )
-    counts: dict[str, int] = {tag: int(count) for tag, count in custom_rows}
-
-    for environment in AssetEnvironment:
-        token = environment.value
-        count = (
-            db.query(func.count(Asset.id))
-            .filter(
-                Asset.project_id == project_id,
-                Asset.deleted_at.is_(None),
-                Asset.environment == environment,
-            )
-            .scalar()
-            or 0
-        )
-        if count:
-            counts[token] = counts.get(token, 0) + int(count)
-
-    for criticality in AssetCriticality:
-        token = criticality.value
-        count = (
-            db.query(func.count(Asset.id))
-            .filter(
-                Asset.project_id == project_id,
-                Asset.deleted_at.is_(None),
-                Asset.criticality == criticality,
-            )
-            .scalar()
-            or 0
-        )
-        if count:
-            counts[token] = counts.get(token, 0) + int(count)
-
-    for asset_type in (AssetType.WEBSITE, AssetType.SERVER, AssetType.DOCKER_HOST, AssetType.DOMAIN):
-        token = asset_type.value
-        count = (
-            db.query(func.count(Asset.id))
-            .filter(
-                Asset.project_id == project_id,
-                Asset.deleted_at.is_(None),
-                Asset.type == asset_type,
-            )
-            .scalar()
-            or 0
-        )
-        if count:
-            counts[token] = counts.get(token, 0) + int(count)
-
-    ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
-    return ranked[:limit]
+    order_column = _SORT_COLUMNS.get(sort, Asset.created_at)
+    if order == SortOrder.DESC:
+        order_column = order_column.desc()
+    else:
+        order_column = order_column.asc()
+    return query.order_by(order_column, Asset.id.asc()).all()
 
 
 def get_asset_by_id_for_organization(

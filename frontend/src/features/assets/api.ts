@@ -7,7 +7,7 @@ import type {
   AssetSavedFilterListData,
   AssetSavedFilterSummary,
   AssetSummary,
-  AssetTagFacetListData,
+  AssetTagListData,
   CreateAssetLinkRequest,
   CreateAssetRequest,
   CreateAssetSavedFilterRequest,
@@ -23,8 +23,8 @@ function toQuery(params: AssetListQuery = {}): string {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") return;
-    if (Array.isArray(value)) {
-      if (value.length > 0) search.set(key, value.join(","));
+    if (key === "tags" && Array.isArray(value)) {
+      if (value.length > 0) search.set("tags", value.join(","));
       return;
     }
     search.set(key, String(value));
@@ -118,10 +118,8 @@ export const assetsApi = {
       auth: true,
     }),
 
-  tags: (projectId: string, limit = 50) =>
-    apiRequest<AssetTagFacetListData>(`${base(projectId)}/tags?limit=${limit}`, {
-      auth: true,
-    }),
+  tags: (projectId: string) =>
+    apiRequest<AssetTagListData>(`${base(projectId)}/tags`, { auth: true }),
 
   savedFilters: (projectId: string) =>
     apiRequest<AssetSavedFilterListData>(`${base(projectId)}/saved-filters`, {
