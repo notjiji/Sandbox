@@ -16,6 +16,7 @@ import { assetsApi } from "@/features/assets/api";
 import { projectsApi } from "@/features/projects/api";
 import ProjectNav from "@/features/projects/components/ProjectNav";
 import ScanComparePanel from "../components/ScanComparePanel";
+import AssetScanSchedulesPanel from "../components/AssetScanSchedulesPanel";
 import ScanDetailPanel from "../components/ScanDetailPanel";
 import ScanFilters, { filtersToQuery, type ScanFiltersState } from "../components/ScanFilters";
 import ScanHistoryTable from "../components/ScanHistoryTable";
@@ -249,6 +250,12 @@ export default function Scans() {
       subtitle={asset ? `Scan history for ${asset.name}` : "Asset scan history"}
     >
       <ProjectNav projectName={project?.name} assetName={asset?.name} active="scans" />
+
+      {projectId && assetId && (
+        <div className="mb-6">
+          <AssetScanSchedulesPanel projectId={projectId} assetId={assetId} />
+        </div>
+      )}
 
       <div className="mb-4 space-y-4 rounded-lg border border-brand-800/50 p-4">
         <div>

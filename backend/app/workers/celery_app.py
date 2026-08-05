@@ -27,6 +27,10 @@ celery_app.conf.update(
             "task": "app.jobs.example.heartbeat",
             "schedule": crontab(minute="*/5"),
         },
+        "check-scan-schedules": {
+            "task": "app.jobs.scans.check_due_schedules",
+            "schedule": crontab(minute="*"),
+        },
     },
 )
 

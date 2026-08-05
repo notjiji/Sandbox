@@ -22,3 +22,10 @@ class PluginRunStatus(str, enum.Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     SKIPPED = "skipped"
+
+
+class SchedulePreset(str, enum.Enum):
+    QUICK_DAILY = "quick_daily"
+    FULL_SUNDAY = "full_sunday"
+    SSL_12H = "ssl_12h"
+    DNS_WEEKLY = "dns_weekly"

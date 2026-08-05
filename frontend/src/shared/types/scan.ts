@@ -111,3 +111,26 @@ export interface CreateScanRequest {
 export interface ScanProfilesData {
   items: ScanProfile[];
 }
+
+export type ScanSchedulePreset = "quick_daily" | "full_sunday" | "ssl_12h" | "dns_weekly";
+
+export interface ScanScheduleSummary {
+  id: string;
+  preset: ScanSchedulePreset;
+  label: string;
+  cadence: string;
+  scan_type: ScanType;
+  profile_label: string;
+  enabled: boolean;
+  last_run_at?: string | null;
+  next_run_at?: string | null;
+  last_scan_id?: string | null;
+}
+
+export interface ScanScheduleListData {
+  items: ScanScheduleSummary[];
+}
+
+export interface UpdateScanScheduleRequest {
+  enabled: boolean;
+}

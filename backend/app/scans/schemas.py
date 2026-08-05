@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import Field
 
-from app.scans.enums import PluginRunStatus, ScanStatus, ScanType
+from app.scans.enums import PluginRunStatus, ScanStatus, ScanType, SchedulePreset
 from app.shared.schemas.base import BaseSchema
 
 
@@ -116,3 +116,24 @@ class ScanProfileListResponse(BaseSchema):
 class CreateScanRequest(BaseSchema):
     asset_id: str = Field(min_length=1)
     scan_type: ScanType = ScanType.FULL
+
+
+class ScanScheduleSummary(BaseSchema):
+    id: str
+    preset: SchedulePreset
+    label: str
+    cadence: str
+    scan_type: ScanType
+    profile_label: str
+    enabled: bool
+    last_run_at: datetime | None = None
+    next_run_at: datetime | None = None
+    last_scan_id: str | None = None
+
+
+class ScanScheduleListResponse(BaseSchema):
+    items: list[ScanScheduleSummary]
+
+
+class UpdateScanScheduleRequest(BaseSchema):
+    enabled: bool

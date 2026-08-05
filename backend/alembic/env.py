@@ -17,6 +17,7 @@ import app.projects.models  # noqa: F401
 import app.reports.models  # noqa: F401
 import app.risk.models  # noqa: F401
 import app.scans.models  # noqa: F401
+import app.scans.schedule_models  # noqa: F401
 import app.users.models  # noqa: F401
 
 config = context.config

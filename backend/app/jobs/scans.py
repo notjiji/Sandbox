@@ -5,6 +5,7 @@ import uuid
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
 from app.scans.services.scan_executor import run_queued_scan
+from app.scans.services import schedule_service
 from app.workers.celery_app import celery_app
 
 logger = get_logger("sandbox.jobs.scans")
@@ -35,6 +36,19 @@ def execute_scan(
             "scan worker failed",
             extra={"scan_id": scan_id, "project_id": project_id, "asset_id": asset_id},
         )
+        raise
+    finally:
+        db.close()
+
+
+@celery_app.task(name="app.jobs.scans.check_due_schedules")
+def check_due_schedules() -> int:
+    db = SessionLocal()
+    try:
+        return schedule_service.fire_due_schedules(db)
+    except Exception:
+        db.rollback()
+        logger.exception("scan schedule worker failed")
         raise
     finally:
         db.close()
