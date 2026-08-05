@@ -126,6 +126,9 @@ export interface AssetSummary {
   last_modified_by?: AssetActorSummary | null;
 }
 
+export type AssetSortField = "name" | "created_at" | "updated_at" | "criticality" | "environment" | "type";
+export type SortOrder = "asc" | "desc";
+
 export interface AssetListQuery {
   page?: number;
   limit?: number;
@@ -135,6 +138,9 @@ export interface AssetListQuery {
   environment?: AssetEnvironment;
   asset_category?: AssetCategory;
   search?: string;
+  tags?: string[];
+  sort?: AssetSortField;
+  order?: SortOrder;
   roots_only?: boolean;
   parent_id?: string;
 }
@@ -195,4 +201,42 @@ export interface AssetListData {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface AssetTagFacet {
+  tag: string;
+  count: number;
+}
+
+export interface AssetTagFacetListData {
+  items: AssetTagFacet[];
+}
+
+export interface AssetSavedFilterState {
+  search: string;
+  tags: string[];
+  type: string;
+  status: string;
+  environment: string;
+  criticality: string;
+  asset_category: string;
+  sort: AssetSortField;
+  order: SortOrder;
+}
+
+export interface AssetSavedFilterSummary {
+  id: string;
+  name: string;
+  filters: AssetSavedFilterState;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AssetSavedFilterListData {
+  items: AssetSavedFilterSummary[];
+}
+
+export interface CreateAssetSavedFilterRequest {
+  name: string;
+  filters: AssetSavedFilterState;
 }

@@ -5,7 +5,20 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
-from app.assets.enums import AssetCategory, AssetCriticality, AssetEnvironment, AssetStatus, AssetType
+from app.assets.enums import (
+    AssetCategory,
+    AssetCriticality,
+    AssetEnvironment,
+    AssetSortField,
+    AssetStatus,
+    AssetType,
+    SortOrder,
+)
+from app.assets.services.saved_filter_service import (
+    create_saved_filter_for_user,
+    delete_saved_filter_for_user,
+    list_saved_filters,
+)
 from app.assets.permissions import ASSET_CREATE, ASSET_DELETE, ASSET_READ, ASSET_UPDATE
 from app.assets.services.relationship_service import asset_relationship_service
 from app.assets.services.overview_service import get_asset_overview
@@ -22,7 +35,14 @@ from app.assets.services import (
     restore_project_asset,
     update_project_asset,
 )
-from app.assets.schemas import AssetListQuery, CreateAssetLinkRequest, CreateAssetRequest, UpdateAssetRequest
+from app.assets.schemas import (
+    AssetListQuery,
+    CreateAssetLinkRequest,
+    CreateAssetRequest,
+    CreateAssetSavedFilterRequest,
+    UpdateAssetRequest,
+)
+from app.assets.services import asset_service
 from app.core.database import get_db
 from app.core.responses import success_response
 from app.members.models import OrganizationMember
@@ -43,6 +63,70 @@ router.include_router(asset_findings_router, prefix="/{asset_id}/findings", tags
 router.include_router(asset_reports_router, prefix="/{asset_id}/reports", tags=["reports"])
 
 
+def _parse_tags_param(tags: str | None) -> list[str]:
+    if not tags:
+        return []
+    return [token.strip() for token in tags.split(",") if token.strip()]
+
+
+@router.get("/tags")
+def list_asset_tags(
+    project_id: uuid.UUID,
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    result = asset_service.list_tag_facets(
+        db,
+        membership,
+        project_id=project_id,
+        limit=limit,
+    )
+    return success_response(data=result.model_dump(mode="json"))
+
+
+@router.get("/saved-filters")
+def list_asset_saved_filters(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    result = list_saved_filters(db, membership, project_id=project_id)
+    return success_response(data=result.model_dump(mode="json"))
+
+
+@router.post("/saved-filters", status_code=201)
+def create_asset_saved_filter(
+    project_id: uuid.UUID,
+    body: CreateAssetSavedFilterRequest,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    result = create_saved_filter_for_user(
+        db,
+        membership,
+        project_id=project_id,
+        body=body,
+    )
+    return success_response(data=result.model_dump(mode="json"), status_code=201)
+
+
+@router.delete("/saved-filters/{filter_id}", status_code=200)
+def delete_asset_saved_filter(
+    project_id: uuid.UUID,
+    filter_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    delete_saved_filter_for_user(
+        db,
+        membership,
+        project_id=project_id,
+        filter_id=filter_id,
+    )
+    return success_response(data={"message": "Saved filter deleted"})
+
+
 @router.get("")
 def list_assets(
     project_id: uuid.UUID,
@@ -54,6 +138,9 @@ def list_assets(
     environment: AssetEnvironment | None = None,
     asset_category: AssetCategory | None = None,
     search: str | None = Query(None, max_length=255),
+    tags: str | None = Query(None, description="Comma-separated tags (AND filter)"),
+    sort: AssetSortField = AssetSortField.CREATED_AT,
+    order: SortOrder = SortOrder.ASC,
     roots_only: bool = Query(False),
     parent_id: str | None = None,
     db: Session = Depends(get_db),
@@ -72,6 +159,9 @@ def list_assets(
             environment=environment,
             asset_category=asset_category,
             search=search,
+            tags=_parse_tags_param(tags),
+            sort=sort,
+            order=order,
             roots_only=roots_only,
             parent_id=parent_id,
         ),
@@ -100,6 +190,9 @@ def list_asset_children(
     environment: AssetEnvironment | None = None,
     asset_category: AssetCategory | None = None,
     search: str | None = Query(None, max_length=255),
+    tags: str | None = Query(None, description="Comma-separated tags (AND filter)"),
+    sort: AssetSortField = AssetSortField.CREATED_AT,
+    order: SortOrder = SortOrder.ASC,
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
 ) -> JSONResponse:
@@ -115,6 +208,9 @@ def list_asset_children(
             environment=environment,
             asset_category=asset_category,
             search=search,
+            tags=_parse_tags_param(tags),
+            sort=sort,
+            order=order,
         ),
     )
     return success_response(data=result.model_dump(mode="json"))

@@ -4,9 +4,13 @@ import type {
   AssetListQuery,
   AssetLinkSummary,
   AssetRelationships,
+  AssetSavedFilterListData,
+  AssetSavedFilterSummary,
   AssetSummary,
+  AssetTagFacetListData,
   CreateAssetLinkRequest,
   CreateAssetRequest,
+  CreateAssetSavedFilterRequest,
   UpdateAssetRequest,
 } from "@/shared/types/asset";
 import type { AssetOverview } from "@/shared/types/asset-overview";
@@ -18,9 +22,12 @@ const base = (projectId: string) => `/projects/${projectId}/assets`;
 function toQuery(params: AssetListQuery = {}): string {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      search.set(key, String(value));
+    if (value === undefined || value === null || value === "") return;
+    if (Array.isArray(value)) {
+      if (value.length > 0) search.set(key, value.join(","));
+      return;
     }
+    search.set(key, String(value));
   });
   const query = search.toString();
   return query ? `?${query}` : "";
@@ -107,6 +114,29 @@ export const assetsApi = {
 
   deleteLink: (projectId: string, assetId: string, linkId: string) =>
     apiRequest<void>(`${base(projectId)}/${assetId}/links/${linkId}`, {
+      method: "DELETE",
+      auth: true,
+    }),
+
+  tags: (projectId: string, limit = 50) =>
+    apiRequest<AssetTagFacetListData>(`${base(projectId)}/tags?limit=${limit}`, {
+      auth: true,
+    }),
+
+  savedFilters: (projectId: string) =>
+    apiRequest<AssetSavedFilterListData>(`${base(projectId)}/saved-filters`, {
+      auth: true,
+    }),
+
+  createSavedFilter: (projectId: string, data: CreateAssetSavedFilterRequest) =>
+    apiRequest<AssetSavedFilterSummary>(`${base(projectId)}/saved-filters`, {
+      method: "POST",
+      body: data,
+      auth: true,
+    }),
+
+  deleteSavedFilter: (projectId: string, filterId: string) =>
+    apiRequest<void>(`${base(projectId)}/saved-filters/${filterId}`, {
       method: "DELETE",
       auth: true,
     }),

@@ -3,11 +3,14 @@ import { CHILD_ASSET_TYPES } from "../types";
 
 export interface AssetFiltersState {
   search: string;
+  tags: string[];
   type: string;
   status: string;
   environment: string;
   criticality: string;
   asset_category: string;
+  sort: import("@/shared/types/asset").AssetSortField;
+  order: import("@/shared/types/asset").SortOrder;
 }
 
 export type TreeDisplayRow =
@@ -45,8 +48,24 @@ export function isChildAsset(asset: AssetSummary | null | undefined): boolean {
   return Boolean(asset?.parent_id);
 }
 
-export function canUseTreeView(filters: AssetFiltersState = { search: "", type: "", status: "", environment: "", criticality: "", asset_category: "" }): boolean {
-  return !filters.search.trim() && !CHILD_ASSET_TYPES.includes(filters.type as (typeof CHILD_ASSET_TYPES)[number]);
+export function canUseTreeView(
+  filters: AssetFiltersState = {
+    search: "",
+    tags: [],
+    type: "",
+    status: "",
+    environment: "",
+    criticality: "",
+    asset_category: "",
+    sort: "created_at",
+    order: "asc",
+  },
+): boolean {
+  return (
+    !filters.search.trim() &&
+    filters.tags.length === 0 &&
+    !CHILD_ASSET_TYPES.includes(filters.type as (typeof CHILD_ASSET_TYPES)[number])
+  );
 }
 
 export function buildTreeDisplayRows(

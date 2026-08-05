@@ -7,8 +7,10 @@ from app.assets.enums import (
     AssetCriticality,
     AssetEnvironment,
     AssetLinkType,
+    AssetSortField,
     AssetStatus,
     AssetType,
+    SortOrder,
 )
 from app.scans.enums import ScanStatus
 from app.shared.schemas.base import BaseSchema
@@ -77,6 +79,12 @@ class AssetListQuery(BaseSchema):
     environment: AssetEnvironment | None = None
     asset_category: AssetCategory | None = None
     search: str | None = Field(default=None, max_length=255)
+    tags: list[str] = Field(
+        default_factory=list,
+        description="AND filter — asset must match every tag (tag or structured field)",
+    )
+    sort: AssetSortField = AssetSortField.CREATED_AT
+    order: SortOrder = SortOrder.ASC
     roots_only: bool = Field(
         default=False,
         description="When true, paginate only root assets (parent_id is null)",
@@ -205,4 +213,42 @@ class CreateAssetLinkRequest(BaseSchema):
     target_asset_id: str
     link_type: AssetLinkType = AssetLinkType.RELATED
     label: str | None = Field(default=None, max_length=255)
+
+
+class AssetTagFacet(BaseSchema):
+    tag: str
+    count: int
+
+
+class AssetTagFacetListResponse(BaseSchema):
+    items: list[AssetTagFacet]
+
+
+class AssetSavedFilterState(BaseSchema):
+    search: str = ""
+    tags: list[str] = Field(default_factory=list)
+    type: str = ""
+    status: str = ""
+    environment: str = ""
+    criticality: str = ""
+    asset_category: str = ""
+    sort: AssetSortField = AssetSortField.CREATED_AT
+    order: SortOrder = SortOrder.ASC
+
+
+class AssetSavedFilterSummary(BaseSchema):
+    id: str
+    name: str
+    filters: AssetSavedFilterState
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class AssetSavedFilterListResponse(BaseSchema):
+    items: list[AssetSavedFilterSummary]
+
+
+class CreateAssetSavedFilterRequest(BaseSchema):
+    name: str = Field(min_length=1, max_length=100)
+    filters: AssetSavedFilterState
 

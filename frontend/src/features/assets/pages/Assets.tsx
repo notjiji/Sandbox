@@ -28,11 +28,14 @@ const DEFAULT_PAGE_SIZE = 20;
 
 const DEFAULT_FILTERS: AssetFiltersState = {
   search: "",
+  tags: [],
   type: "",
   status: "",
   environment: "",
   criticality: "",
   asset_category: "",
+  sort: "created_at",
+  order: "asc",
 };
 
 type ViewMode = "tree" | "flat";
@@ -59,11 +62,14 @@ export default function Assets() {
       roots_only: effectiveMode === "tree",
     };
     if (filters.search.trim()) result.search = filters.search.trim();
+    if (filters.tags.length > 0) result.tags = filters.tags;
     if (filters.type) result.type = filters.type as AssetType;
     if (filters.status) result.status = filters.status as AssetStatus;
     if (filters.environment) result.environment = filters.environment as AssetEnvironment;
     if (filters.criticality) result.criticality = filters.criticality as AssetCriticality;
     if (filters.asset_category) result.asset_category = filters.asset_category as AssetCategory;
+    result.sort = filters.sort;
+    result.order = filters.order;
     return result;
   }, [filters, page, pageSize, effectiveMode]);
 
@@ -73,8 +79,19 @@ export default function Assets() {
     if (filters.environment) result.environment = filters.environment as AssetEnvironment;
     if (filters.criticality) result.criticality = filters.criticality as AssetCriticality;
     if (filters.asset_category) result.asset_category = filters.asset_category as AssetCategory;
+    if (filters.tags.length > 0) result.tags = filters.tags;
+    result.sort = filters.sort;
+    result.order = filters.order;
     return result;
-  }, [filters.status, filters.environment, filters.criticality, filters.asset_category]);
+  }, [
+    filters.status,
+    filters.environment,
+    filters.criticality,
+    filters.asset_category,
+    filters.tags,
+    filters.sort,
+    filters.order,
+  ]);
 
   const { assets, total, loading, error } = useProjectAssets(projectId, query);
 
@@ -196,7 +213,7 @@ export default function Assets() {
           </div>
         </div>
 
-        <AssetFilters filters={filters} onChange={handleFiltersChange} />
+        <AssetFilters projectId={projectId} filters={filters} onChange={handleFiltersChange} />
 
         {loading ? (
           <p className="text-brand-500">Loading assets...</p>
