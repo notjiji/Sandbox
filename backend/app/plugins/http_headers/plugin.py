@@ -9,11 +9,11 @@ from app.scans.enums import ScanType
 
 class HttpHeadersPlugin(ScannerPipeline[HttpHeadersRawResponse, HttpHeadersParsedData]):
     id = "http_headers"
-    name = "HTTP Headers Scanner"
-    version = "1.0.0"
+    name = "HTTP Scanner"
+    version = "2.0.0"
     supported_asset_types = ["website", "api_endpoint"]
     supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
-    default_config = PluginConfig(enabled=True, timeout=20.0, retries=1, parallel=False, version="1.0.0")
+    default_config = PluginConfig(enabled=True, timeout=20.0, retries=1, parallel=False, version="2.0.0")
 
     async def collect(self, asset: ScanTarget, options: ScanOptions) -> HttpHeadersRawResponse:
         return await collector.collect(asset, options)
@@ -25,4 +25,14 @@ class HttpHeadersPlugin(ScannerPipeline[HttpHeadersRawResponse, HttpHeadersParse
         return rules.evaluate_rules(parsed, asset, plugin_id=self.id)
 
     def build_metadata(self, parsed: HttpHeadersParsedData) -> dict:
-        return {"status_code": parsed.status_code, "headers": parsed.headers}
+        return {
+            "url": parsed.url,
+            "final_url": parsed.final_url,
+            "status_code": parsed.status_code,
+            "content_type": parsed.content_type,
+            "server": parsed.server,
+            "redirect_count": len(parsed.redirects),
+            "cookie_count": len(parsed.cookies),
+            "timing_ms": parsed.timing.total_ms,
+            "security_headers": parsed.security_headers.model_dump(exclude_none=True),
+        }
