@@ -56,7 +56,7 @@ class PluginLoader:
         for plugin_cls in BUILTIN_PLUGIN_CLASSES:
             plugin = plugin_cls()
             self._registry.register(plugin)
-            registered.append(plugin.name)
+            registered.append(plugin.id)
         return registered
 
     def select_for_scan(self, scan) -> PluginSelection:

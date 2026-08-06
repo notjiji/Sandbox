@@ -1,15 +1,25 @@
 """Scan engine unit tests."""
 
+from datetime import UTC, datetime
+
+ASSET_ID = "00000000-0000-4000-8000-000000000001"
+
 
 def test_resolve_scan_status_completed_when_any_plugin_succeeds() -> None:
     from app.core.scan_engine.result_combiner import resolve_scan_status
     from app.core.scan_engine.types import PluginExecutionRecord
-    from app.plugins.base.plugin import ScanTarget
     from app.plugins.base.output import PluginFinding, PluginFindingStatus
+    from app.plugins.base.plugin import ScanTarget
     from app.scans.enums import PluginRunStatus, ScanStatus
 
-    target = ScanTarget(asset_id="00000000-0000-4000-8000-000000000001", identifier="example.com", asset_type="website")
-    finding = PluginFinding(plugin="ssl", code="SSL_TLS10_ENABLED", status=PluginFindingStatus.FAILED)
+    target = ScanTarget(asset_id=ASSET_ID, identifier="example.com", asset_type="website")
+    finding = PluginFinding(
+        plugin="ssl",
+        rule_id="SSL_TLS10_ENABLED",
+        asset_id=ASSET_ID,
+        title="TLS 1.0 Enabled",
+        status=PluginFindingStatus.FAILED,
+    )
     records = [
         PluginExecutionRecord(
             plugin_name="dns",
@@ -31,18 +41,24 @@ def test_resolve_scan_status_completed_when_any_plugin_succeeds() -> None:
 def test_combine_normalized_findings() -> None:
     from app.core.scan_engine.result_combiner import combine_normalized_findings
     from app.core.scan_engine.types import PluginExecutionRecord
-    from app.plugins.base.plugin import ScanTarget
     from app.plugins.base.output import PluginFinding, PluginFindingStatus
+    from app.plugins.base.plugin import ScanTarget
     from app.scans.enums import PluginRunStatus
 
-    target = ScanTarget(asset_id="00000000-0000-4000-8000-000000000001", identifier="example.com", asset_type="website")
+    target = ScanTarget(asset_id=ASSET_ID, identifier="example.com", asset_type="website")
     records = [
         PluginExecutionRecord(
             plugin_name="dns",
             target=target,
             status=PluginRunStatus.COMPLETED,
             normalized_findings=[
-                PluginFinding(plugin="dns", code="DNS_MISSING_SPF", status=PluginFindingStatus.FAILED)
+                PluginFinding(
+                    plugin="dns",
+                    rule_id="DNS_MISSING_SPF",
+                    asset_id=ASSET_ID,
+                    title="Missing SPF record",
+                    status=PluginFindingStatus.FAILED,
+                )
             ],
         ),
         PluginExecutionRecord(
@@ -50,8 +66,20 @@ def test_combine_normalized_findings() -> None:
             target=target,
             status=PluginRunStatus.COMPLETED,
             normalized_findings=[
-                PluginFinding(plugin="ssl", code="SSL_TLS10_ENABLED", status=PluginFindingStatus.FAILED),
-                PluginFinding(plugin="ssl", code="SSL_EXPIRED", status=PluginFindingStatus.FAILED),
+                PluginFinding(
+                    plugin="ssl",
+                    rule_id="SSL_TLS10_ENABLED",
+                    asset_id=ASSET_ID,
+                    title="TLS 1.0 Enabled",
+                    status=PluginFindingStatus.FAILED,
+                ),
+                PluginFinding(
+                    plugin="ssl",
+                    rule_id="SSL_EXPIRED",
+                    asset_id=ASSET_ID,
+                    title="Certificate expired",
+                    status=PluginFindingStatus.FAILED,
+                ),
             ],
         ),
     ]
@@ -60,19 +88,34 @@ def test_combine_normalized_findings() -> None:
     assert len(combined) == 3
 
 
-def test_plugin_output_schema() -> None:
-    from app.plugins.base.output import PluginOutput, PluginOutputStatus, report_finding
+def test_scan_result_schema() -> None:
+    from app.plugins.base.contracts import ScanResultStatus
+    from app.plugins.base.output import PluginOutput, report_finding
 
+    started_at = datetime.now(UTC)
+    finished_at = datetime.now(UTC)
     output = PluginOutput(
         plugin="ssl",
-        status=PluginOutputStatus.COMPLETED,
-        duration=1.42,
-        findings=[report_finding(plugin="ssl", code="SSL_EXPIRED", evidence="cert expired")],
+        version="1.0",
+        started_at=started_at,
+        finished_at=finished_at,
+        status=ScanResultStatus.SUCCESS,
+        findings=[
+            report_finding(
+                plugin="ssl",
+                rule_id="SSL_EXPIRED",
+                asset_id=ASSET_ID,
+                title="Certificate expired",
+                evidence="cert expired",
+            )
+        ],
         metadata={"issuer": "Let's Encrypt"},
     )
     payload = output.model_dump()
     assert payload["plugin"] == "ssl"
-    assert payload["findings"][0]["code"] == "SSL_EXPIRED"
+    assert payload["version"] == "1.0"
+    assert payload["status"] == "success"
+    assert payload["findings"][0]["rule_id"] == "SSL_EXPIRED"
     assert "score" not in payload["findings"][0]
 
 
@@ -87,8 +130,8 @@ def test_profile_resolves_quick_scan_plugins() -> None:
     try:
         scan = SimpleNamespace(scan_type=ScanType.QUICK, selected_plugins=None)
         selection = plugin_loader.select_for_scan(scan)
-        enabled_names = {plugin.name for plugin in selection.enabled}
-        assert enabled_names == {"http_headers", "ssl", "dns", "cookies"}
+        enabled_ids = {plugin.id for plugin in selection.enabled}
+        assert enabled_ids == {"http_headers", "ssl", "dns", "cookies"}
     finally:
         registry._plugins.clear()
         plugin_loader.discover()
@@ -105,8 +148,8 @@ def test_profile_resolves_custom_scan_plugins() -> None:
     try:
         scan = SimpleNamespace(scan_type=ScanType.CUSTOM, selected_plugins=["dns", "whois"])
         selection = plugin_loader.select_for_scan(scan)
-        enabled_names = {plugin.name for plugin in selection.enabled}
-        assert enabled_names == {"dns", "whois"}
+        enabled_ids = {plugin.id for plugin in selection.enabled}
+        assert enabled_ids == {"dns", "whois"}
     finally:
         registry._plugins.clear()
         plugin_loader.discover()
@@ -132,21 +175,24 @@ def test_plugin_loader_discovers_all_builtin_plugins() -> None:
 def test_dispatcher_runs_async_plugins() -> None:
     from app.core.scan_engine.dispatcher import ScanDispatcher
     from app.plugins.base.config import PluginConfig
-    from app.plugins.base.output import PluginOutput
+    from app.plugins.base.contracts import ScanOptions, ScanResult
     from app.plugins.base.plugin import ScanTarget, ScannerPlugin
     from app.scans.enums import ScanType
 
     class AsyncPlugin(ScannerPlugin):
-        name = "async_test_plugin"
-        description = "Async test plugin"
-        supported_assets = ["website"]
+        id = "async_test_plugin"
+        name = "Async Test Plugin"
+        version = "0.0.1"
+        supported_asset_types = ["website"]
         supported_scan_types = [ScanType.FULL.value]
         default_config = PluginConfig(version="0.0.1")
 
-        async def scan(self, asset: ScanTarget) -> PluginOutput:
-            return PluginOutput.completed(
-                plugin=self.name,
-                duration=0.5,
+        async def run(self, asset: ScanTarget, options: ScanOptions) -> ScanResult:
+            started_at = datetime.now(UTC)
+            return ScanResult.success(
+                plugin=self.id,
+                version=self.version,
+                started_at=started_at,
                 findings=[],
                 metadata={},
             )
@@ -155,24 +201,26 @@ def test_dispatcher_runs_async_plugins() -> None:
         plugin=AsyncPlugin(),
         asset=ScanTarget(asset_id="1", identifier="example.com", asset_type="website"),
     )
-    assert result.status.value == "completed"
-    assert result.duration > 0
+    assert result.status.value == "success"
+    assert result.duration >= 0
 
 
 def test_dispatcher_catches_plugin_errors() -> None:
     from app.core.scan_engine.dispatcher import ScanDispatcher
     from app.plugins.base.config import PluginConfig
+    from app.plugins.base.contracts import ScanOptions
     from app.plugins.base.plugin import ScanTarget, ScannerPlugin
     from app.scans.enums import ScanType
 
     class BrokenPlugin(ScannerPlugin):
-        name = "broken_test_plugin"
-        description = "Broken test plugin"
-        supported_assets = ["website"]
+        id = "broken_test_plugin"
+        name = "Broken Test Plugin"
+        version = "0.0.1"
+        supported_asset_types = ["website"]
         supported_scan_types = [ScanType.FULL.value]
         default_config = PluginConfig(version="0.0.1")
 
-        async def scan(self, asset: ScanTarget):
+        async def run(self, asset: ScanTarget, options: ScanOptions):
             raise RuntimeError("boom")
 
     result = ScanDispatcher().dispatch(
@@ -190,4 +238,4 @@ def test_plugin_config_exposed() -> None:
     assert plugin.config.enabled is True
     assert plugin.config.timeout == 45.0
     assert plugin.config.retries == 2
-    assert plugin.config.version == "0.1.0"
+    assert plugin.config.version == "1.0.0"

@@ -9,13 +9,13 @@ class PluginRegistry:
         self._plugins: dict[str, ScannerPlugin] = {}
 
     def register(self, plugin: ScannerPlugin) -> None:
-        self._plugins[plugin.name] = plugin
+        self._plugins[plugin.id] = plugin
 
     def get(self, name: str) -> ScannerPlugin | None:
         return self._plugins.get(name)
 
     def all(self) -> list[ScannerPlugin]:
-        return sorted(self._plugins.values(), key=lambda plugin: plugin.name)
+        return sorted(self._plugins.values(), key=lambda plugin: plugin.id)
 
     def list_names(self) -> list[str]:
         return sorted(self._plugins.keys())
@@ -58,10 +58,13 @@ class PluginRegistry:
     def get_plugin_configs(self) -> list[dict]:
         return [
             {
+                "id": plugin.id,
                 "name": plugin.name,
-                "description": plugin.description,
+                "description": plugin.name,
+                "version": plugin.version,
                 **plugin.config.to_dict(),
-                "supported_assets": plugin.supported_assets,
+                "supported_asset_types": plugin.supported_asset_types,
+                "supported_assets": plugin.supported_asset_types,
                 "supported_scan_types": plugin.supported_scan_types,
             }
             for plugin in self.all()

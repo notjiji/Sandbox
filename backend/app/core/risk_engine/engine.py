@@ -17,7 +17,7 @@ from app.findings.repositories.finding_repository import (
     list_findings_for_asset,
     list_findings_for_project,
 )
-from app.plugins.output import PluginFinding, PluginFindingStatus
+from app.plugins.base.contracts import FindingCheckStatus, ScanFinding
 from app.core.risk_engine.scoring import (
     SEVERITY_SORT_ORDER,
     compute_trend,
@@ -67,6 +67,12 @@ class ResolvedFinding:
     raw_data: dict
     check_status: str
     detected_at: datetime | None
+    category: str | None = None
+    references: list[str] | None = None
+    confidence: float | None = None
+    cvss: float | None = None
+    cwe: str | None = None
+    cve: str | None = None
 
 
 class RiskEngine:
@@ -86,14 +92,15 @@ class RiskEngine:
             calculated_at=record.calculated_at,
         )
 
-    def resolve_finding(self, db: Session, *, plugin_finding: PluginFinding) -> ResolvedFinding | None:
-        if plugin_finding.status == PluginFindingStatus.PASSED:
+    def resolve_finding(self, db: Session, *, plugin_finding: ScanFinding) -> ResolvedFinding | None:
+        if plugin_finding.status == FindingCheckStatus.PASSED:
             return None
 
+        rule_id = plugin_finding.rule_id
         rule = get_rule_for_finding(
             db,
             plugin=plugin_finding.plugin,
-            finding_code=plugin_finding.code,
+            finding_code=rule_id,
         )
         if rule:
             severity = rule.severity
@@ -107,30 +114,42 @@ class RiskEngine:
             return ResolvedFinding(
                 finding_code=rule.finding_code,
                 title=rule.title,
-                description=rule.description,
+                description=rule.description or plugin_finding.description,
                 severity=severity,
                 risk_score=score,
                 recommendation_id=recommendation_id,
-                recommendation_text=rec.text if rec else None,
+                recommendation_text=rec.text if rec else plugin_finding.recommendation,
                 evidence=plugin_finding.evidence,
                 raw_data=plugin_finding.raw_data,
                 check_status=plugin_finding.status.value,
                 detected_at=plugin_finding.detected_at,
+                category=plugin_finding.category,
+                references=plugin_finding.reference_links or None,
+                confidence=plugin_finding.confidence,
+                cvss=plugin_finding.cvss,
+                cwe=plugin_finding.cwe,
+                cve=plugin_finding.cve,
             )
 
         fallback_severity = plugin_finding.severity or FindingSeverity.MEDIUM
         return ResolvedFinding(
-            finding_code=plugin_finding.code,
-            title=plugin_finding.title or plugin_finding.code.replace("_", " ").title(),
-            description="No matching risk rule configured.",
+            finding_code=rule_id,
+            title=plugin_finding.title or rule_id.replace("_", " ").title(),
+            description=plugin_finding.description or "No matching risk rule configured.",
             severity=fallback_severity,
             risk_score=points_for_severity(fallback_severity),
             recommendation_id=None,
-            recommendation_text=None,
+            recommendation_text=plugin_finding.recommendation,
             evidence=plugin_finding.evidence,
             raw_data=plugin_finding.raw_data,
             check_status=plugin_finding.status.value,
             detected_at=plugin_finding.detected_at,
+            category=plugin_finding.category,
+            references=plugin_finding.reference_links or None,
+            confidence=plugin_finding.confidence,
+            cvss=plugin_finding.cvss,
+            cwe=plugin_finding.cwe,
+            cve=plugin_finding.cve,
         )
 
     def _open_findings(self, findings: list[Finding]) -> list[Finding]:

@@ -1,6 +1,6 @@
 """Resolves final scan status from plugin execution records."""
 
-from app.plugins.base.output import PluginFinding
+from app.plugins.base.contracts import ScanFinding
 from app.scans.enums import PluginRunStatus, ScanStatus
 from app.core.scan_engine.types import PluginExecutionRecord
 
@@ -15,8 +15,8 @@ def resolve_scan_status(records: list[PluginExecutionRecord]) -> ScanStatus:
     return ScanStatus.FAILED
 
 
-def combine_normalized_findings(records: list[PluginExecutionRecord]) -> list[PluginFinding]:
-    combined: list[PluginFinding] = []
+def combine_normalized_findings(records: list[PluginExecutionRecord]) -> list[ScanFinding]:
+    combined: list[ScanFinding] = []
     for record in records:
         combined.extend(record.normalized_findings)
     return combined

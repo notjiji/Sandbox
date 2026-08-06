@@ -98,7 +98,9 @@ def test_resolve_finding_uses_configured_risk_rule(db) -> None:
         db,
         plugin_finding=PluginFinding(
             plugin="http_headers",
-            code="HTTP_NO_CSP",
+            rule_id="HTTP_NO_CSP",
+            asset_id="00000000-0000-4000-8000-000000000001",
+            title="Missing CSP",
             status=PluginFindingStatus.FAILED,
             evidence="header absent",
             detected_at=datetime.now(UTC),

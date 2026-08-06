@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 
 from app.plugins.base.plugin import ScanTarget
-from app.plugins.base.output import PluginFinding, PluginOutput
+from app.plugins.base.contracts import ScanFinding, ScanResult, ScanResultStatus
 from app.scans.enums import PluginRunStatus
 
 
@@ -12,15 +12,15 @@ class PluginExecutionRecord:
     plugin_name: str
     target: ScanTarget
     status: PluginRunStatus
-    output: PluginOutput | None = None
+    output: ScanResult | None = None
     error_message: str | None = None
-    normalized_findings: list[PluginFinding] = field(default_factory=list)
+    normalized_findings: list[ScanFinding] = field(default_factory=list)
     duration: float = 0.0
 
 
 @dataclass
 class CombinedScanResults:
-    findings: list[PluginFinding] = field(default_factory=list)
+    findings: list[ScanFinding] = field(default_factory=list)
     plugin_records: list[PluginExecutionRecord] = field(default_factory=list)
 
     @property

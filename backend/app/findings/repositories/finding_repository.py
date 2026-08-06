@@ -171,9 +171,14 @@ def create_finding(
     evidence: str | None = None,
     recommendation: str | None = None,
     references: list[str] | None = None,
+    category: str | None = None,
     raw_data: dict | None = None,
     confidence: float | None = None,
+    cvss: float | None = None,
+    cwe: str | None = None,
+    cve: str | None = None,
     detected_at: datetime | None = None,
+    resolved_at: datetime | None = None,
 ) -> Finding:
     finding = Finding(
         project_id=project_id,
@@ -191,9 +196,14 @@ def create_finding(
         evidence=evidence,
         recommendation=recommendation,
         references=references,
+        category=category,
         raw_data=raw_data,
         confidence=confidence,
+        cvss=cvss,
+        cwe=cwe,
+        cve=cve,
         detected_at=detected_at,
+        resolved_at=resolved_at,
     )
     db.add(finding)
     db.flush()

@@ -23,9 +23,14 @@ class FindingSummary(BaseSchema):
     evidence: str | None = None
     recommendation: str | None = None
     references: list[str] = Field(default_factory=list)
+    category: str | None = None
     raw_data: dict = Field(default_factory=dict)
     confidence: float | None = None
+    cvss: float | None = None
+    cwe: str | None = None
+    cve: str | None = None
     detected_at: datetime | None = None
+    resolved_at: datetime | None = None
 
 
 class FindingListResponse(BaseSchema):

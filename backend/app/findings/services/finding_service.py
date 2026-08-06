@@ -36,9 +36,14 @@ def to_finding_summary(finding: Finding) -> FindingSummary:
         evidence=finding.evidence,
         recommendation=finding.recommendation,
         references=finding.references or [],
+        category=finding.category,
         raw_data=finding.raw_data or {},
         confidence=finding.confidence,
+        cvss=finding.cvss,
+        cwe=finding.cwe,
+        cve=finding.cve,
         detected_at=finding.detected_at,
+        resolved_at=finding.resolved_at,
     )
 
 

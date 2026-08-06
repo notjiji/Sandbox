@@ -1,34 +1,38 @@
-import time
+from datetime import UTC, datetime
 
 from app.findings.enums import FindingSeverity
 from app.plugins.base.config import PluginConfig
-from app.plugins.base.output import PluginFindingStatus, PluginOutput, report_finding
+from app.plugins.base.contracts import FindingCheckStatus, ScanOptions, ScanResult, scan_finding
 from app.plugins.base.plugin import ScanTarget, ScannerPlugin
 from app.scans.enums import ScanType
 
 
 class KubernetesPlugin(ScannerPlugin):
-    name = "kubernetes"
-    description = "Kubernetes Security Scanner (preview)"
-    supported_assets = ["kubernetes_cluster"]
+    id = "kubernetes"
+    name = "Kubernetes Security Scanner"
+    version = "0.1.0"
+    supported_asset_types = ["kubernetes_cluster"]
     supported_scan_types = [ScanType.FULL.value, ScanType.CUSTOM.value]
     default_config = PluginConfig(enabled=False, timeout=120.0, retries=1, parallel=False, version="0.1.0")
 
-    async def scan(self, asset: ScanTarget) -> PluginOutput:
-        started = time.perf_counter()
-        findings = [
-            report_finding(
-                plugin=self.name,
-                code="K8S_PRIVILEGED_POD",
-                title="Privileged Pod Detected",
-                status=PluginFindingStatus.FAILED,
-                evidence="Pod nginx runs with privileged: true",
-                severity=FindingSeverity.HIGH,
-            ),
-        ]
-        return PluginOutput.completed(
-            plugin=self.name,
-            duration=round(time.perf_counter() - started, 2),
-            findings=findings,
+    async def run(self, asset: ScanTarget, options: ScanOptions) -> ScanResult:
+        started_at = datetime.now(UTC)
+        return ScanResult.success(
+            plugin=self.id,
+            version=self.version,
+            started_at=started_at,
+            findings=[
+                scan_finding(
+                    plugin=self.id,
+                    rule_id="K8S_PRIVILEGED_POD",
+                    asset_id=asset.asset_id,
+                    title="Privileged Pod Detected",
+                    category="kubernetes",
+                    evidence="Pod nginx runs with privileged: true",
+                    recommendation="Run pods with least privilege and drop unnecessary capabilities.",
+                    severity=FindingSeverity.HIGH,
+                    status=FindingCheckStatus.FAILED,
+                ),
+            ],
             metadata={"preview": True},
         )

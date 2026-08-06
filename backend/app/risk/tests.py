@@ -43,7 +43,8 @@ def test_plugin_finding_normalized_format() -> None:
 
     finding = report_finding(
         plugin="http_headers",
-        code="HTTP_NO_CSP",
+        rule_id="HTTP_NO_CSP",
+        asset_id="00000000-0000-4000-8000-000000000001",
         title="Missing Content Security Policy",
         status=PluginFindingStatus.FAILED,
         evidence="Header not present",
@@ -51,7 +52,7 @@ def test_plugin_finding_normalized_format() -> None:
     )
     payload = finding.model_dump()
     assert payload["plugin"] == "http_headers"
-    assert payload["code"] == "HTTP_NO_CSP"
+    assert payload["rule_id"] == "HTTP_NO_CSP"
     assert payload["title"] == "Missing Content Security Policy"
     assert payload["status"] == "failed"
     assert "score" not in payload
@@ -76,7 +77,9 @@ def test_passed_findings_are_not_scored() -> None:
     engine = RiskEngine()
     finding = PluginFinding(
         plugin="http_headers",
-        code="HTTP_NO_CSP",
+        rule_id="HTTP_NO_CSP",
+        asset_id="00000000-0000-4000-8000-000000000001",
+        title="Missing CSP",
         status=PluginFindingStatus.PASSED,
     )
     assert engine.resolve_finding(MagicMock(), plugin_finding=finding) is None

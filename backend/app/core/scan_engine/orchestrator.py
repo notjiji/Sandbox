@@ -13,9 +13,9 @@ from app.core.scan_engine.result_combiner import combine_normalized_findings, re
 from app.core.scan_engine.types import CombinedScanResults, PluginExecutionRecord
 from app.findings.enums import FindingStatus
 from app.findings.repositories.finding_repository import create_finding
+from app.plugins.base.contracts import ScanResultStatus
 from app.plugins.base.loader import plugin_loader
 from app.plugins.base.plugin import ScanTarget, ScannerPlugin
-from app.plugins.base.output import PluginOutputStatus
 from app.scans.enums import PluginRunStatus, ScanStatus
 from app.scans.models import Scan
 from app.scans.repositories.scan_plugin_repository import (
@@ -106,14 +106,14 @@ class ScanOrchestrator:
             db,
             scan_id=scan.id,
             asset_id=asset_id,
-            plugin_name=plugin.name,
+            plugin_name=plugin.id,
             status=PluginRunStatus.RUNNING,
         )
 
         output = self._dispatcher.dispatch(plugin=plugin, asset=target)
         run_status = (
             PluginRunStatus.COMPLETED
-            if output.status == PluginOutputStatus.COMPLETED
+            if output.status == ScanResultStatus.SUCCESS
             else PluginRunStatus.FAILED
         )
 
@@ -128,7 +128,7 @@ class ScanOrchestrator:
                 metadata=output.metadata or None,
             )
             return PluginExecutionRecord(
-                plugin_name=plugin.name,
+                plugin_name=plugin.id,
                 target=target,
                 status=PluginRunStatus.FAILED,
                 output=output,
@@ -146,7 +146,7 @@ class ScanOrchestrator:
             metadata=output.metadata or None,
         )
         return PluginExecutionRecord(
-            plugin_name=plugin.name,
+            plugin_name=plugin.id,
             target=target,
             status=PluginRunStatus.COMPLETED,
             output=output,
@@ -167,7 +167,7 @@ class ScanOrchestrator:
             db,
             scan_id=scan.id,
             asset_id=uuid.UUID(target.asset_id),
-            plugin_name=plugin.name,
+            plugin_name=plugin.id,
             status=PluginRunStatus.SKIPPED,
         )
         complete_plugin_run(
@@ -177,7 +177,7 @@ class ScanOrchestrator:
             error_message=reason,
         )
         return PluginExecutionRecord(
-            plugin_name=plugin.name,
+            plugin_name=plugin.id,
             target=target,
             status=PluginRunStatus.SKIPPED,
             error_message=reason,
@@ -217,8 +217,14 @@ class ScanOrchestrator:
                     recommendation_id=resolved.recommendation_id,
                     status=FindingStatus.OPEN,
                     evidence=resolved.evidence,
-                    recommendation=resolved.recommendation_text,
+                    recommendation=resolved.recommendation_text or finding.recommendation,
+                    references=resolved.references or finding.reference_links,
+                    category=resolved.category or finding.category,
                     raw_data=resolved.raw_data,
+                    confidence=resolved.confidence if resolved.confidence is not None else finding.confidence,
+                    cvss=resolved.cvss if resolved.cvss is not None else finding.cvss,
+                    cwe=resolved.cwe or finding.cwe,
+                    cve=resolved.cve or finding.cve,
                     detected_at=resolved.detected_at,
                 )
 
