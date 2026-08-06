@@ -17,3 +17,4 @@ resend>=2.5.0
 httpx>=0.28.0
 cryptography>=43.0.0
 certifi>=2024.0.0
+dnspython>=2.7.0

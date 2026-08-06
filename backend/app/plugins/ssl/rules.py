@@ -161,6 +161,83 @@ def rule_hostname_mismatch(parsed: SslParsedData, asset: ScanTarget, plugin_id: 
     )
 
 
+def rule_untrusted_chain(parsed: SslParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if parsed.chain_trusted or parsed.certificate.is_self_signed:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="SSL_UNTRUSTED_CHAIN", asset_id=asset.asset_id,
+        title="Untrusted Certificate Chain", category="transport",
+        evidence="Certificate chain failed validation against Mozilla CA store",
+        recommendation="Install a certificate signed by a publicly trusted CA with complete chain.",
+        severity=FindingSeverity.HIGH, status=FindingCheckStatus.FAILED,
+    )
+
+
+def rule_no_ocsp_stapling(parsed: SslParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if parsed.ocsp_stapling is not False:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="SSL_NO_OCSP_STAPLING", asset_id=asset.asset_id,
+        title="OCSP Stapling Not Enabled", category="transport",
+        evidence="Server did not staple an OCSP response",
+        recommendation="Enable OCSP stapling to improve revocation checking performance and privacy.",
+        severity=FindingSeverity.LOW, status=FindingCheckStatus.WARNING,
+    )
+
+
+def rule_weak_cipher_negotiated(parsed: SslParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if not parsed.cipher_is_weak or parsed.cipher is None:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="SSL_WEAK_CIPHER", asset_id=asset.asset_id,
+        title="Weak Cipher Suite Negotiated", category="transport",
+        evidence=f"Negotiated cipher: {parsed.cipher.name}",
+        recommendation="Disable weak cipher suites and prefer AEAD ciphers with forward secrecy.",
+        severity=FindingSeverity.HIGH, status=FindingCheckStatus.FAILED,
+    )
+
+
+def rule_additional_weak_ciphers(parsed: SslParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if not parsed.weak_ciphers_accepted:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="SSL_ADDITIONAL_WEAK_CIPHERS", asset_id=asset.asset_id,
+        title="Additional Weak Ciphers Accepted", category="transport",
+        evidence=f"Server accepts: {', '.join(parsed.weak_ciphers_accepted)}",
+        recommendation="Disable legacy cipher suites at the server configuration level.",
+        severity=FindingSeverity.MEDIUM, status=FindingCheckStatus.FAILED,
+    )
+
+
+def rule_no_forward_secrecy(parsed: SslParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if not parsed.lacks_forward_secrecy or parsed.cipher is None:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="SSL_NO_FORWARD_SECRECY", asset_id=asset.asset_id,
+        title="No Forward Secrecy", category="transport",
+        evidence=f"Cipher {parsed.cipher.name} does not provide forward secrecy",
+        recommendation="Prefer ECDHE/DHE cipher suites.",
+        severity=FindingSeverity.MEDIUM, status=FindingCheckStatus.FAILED,
+    )
+
+
+def rule_incomplete_san_coverage(parsed: SslParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if parsed.san_covers_apex and parsed.san_covers_www:
+        return None
+    missing = []
+    if not parsed.san_covers_apex:
+        missing.append("apex")
+    if not parsed.san_covers_www:
+        missing.append("www")
+    return scan_finding(
+        plugin=plugin_id, rule_id="SSL_INCOMPLETE_SAN", asset_id=asset.asset_id,
+        title="Incomplete Certificate SAN Coverage", category="transport",
+        evidence=f"Certificate missing coverage for: {', '.join(missing)}",
+        recommendation="Include both apex and www hostnames in the certificate SAN list.",
+        severity=FindingSeverity.MEDIUM, status=FindingCheckStatus.FAILED,
+    )
+
+
 RULES: list[RuleFn] = [
     rule_expired_certificate,
     rule_expiring_soon,
@@ -169,7 +246,13 @@ RULES: list[RuleFn] = [
     rule_weak_rsa_key,
     rule_weak_signature,
     rule_self_signed,
+    rule_untrusted_chain,
     rule_hostname_mismatch,
+    rule_incomplete_san_coverage,
+    rule_no_ocsp_stapling,
+    rule_weak_cipher_negotiated,
+    rule_additional_weak_ciphers,
+    rule_no_forward_secrecy,
 ]
 
 

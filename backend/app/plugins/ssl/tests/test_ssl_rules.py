@@ -37,6 +37,13 @@ def _parsed(**kwargs) -> SslParsedData:
         "certificate": ParsedCertificate(**cert_defaults),
         "cipher": ParsedCipher(name="ECDHE-RSA-AES128-GCM-SHA256", protocol="TLSv1.2", secret_bits=128),
         "hostname_matches": True,
+        "chain_trusted": True,
+        "ocsp_stapling": True,
+        "weak_ciphers_accepted": [],
+        "san_covers_apex": True,
+        "san_covers_www": True,
+        "cipher_is_weak": False,
+        "lacks_forward_secrecy": False,
     }
     defaults.update(kwargs)
     return SslParsedData(**defaults)

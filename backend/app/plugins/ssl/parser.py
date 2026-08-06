@@ -1,6 +1,7 @@
 """Convert raw TLS data into structured objects."""
 
-from app.plugins.ssl.cert_parser import hostname_matches_certificate, parse_certificate_b64
+from app.plugins.ssl.cert_parser import analyze_san_coverage, hostname_matches_certificate, parse_certificate_b64
+from app.plugins.ssl.collector import is_weak_cipher_name
 from app.plugins.ssl.schemas import ParsedCipher, SslParsedData, SslRawResponse
 
 _FORWARD_SECRECY_PREFIXES = ("ECDHE", "DHE", "TLS_AES_", "TLS_CHACHA20_")
@@ -19,17 +20,14 @@ def _forward_secrecy_from_cipher(name: str) -> bool:
     return any(upper.startswith(prefix) or prefix in upper for prefix in _FORWARD_SECRECY_PREFIXES)
 
 
-def _protocols_from_probes(raw: SslRawResponse) -> tuple[list[str], list[str]]:
-    all_versions = [probe.version for probe in raw.protocol_probes]
-    accepted = [probe.version for probe in raw.protocol_probes if probe.accepted]
-    return all_versions, accepted
-
-
 def parse(raw: SslRawResponse) -> SslParsedData:
     certificate = parse_certificate_b64(raw.certificate_b64, hostname=raw.host)
     hostname_matches = hostname_matches_certificate(raw.host, certificate)
+    san_covers_apex, san_covers_www = analyze_san_coverage(raw.host, certificate)
 
     cipher: ParsedCipher | None = None
+    cipher_is_weak = False
+    lacks_forward_secrecy = False
     if raw.negotiated_cipher is not None:
         cipher = ParsedCipher(
             name=raw.negotiated_cipher.name,
@@ -38,8 +36,10 @@ def parse(raw: SslRawResponse) -> SslParsedData:
             key_exchange=_key_exchange_from_cipher(raw.negotiated_cipher.name),
             forward_secrecy=_forward_secrecy_from_cipher(raw.negotiated_cipher.name),
         )
+        cipher_is_weak = is_weak_cipher_name(raw.negotiated_cipher.name)
+        lacks_forward_secrecy = not cipher.forward_secrecy
 
-    _, accepted = _protocols_from_probes(raw)
+    accepted = [probe.version for probe in raw.protocol_probes if probe.accepted]
 
     return SslParsedData(
         host=raw.host,
@@ -49,4 +49,11 @@ def parse(raw: SslRawResponse) -> SslParsedData:
         certificate=certificate,
         cipher=cipher,
         hostname_matches=hostname_matches,
+        chain_trusted=raw.chain_trusted,
+        ocsp_stapling=raw.ocsp_stapling,
+        weak_ciphers_accepted=raw.weak_ciphers_accepted,
+        san_covers_apex=san_covers_apex,
+        san_covers_www=san_covers_www,
+        cipher_is_weak=cipher_is_weak,
+        lacks_forward_secrecy=lacks_forward_secrecy,
     )

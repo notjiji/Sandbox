@@ -86,6 +86,18 @@ def hostname_matches_certificate(hostname: str, certificate: ParsedCertificate) 
     return any(hostname_matches_pattern(hostname, candidate) for candidate in candidates)
 
 
+def analyze_san_coverage(host: str, certificate: ParsedCertificate) -> tuple[bool, bool]:
+    host = host.lower().split(":")[0]
+    if host.startswith("www."):
+        apex, www = host[4:], host
+    else:
+        apex, www = host, f"www.{host}"
+    return (
+        hostname_matches_certificate(apex, certificate),
+        hostname_matches_certificate(www, certificate),
+    )
+
+
 def parse_certificate_b64(certificate_b64: str | None, *, hostname: str) -> ParsedCertificate:
     if not certificate_b64:
         return ParsedCertificate(issuer="unknown", subject="unknown")

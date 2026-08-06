@@ -10,10 +10,10 @@ from app.scans.enums import ScanType
 class SslPlugin(ScannerPipeline[SslRawResponse, SslParsedData]):
     id = "ssl"
     name = "SSL Scanner"
-    version = "2.0.0"
+    version = "3.0.0"
     supported_asset_types = ["website", "domain", "api_endpoint", "email_domain"]
     supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
-    default_config = PluginConfig(enabled=True, timeout=45.0, retries=2, parallel=False, version="2.0.0")
+    default_config = PluginConfig(enabled=True, timeout=45.0, retries=2, parallel=False, version="3.0.0")
 
     async def collect(self, asset: ScanTarget, options: ScanOptions) -> SslRawResponse:
         return await collector.collect(asset, options)

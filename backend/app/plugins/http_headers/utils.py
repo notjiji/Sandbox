@@ -101,3 +101,60 @@ def redirect_targets_https(location: str | None) -> bool:
     if not location:
         return False
     return location.lower().startswith("https://")
+
+
+def security_txt_url(base_url: str) -> str:
+    return base_url.rstrip("/") + "/.well-known/security.txt"
+
+
+def analyze_csp(csp: str | None) -> tuple[bool, bool, bool]:
+    if not csp:
+        return False, False, False
+    lower = csp.lower()
+    return (
+        "'unsafe-inline'" in lower or " unsafe-inline" in lower,
+        "'unsafe-eval'" in lower or " unsafe-eval" in lower,
+        " *" in csp or csp.strip().startswith("*"),
+    )
+
+
+def analyze_hsts(hsts: str | None) -> tuple[int | None, bool, bool, bool]:
+    if not hsts:
+        return None, False, False, False
+    max_age: int | None = None
+    includes_subdomains = "includesubdomains" in hsts.lower().replace(" ", "")
+    preload = "preload" in hsts.lower()
+    for part in hsts.split(";"):
+        part = part.strip()
+        if part.lower().startswith("max-age="):
+            try:
+                max_age = int(part.split("=", 1)[1])
+            except ValueError:
+                pass
+    is_weak = max_age is not None and max_age < 15552000  # < 180 days
+    return max_age, includes_subdomains, preload, is_weak
+
+
+_MIXED_CONTENT_RE = __import__("re").compile(r"""http://[^\s"'<>]+""", __import__("re").IGNORECASE)
+
+
+def find_mixed_content(body: str, *, is_https: bool) -> list[str]:
+    if not is_https or not body:
+        return []
+    matches = _MIXED_CONTENT_RE.findall(body)
+    return list(dict.fromkeys(matches))[:10]
+
+
+def analyze_redirect_chain(redirects: list, *, is_https_start: bool) -> tuple[list[str], bool]:
+    issues: list[str] = []
+    open_redirect = False
+    prev_https = is_https_start
+    for redirect in redirects:
+        url = redirect.url if hasattr(redirect, "url") else str(redirect)
+        current_https = url.startswith("https://")
+        if prev_https and not current_https:
+            issues.append(f"HTTPS downgrade in redirect chain: {url}")
+        prev_https = current_https
+        if "//" in url.split("://", 1)[-1][:2]:
+            open_redirect = True
+    return issues, open_redirect

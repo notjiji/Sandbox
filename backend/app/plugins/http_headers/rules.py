@@ -208,15 +208,122 @@ def rule_weak_cookies(parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_i
     )
 
 
+def rule_missing_x_content_type_options(
+    parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: str
+) -> ScanFinding | None:
+    if parsed.has_x_content_type_options:
+        return None
+    return _missing_header_finding(
+        plugin_id=plugin_id, asset=asset, rule_id="HTTP_NO_X_CONTENT_TYPE_OPTIONS",
+        title="Missing X-Content-Type-Options", header_name="X-Content-Type-Options",
+        severity=FindingSeverity.MEDIUM,
+        recommendation='Set X-Content-Type-Options: nosniff to prevent MIME-type sniffing.',
+    )
+
+
+def rule_missing_permissions_policy(
+    parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: str
+) -> ScanFinding | None:
+    if parsed.has_permissions_policy:
+        return None
+    return _missing_header_finding(
+        plugin_id=plugin_id, asset=asset, rule_id="HTTP_NO_PERMISSIONS_POLICY",
+        title="Missing Permissions-Policy", header_name="Permissions-Policy",
+        severity=FindingSeverity.LOW,
+        recommendation="Restrict browser features via Permissions-Policy header.",
+    )
+
+
+def rule_weak_csp(parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if not parsed.has_csp:
+        return None
+    issues = []
+    if parsed.csp_has_unsafe_inline:
+        issues.append("unsafe-inline")
+    if parsed.csp_has_unsafe_eval:
+        issues.append("unsafe-eval")
+    if parsed.csp_has_wildcard:
+        issues.append("wildcard source")
+    if not issues:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="HTTP_WEAK_CSP", asset_id=asset.asset_id,
+        title="Weak Content Security Policy", category="headers",
+        evidence=f"CSP contains: {', '.join(issues)}",
+        recommendation="Remove unsafe-inline, unsafe-eval, and wildcard directives where possible.",
+        severity=FindingSeverity.MEDIUM, status=FindingCheckStatus.FAILED,
+    )
+
+
+def rule_weak_hsts(parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if not parsed.has_hsts or not parsed.hsts_is_weak:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="HTTP_WEAK_HSTS", asset_id=asset.asset_id,
+        title="Weak HSTS Configuration", category="headers",
+        evidence=f"HSTS max-age={parsed.hsts_max_age} (recommended >= 15552000)",
+        recommendation="Set max-age to at least 180 days; add includeSubDomains and preload if eligible.",
+        severity=FindingSeverity.MEDIUM, status=FindingCheckStatus.FAILED,
+    )
+
+
+def rule_mixed_content(parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if not parsed.mixed_content_urls:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="HTTP_MIXED_CONTENT", asset_id=asset.asset_id,
+        title="Mixed Content Detected", category="headers",
+        evidence=f"HTTP resources on HTTPS page: {', '.join(parsed.mixed_content_urls[:3])}",
+        recommendation="Serve all resources over HTTPS.",
+        severity=FindingSeverity.MEDIUM, status=FindingCheckStatus.FAILED,
+    )
+
+
+def rule_insecure_redirect_chain(
+    parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: str
+) -> ScanFinding | None:
+    if not parsed.redirect_chain_issues:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="HTTP_INSECURE_REDIRECT", asset_id=asset.asset_id,
+        title="Insecure Redirect Chain", category="transport",
+        evidence="; ".join(parsed.redirect_chain_issues),
+        recommendation="Ensure redirects never downgrade from HTTPS to HTTP.",
+        severity=FindingSeverity.HIGH, status=FindingCheckStatus.FAILED,
+    )
+
+
+def rule_missing_security_txt(
+    parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: str
+) -> ScanFinding | None:
+    if parsed.security_txt_present:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="HTTP_MISSING_SECURITY_TXT", asset_id=asset.asset_id,
+        title="Missing security.txt", category="exposure",
+        evidence="/.well-known/security.txt not found or invalid",
+        recommendation="Publish a security.txt with contact and disclosure policy per RFC 9116.",
+        reference_links=["https://securitytxt.org/"],
+        severity=FindingSeverity.LOW, status=FindingCheckStatus.WARNING,
+    )
+
+
 RULES: list[RuleFn] = [
     rule_missing_csp,
+    rule_weak_csp,
     rule_missing_hsts,
+    rule_weak_hsts,
     rule_missing_referrer_policy,
     rule_missing_x_frame_options,
+    rule_missing_x_content_type_options,
+    rule_missing_permissions_policy,
     rule_server_header_exposed,
     rule_trace_enabled,
     rule_no_https_redirect,
+    rule_insecure_redirect_chain,
+    rule_mixed_content,
     rule_weak_cookies,
+    rule_missing_security_txt,
 ]
 
 

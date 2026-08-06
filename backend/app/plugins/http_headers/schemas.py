@@ -50,6 +50,7 @@ class HttpHeadersRawResponse(BaseSchema):
     primary: HttpProbeRaw
     http_probe: HttpProbeRaw | None = None
     trace_probe: HttpTraceProbeRaw | None = None
+    security_txt_probe: HttpProbeRaw | None = None
 
 
 class ParsedCookie(BaseSchema):
@@ -86,6 +87,26 @@ class HttpHeadersParsedData(BaseSchema):
     http_redirects_to_https: bool | None = None
     trace_enabled: bool = False
     weak_cookies: list[ParsedCookie]
+    # Extended analysis
+    csp_has_unsafe_inline: bool = False
+    csp_has_unsafe_eval: bool = False
+    csp_has_wildcard: bool = False
+    hsts_max_age: int | None = None
+    hsts_includes_subdomains: bool = False
+    hsts_preload: bool = False
+    hsts_is_weak: bool = False
+    mixed_content_urls: list[str] = []
+    redirect_chain_issues: list[str] = []
+    security_txt_present: bool = False
+    open_redirect_candidate: bool = False
+
+    @property
+    def has_x_content_type_options(self) -> bool:
+        return bool(self.security_headers.x_content_type_options)
+
+    @property
+    def has_permissions_policy(self) -> bool:
+        return bool(self.security_headers.permissions_policy)
 
     @property
     def has_csp(self) -> bool:

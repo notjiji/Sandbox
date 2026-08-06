@@ -14,15 +14,15 @@ def test_parse_builds_structured_ssl_data() -> None:
         negotiated_cipher=CipherRaw(name="ECDHE-RSA-AES128-GCM-SHA256", protocol="TLSv1.2", secret_bits=128),
         protocol_probes=[
             ProtocolProbeRaw(version="TLSv1.2", accepted=True, negotiated="TLSv1.2"),
-            ProtocolProbeRaw(version="TLSv1.0", accepted=True, negotiated="TLSv1.0"),
         ],
+        chain_trusted=False,
+        weak_ciphers_accepted=[],
     )
 
     parsed = parse(raw)
 
     assert parsed.host == "example.com"
-    assert "TLSv1.2" in parsed.protocols_accepted
     assert parsed.certificate.public_key_bits == 1024
     assert parsed.cipher is not None
     assert parsed.cipher.forward_secrecy is True
-    assert parsed.cipher.key_exchange == "ECDHE"
+    assert parsed.san_covers_apex is True

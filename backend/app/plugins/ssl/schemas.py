@@ -27,6 +27,9 @@ class SslRawResponse(BaseSchema):
     getpeercert: dict = {}
     negotiated_cipher: CipherRaw | None = None
     protocol_probes: list[ProtocolProbeRaw] = []
+    chain_trusted: bool = False
+    ocsp_stapling: bool | None = None
+    weak_ciphers_accepted: list[str] = []
     connection_error: str | None = None
 
 
@@ -62,6 +65,13 @@ class SslParsedData(BaseSchema):
     certificate: ParsedCertificate
     cipher: ParsedCipher | None = None
     hostname_matches: bool = True
+    chain_trusted: bool = False
+    ocsp_stapling: bool | None = None
+    weak_ciphers_accepted: list[str] = []
+    san_covers_apex: bool = True
+    san_covers_www: bool = True
+    cipher_is_weak: bool = False
+    lacks_forward_secrecy: bool = False
 
     @property
     def issuer(self) -> str:

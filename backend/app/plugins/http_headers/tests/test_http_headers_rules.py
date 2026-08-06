@@ -74,10 +74,13 @@ def test_rule_weak_cookies() -> None:
 
 
 def test_evaluate_rules_runs_all_independent_rules() -> None:
-    findings = evaluate_rules(_parsed(server="nginx"), ASSET, plugin_id="http_headers")
+    parsed = _parsed(server="nginx")
+    findings = evaluate_rules(parsed, ASSET, plugin_id="http_headers")
     rule_ids = {finding.rule_id for finding in findings}
     assert "HTTP_NO_CSP" in rule_ids
     assert "HTTP_NO_HSTS" in rule_ids
     assert "HTTP_NO_REFERRER_POLICY" in rule_ids
     assert "HTTP_NO_X_FRAME_OPTIONS" in rule_ids
+    assert "HTTP_NO_X_CONTENT_TYPE_OPTIONS" in rule_ids
     assert "HTTP_SERVER_HEADER_EXPOSED" in rule_ids
+    assert "HTTP_MISSING_SECURITY_TXT" in rule_ids
