@@ -1,13 +1,13 @@
-from datetime import UTC, datetime
-
-from app.findings.enums import FindingSeverity
 from app.plugins.base.config import PluginConfig
-from app.plugins.base.contracts import FindingCheckStatus, ScanOptions, ScanResult, scan_finding
-from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+from app.plugins.base.contracts import ScanOptions
+from app.plugins.base.pipeline import ScannerPipeline
+from app.plugins.base.plugin import ScanTarget
+from app.plugins.cookies import collector, parser, rules
+from app.plugins.cookies.schemas import CookiesParsedData, CookiesRawResponse
 from app.scans.enums import ScanType
 
 
-class CookiesPlugin(ScannerPlugin):
+class CookiesPlugin(ScannerPipeline[CookiesRawResponse, CookiesParsedData]):
     id = "cookies"
     name = "Cookie Security Scanner"
     version = "1.0.0"
@@ -15,35 +15,14 @@ class CookiesPlugin(ScannerPlugin):
     supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
     default_config = PluginConfig(enabled=True, timeout=20.0, retries=1, parallel=False, version="1.0.0")
 
-    async def run(self, asset: ScanTarget, options: ScanOptions) -> ScanResult:
-        started_at = datetime.now(UTC)
-        return ScanResult.success(
-            plugin=self.id,
-            version=self.version,
-            started_at=started_at,
-            findings=[
-                scan_finding(
-                    plugin=self.id,
-                    rule_id="COOKIE_MISSING_SECURE",
-                    asset_id=asset.asset_id,
-                    title="Session Cookie Missing Secure Flag",
-                    category="cookies",
-                    evidence="Set-Cookie: sessionid without Secure",
-                    recommendation="Set the Secure attribute on session cookies.",
-                    severity=FindingSeverity.HIGH,
-                    status=FindingCheckStatus.FAILED,
-                ),
-                scan_finding(
-                    plugin=self.id,
-                    rule_id="COOKIE_MISSING_HTTPONLY",
-                    asset_id=asset.asset_id,
-                    title="Session Cookie Missing HttpOnly Flag",
-                    category="cookies",
-                    evidence="Set-Cookie: sessionid without HttpOnly",
-                    recommendation="Set the HttpOnly attribute on session cookies.",
-                    severity=FindingSeverity.MEDIUM,
-                    status=FindingCheckStatus.FAILED,
-                ),
-            ],
-            metadata={"cookies_checked": 4},
-        )
+    async def collect(self, asset: ScanTarget, options: ScanOptions) -> CookiesRawResponse:
+        return await collector.collect(asset, options)
+
+    def parse(self, raw: CookiesRawResponse) -> CookiesParsedData:
+        return parser.parse(raw)
+
+    def evaluate_rules(self, parsed: CookiesParsedData, asset: ScanTarget):
+        return rules.evaluate_rules(parsed, asset, plugin_id=self.id)
+
+    def build_metadata(self, parsed: CookiesParsedData) -> dict:
+        return {"cookies_checked": len(parsed.cookies)}

@@ -1,13 +1,13 @@
-from datetime import UTC, datetime
-
-from app.findings.enums import FindingSeverity
 from app.plugins.base.config import PluginConfig
-from app.plugins.base.contracts import FindingCheckStatus, ScanOptions, ScanResult, scan_finding
-from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+from app.plugins.base.contracts import ScanOptions
+from app.plugins.base.pipeline import ScannerPipeline
+from app.plugins.base.plugin import ScanTarget
+from app.plugins.whois import collector, parser, rules
+from app.plugins.whois.schemas import WhoisParsedData, WhoisRawResponse
 from app.scans.enums import ScanType
 
 
-class WhoisPlugin(ScannerPlugin):
+class WhoisPlugin(ScannerPipeline[WhoisRawResponse, WhoisParsedData]):
     id = "whois"
     name = "WHOIS Scanner"
     version = "1.0.0"
@@ -15,24 +15,14 @@ class WhoisPlugin(ScannerPlugin):
     supported_scan_types = [ScanType.FULL.value]
     default_config = PluginConfig(enabled=True, timeout=30.0, retries=1, parallel=False, version="1.0.0")
 
-    async def run(self, asset: ScanTarget, options: ScanOptions) -> ScanResult:
-        started_at = datetime.now(UTC)
-        return ScanResult.success(
-            plugin=self.id,
-            version=self.version,
-            started_at=started_at,
-            findings=[
-                scan_finding(
-                    plugin=self.id,
-                    rule_id="WHOIS_EXPIRING_SOON",
-                    asset_id=asset.asset_id,
-                    title="Domain Expiring Soon",
-                    category="domain",
-                    evidence="Registration expires in 21 days",
-                    recommendation="Renew the domain registration before expiry.",
-                    severity=FindingSeverity.LOW,
-                    status=FindingCheckStatus.WARNING,
-                ),
-            ],
-            metadata={"expires": "2026-08-24"},
-        )
+    async def collect(self, asset: ScanTarget, options: ScanOptions) -> WhoisRawResponse:
+        return await collector.collect(asset, options)
+
+    def parse(self, raw: WhoisRawResponse) -> WhoisParsedData:
+        return parser.parse(raw)
+
+    def evaluate_rules(self, parsed: WhoisParsedData, asset: ScanTarget):
+        return rules.evaluate_rules(parsed, asset, plugin_id=self.id)
+
+    def build_metadata(self, parsed: WhoisParsedData) -> dict:
+        return {"expires": parsed.expires}

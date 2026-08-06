@@ -1,13 +1,13 @@
-from datetime import UTC, datetime
-
-from app.findings.enums import FindingSeverity
 from app.plugins.base.config import PluginConfig
-from app.plugins.base.contracts import FindingCheckStatus, ScanOptions, ScanResult, scan_finding
-from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+from app.plugins.base.contracts import ScanOptions
+from app.plugins.base.pipeline import ScannerPipeline
+from app.plugins.base.plugin import ScanTarget
+from app.plugins.dns import collector, parser, rules
+from app.plugins.dns.schemas import DnsParsedData, DnsRawResponse
 from app.scans.enums import ScanType
 
 
-class DnsPlugin(ScannerPlugin):
+class DnsPlugin(ScannerPipeline[DnsRawResponse, DnsParsedData]):
     id = "dns"
     name = "DNS Scanner"
     version = "1.0.0"
@@ -15,25 +15,14 @@ class DnsPlugin(ScannerPlugin):
     supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
     default_config = PluginConfig(enabled=True, timeout=30.0, retries=2, parallel=False, version="1.0.0")
 
-    async def run(self, asset: ScanTarget, options: ScanOptions) -> ScanResult:
-        started_at = datetime.now(UTC)
-        return ScanResult.success(
-            plugin=self.id,
-            version=self.version,
-            started_at=started_at,
-            findings=[
-                scan_finding(
-                    plugin=self.id,
-                    rule_id="DNS_MISSING_SPF",
-                    asset_id=asset.asset_id,
-                    title="Missing SPF Record",
-                    description="No TXT record with SPF policy was found for the domain.",
-                    category="dns",
-                    evidence="No TXT record with SPF policy found",
-                    recommendation="Publish an SPF TXT record to authorize sending mail servers.",
-                    severity=FindingSeverity.MEDIUM,
-                    status=FindingCheckStatus.FAILED,
-                ),
-            ],
-            metadata={"records": {"A": ["203.0.113.10"]}},
-        )
+    async def collect(self, asset: ScanTarget, options: ScanOptions) -> DnsRawResponse:
+        return await collector.collect(asset, options)
+
+    def parse(self, raw: DnsRawResponse) -> DnsParsedData:
+        return parser.parse(raw)
+
+    def evaluate_rules(self, parsed: DnsParsedData, asset: ScanTarget):
+        return rules.evaluate_rules(parsed, asset, plugin_id=self.id)
+
+    def build_metadata(self, parsed: DnsParsedData) -> dict:
+        return {"records": {"A": parsed.a_records, "TXT": parsed.txt_records}}

@@ -10,6 +10,7 @@ from app.plugins.base.contracts import (
 from app.plugins.base.exceptions import PluginError, PluginNotFoundError
 from app.plugins.base.interfaces import PluginInterface
 from app.plugins.base.loader import BUILTIN_PLUGIN_CLASSES, PluginLoader, PluginSelection, plugin_loader
+from app.plugins.base.pipeline import ScannerPipeline
 from app.plugins.base.output import (
     PluginFinding,
     PluginFindingStatus,
@@ -34,6 +35,7 @@ __all__ = [
     "PluginOutputStatus",
     "PluginRegistry",
     "PluginSelection",
+    "ScannerPipeline",
     "ScanFinding",
     "ScanOptions",
     "ScanResult",

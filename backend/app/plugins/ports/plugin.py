@@ -1,13 +1,13 @@
-from datetime import UTC, datetime
-
-from app.findings.enums import FindingSeverity
 from app.plugins.base.config import PluginConfig
-from app.plugins.base.contracts import FindingCheckStatus, ScanOptions, ScanResult, scan_finding
-from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+from app.plugins.base.contracts import ScanOptions
+from app.plugins.base.pipeline import ScannerPipeline
+from app.plugins.base.plugin import ScanTarget
+from app.plugins.ports import collector, parser, rules
+from app.plugins.ports.schemas import PortsParsedData, PortsRawResponse
 from app.scans.enums import ScanType
 
 
-class PortsPlugin(ScannerPlugin):
+class PortsPlugin(ScannerPipeline[PortsRawResponse, PortsParsedData]):
     id = "ports"
     name = "Port Scanner"
     version = "1.0.0"
@@ -15,24 +15,14 @@ class PortsPlugin(ScannerPlugin):
     supported_scan_types = [ScanType.FULL.value]
     default_config = PluginConfig(enabled=True, timeout=60.0, retries=1, parallel=True, version="1.0.0")
 
-    async def run(self, asset: ScanTarget, options: ScanOptions) -> ScanResult:
-        started_at = datetime.now(UTC)
-        return ScanResult.success(
-            plugin=self.id,
-            version=self.version,
-            started_at=started_at,
-            findings=[
-                scan_finding(
-                    plugin=self.id,
-                    rule_id="PORT_TELNET_OPEN",
-                    asset_id=asset.asset_id,
-                    title="Telnet Port Open",
-                    category="network",
-                    evidence="TCP port 23 is open",
-                    recommendation="Disable Telnet and use SSH instead.",
-                    severity=FindingSeverity.CRITICAL,
-                    status=FindingCheckStatus.FAILED,
-                ),
-            ],
-            metadata={"open_ports": [22, 23, 80, 443]},
-        )
+    async def collect(self, asset: ScanTarget, options: ScanOptions) -> PortsRawResponse:
+        return await collector.collect(asset, options)
+
+    def parse(self, raw: PortsRawResponse) -> PortsParsedData:
+        return parser.parse(raw)
+
+    def evaluate_rules(self, parsed: PortsParsedData, asset: ScanTarget):
+        return rules.evaluate_rules(parsed, asset, plugin_id=self.id)
+
+    def build_metadata(self, parsed: PortsParsedData) -> dict:
+        return {"open_ports": parsed.open_ports}

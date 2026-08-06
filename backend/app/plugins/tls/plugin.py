@@ -1,13 +1,13 @@
-from datetime import UTC, datetime
-
-from app.findings.enums import FindingSeverity
 from app.plugins.base.config import PluginConfig
-from app.plugins.base.contracts import FindingCheckStatus, ScanOptions, ScanResult, scan_finding
-from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+from app.plugins.base.contracts import ScanOptions
+from app.plugins.base.pipeline import ScannerPipeline
+from app.plugins.base.plugin import ScanTarget
+from app.plugins.tls import collector, parser, rules
+from app.plugins.tls.schemas import TlsParsedData, TlsRawResponse
 from app.scans.enums import ScanType
 
 
-class TlsPlugin(ScannerPlugin):
+class TlsPlugin(ScannerPipeline[TlsRawResponse, TlsParsedData]):
     id = "tls"
     name = "TLS Configuration Scanner"
     version = "1.0.0"
@@ -15,24 +15,14 @@ class TlsPlugin(ScannerPlugin):
     supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
     default_config = PluginConfig(enabled=True, timeout=45.0, retries=2, parallel=False, version="1.0.0")
 
-    async def run(self, asset: ScanTarget, options: ScanOptions) -> ScanResult:
-        started_at = datetime.now(UTC)
-        return ScanResult.success(
-            plugin=self.id,
-            version=self.version,
-            started_at=started_at,
-            findings=[
-                scan_finding(
-                    plugin=self.id,
-                    rule_id="TLS_WEAK_CIPHER",
-                    asset_id=asset.asset_id,
-                    title="Weak Cipher Suite Negotiated",
-                    category="transport",
-                    evidence="ECDHE-RSA-AES128-SHA accepted",
-                    recommendation="Disable weak cipher suites and prefer AEAD ciphers.",
-                    severity=FindingSeverity.HIGH,
-                    status=FindingCheckStatus.FAILED,
-                ),
-            ],
-            metadata={"min_version": "TLSv1.2", "cipher_count": 12},
-        )
+    async def collect(self, asset: ScanTarget, options: ScanOptions) -> TlsRawResponse:
+        return await collector.collect(asset, options)
+
+    def parse(self, raw: TlsRawResponse) -> TlsParsedData:
+        return parser.parse(raw)
+
+    def evaluate_rules(self, parsed: TlsParsedData, asset: ScanTarget):
+        return rules.evaluate_rules(parsed, asset, plugin_id=self.id)
+
+    def build_metadata(self, parsed: TlsParsedData) -> dict:
+        return {"min_version": parsed.min_version, "cipher_count": parsed.cipher_count}

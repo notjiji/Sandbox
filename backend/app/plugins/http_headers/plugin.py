@@ -1,13 +1,13 @@
-from datetime import UTC, datetime
-
-from app.findings.enums import FindingSeverity
 from app.plugins.base.config import PluginConfig
-from app.plugins.base.contracts import FindingCheckStatus, ScanOptions, ScanResult, scan_finding
-from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+from app.plugins.base.contracts import ScanOptions
+from app.plugins.base.pipeline import ScannerPipeline
+from app.plugins.base.plugin import ScanTarget
+from app.plugins.http_headers import collector, parser, rules
+from app.plugins.http_headers.schemas import HttpHeadersParsedData, HttpHeadersRawResponse
 from app.scans.enums import ScanType
 
 
-class HttpHeadersPlugin(ScannerPlugin):
+class HttpHeadersPlugin(ScannerPipeline[HttpHeadersRawResponse, HttpHeadersParsedData]):
     id = "http_headers"
     name = "HTTP Headers Scanner"
     version = "1.0.0"
@@ -15,35 +15,14 @@ class HttpHeadersPlugin(ScannerPlugin):
     supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
     default_config = PluginConfig(enabled=True, timeout=20.0, retries=1, parallel=False, version="1.0.0")
 
-    async def run(self, asset: ScanTarget, options: ScanOptions) -> ScanResult:
-        started_at = datetime.now(UTC)
-        return ScanResult.success(
-            plugin=self.id,
-            version=self.version,
-            started_at=started_at,
-            findings=[
-                scan_finding(
-                    plugin=self.id,
-                    rule_id="HTTP_NO_CSP",
-                    asset_id=asset.asset_id,
-                    title="Missing Content Security Policy",
-                    category="headers",
-                    evidence="Header not present",
-                    recommendation="Add a Content-Security-Policy header.",
-                    severity=FindingSeverity.MEDIUM,
-                    status=FindingCheckStatus.FAILED,
-                ),
-                scan_finding(
-                    plugin=self.id,
-                    rule_id="HTTP_NO_HSTS",
-                    asset_id=asset.asset_id,
-                    title="Missing Strict Transport Security",
-                    category="headers",
-                    evidence="HSTS header not present",
-                    recommendation="Add Strict-Transport-Security with a long max-age.",
-                    severity=FindingSeverity.HIGH,
-                    status=FindingCheckStatus.FAILED,
-                ),
-            ],
-            metadata={"status_code": 200, "headers": {"server": "nginx"}},
-        )
+    async def collect(self, asset: ScanTarget, options: ScanOptions) -> HttpHeadersRawResponse:
+        return await collector.collect(asset, options)
+
+    def parse(self, raw: HttpHeadersRawResponse) -> HttpHeadersParsedData:
+        return parser.parse(raw)
+
+    def evaluate_rules(self, parsed: HttpHeadersParsedData, asset: ScanTarget):
+        return rules.evaluate_rules(parsed, asset, plugin_id=self.id)
+
+    def build_metadata(self, parsed: HttpHeadersParsedData) -> dict:
+        return {"status_code": parsed.status_code, "headers": parsed.headers}
