@@ -76,6 +76,30 @@ def _evaluate_shorthand(key: str, value: Any, context: dict[str, Any]) -> bool:
             return len(target) > 0
         return bool(target)
 
+    if key == "path_contains":
+        if not isinstance(value, dict) or "path" not in value:
+            return False
+        target = _get_path(context, str(value["path"]))
+        needle = value.get("value")
+        if isinstance(target, (list, tuple, set)):
+            return needle in target
+        if isinstance(target, str) and isinstance(needle, str):
+            return needle in target
+        return False
+
+    if key == "port_open":
+        open_ports = context.get("open_ports") or []
+        try:
+            return int(value) in open_ports
+        except (TypeError, ValueError):
+            return False
+
+    if key == "cors_wildcard":
+        origin = _get_path(context, "access_control_allow_origin")
+        if not isinstance(origin, str):
+            return False
+        return origin.strip() == "*"
+
     return False
 
 
@@ -114,6 +138,28 @@ def evaluate_condition(condition: dict[str, Any] | None, context: dict[str, Any]
             if isinstance(target, (list, dict, str)):
                 return len(target) == 0
             return not bool(target)
+        if op == "lt":
+            target = _get_path(context, str(condition["path"]))
+            limit = condition.get("value")
+            try:
+                return target is not None and target < limit
+            except TypeError:
+                return False
+        if op == "lte":
+            target = _get_path(context, str(condition["path"]))
+            limit = condition.get("value")
+            try:
+                return target is not None and target <= limit
+            except TypeError:
+                return False
+        if op == "contains":
+            target = _get_path(context, str(condition["path"]))
+            needle = condition.get("value")
+            if isinstance(target, (list, tuple, set)):
+                return needle in target
+            if isinstance(target, str) and isinstance(needle, str):
+                return needle in target
+            return False
         return False
 
     if len(condition) == 1:

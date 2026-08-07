@@ -115,4 +115,5 @@ def parse(raw: HttpHeadersRawResponse) -> HttpHeadersParsedData:
         mixed_content_urls=mixed,
         redirect_chain_issues=redirect_issues,
         open_redirect_candidate=open_redirect,
+        api_schema_paths=raw.api_schema_paths,
     )

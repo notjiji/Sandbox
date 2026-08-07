@@ -18,6 +18,26 @@ _PRODUCT_PATTERNS: tuple[tuple[re.Pattern[str], str, str], ...] = (
     (re.compile(r"Express(?:/([\d.]+))?", re.I), "express", "npm"),
 )
 _SSH_PATTERN = re.compile(r"OpenSSH[_\s-]?([\d.p]+)", re.I)
+_SERVICE_ECOSYSTEMS: dict[str, str] = {
+    "nginx": "Debian",
+    "apache": "Debian",
+    "apache httpd": "Debian",
+    "openssh": "Debian",
+    "mysql": "Debian",
+    "mariadb": "Debian",
+    "redis": "Debian",
+    "mongodb": "Debian",
+    "postgresql": "Debian",
+    "php": "Packagist",
+    "iis": "Debian",
+    "express": "npm",
+}
+_PRODUCT_ALIASES: dict[str, str] = {
+    "apache httpd": "apache2",
+    "apache": "apache2",
+    "openssh": "openssh",
+    "mariadb": "mysql",
+}
 
 
 @dataclass(frozen=True)
@@ -50,6 +70,25 @@ def hints_from_ssh_banner(banner: str | None) -> list[SoftwareHint]:
     if not match:
         return []
     return [SoftwareHint(product="openssh", version=match.group(1), ecosystem="Debian", source="ssh-banner")]
+
+
+def hints_from_services(services: list[dict]) -> list[SoftwareHint]:
+    hints: list[SoftwareHint] = []
+    for service in services:
+        product = (service.get("product") or service.get("service") or "").strip()
+        version = (service.get("version") or "").strip()
+        if not product or not version:
+            banner = service.get("banner")
+            if isinstance(banner, str):
+                hints.extend(hints_from_ssh_banner(banner))
+            continue
+        normalized = product.lower()
+        osv_product = _PRODUCT_ALIASES.get(normalized, normalized.replace(" ", ""))
+        ecosystem = _SERVICE_ECOSYSTEMS.get(normalized, "Debian")
+        port = service.get("port")
+        source = f"port-{port}" if port is not None else "port-scan"
+        hints.append(SoftwareHint(product=osv_product, version=version, ecosystem=ecosystem, source=source))
+    return hints
 
 
 def query_osv(product: str, version: str, ecosystem: str) -> list[dict]:

@@ -18,6 +18,7 @@ from app.findings.repositories.finding_repository import create_finding
 from app.plugins.base.contracts import ScanResult, ScanResultStatus
 from app.plugins.base.loader import plugin_loader
 from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+from app.plugins.shared.scan_context import scan_context
 from app.scans.enums import PluginRunStatus, ScanStatus
 from app.scans.models import Scan, ScanPluginRun
 from app.scans.repositories.scan_plugin_repository import (
@@ -70,11 +71,22 @@ class ScanOrchestrator:
             return scan
 
         work_items = self._prepare_work_items(db, scan=scan, targets=targets, plugins=selection.enabled)
-        outputs = asyncio.run(self._run_plugins_parallel(work_items))
-        records = [
-            self._finalize_plugin_run(db, item, output)
-            for item, output in zip(work_items, outputs, strict=True)
-        ]
+        scan_context.begin()
+        try:
+            phase_one = [item for item in work_items if item.plugin.id != "cve"]
+            phase_two = [item for item in work_items if item.plugin.id == "cve"]
+
+            item_outputs: list[tuple[_PluginWorkItem, ScanResult]] = []
+            if phase_one:
+                for item, output in zip(phase_one, asyncio.run(self._run_plugins_parallel(phase_one)), strict=True):
+                    item_outputs.append((item, output))
+            if phase_two:
+                for item, output in zip(phase_two, asyncio.run(self._run_plugins_parallel(phase_two)), strict=True):
+                    item_outputs.append((item, output))
+
+            records = [self._finalize_plugin_run(db, item, output) for item, output in item_outputs]
+        finally:
+            scan_context.end()
 
         combined = self._combine_results(records)
         self._persist_findings(db, scan=scan, combined=combined)

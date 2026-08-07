@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.plugins.base.plugin import ScanTarget
+from app.plugins.http_headers.utils import header_lookup
 
 
 def build_context(parsed: Any, asset: ScanTarget, *, plugin_id: str) -> dict[str, Any]:
@@ -75,6 +76,96 @@ def _http_headers_enricher(parsed: Any, asset: ScanTarget) -> dict[str, Any]:
         "broad_csp_evidence": ", ".join(broad_csp),
         "hsts_weak_evidence": f"HSTS max-age={getattr(parsed, 'hsts_max_age', None)} (recommended >= 15552000)",
         "trace_evidence": f"TRACE request to {getattr(parsed, 'final_url', asset.identifier)} was accepted",
+        "access_control_allow_origin": header_lookup(getattr(parsed, "headers", {}) or {}, "access-control-allow-origin"),
+        "cors_credentials_with_wildcard": _cors_credentials_with_wildcard(parsed),
+        "api_schema_evidence": ", ".join(getattr(parsed, "api_schema_paths", []) or [])[:200],
+    }
+
+
+def _cors_credentials_with_wildcard(parsed: Any) -> bool:
+    headers = getattr(parsed, "headers", {}) or {}
+    origin = header_lookup(headers, "access-control-allow-origin")
+    credentials = header_lookup(headers, "access-control-allow-credentials")
+    return bool(origin and origin.strip() == "*" and credentials and credentials.lower() == "true")
+
+
+def _dns_enricher(parsed: Any, asset: ScanTarget) -> dict[str, Any]:
+    spf_records = getattr(parsed, "spf_records", []) or []
+    takeover = getattr(parsed, "subdomain_takeover_risks", []) or []
+    mx_bad = getattr(parsed, "mx_misconfigured", []) or []
+    resolver = getattr(parsed, "resolver_discrepancies", []) or []
+    return {
+        "spf_record_count": len(spf_records),
+        "subdomain_takeover_evidence": "; ".join(takeover),
+        "mx_misconfigured_evidence": ", ".join(mx_bad),
+        "resolver_discrepancy_evidence": "; ".join(resolver),
+    }
+
+
+def _ssl_enricher(parsed: Any, asset: ScanTarget) -> dict[str, Any]:
+    cert = getattr(parsed, "certificate", None)
+    weak_rsa = False
+    weak_sig = False
+    incomplete_san = False
+    incomplete_parts: list[str] = []
+    sans_evidence = "none"
+    if cert is not None:
+        if getattr(cert, "public_key_algorithm", None) == "RSA":
+            bits = getattr(cert, "public_key_bits", None)
+            weak_rsa = bits is not None and bits < 2048
+        algorithm = (getattr(cert, "signature_algorithm", None) or "").lower()
+        weak_sig = any(token in algorithm for token in ("md5", "sha1"))
+        sans = getattr(cert, "sans", []) or []
+        sans_evidence = ", ".join(sans) or getattr(cert, "common_name", None) or "none"
+        if not getattr(parsed, "san_covers_apex", True):
+            incomplete_parts.append("apex")
+        if not getattr(parsed, "san_covers_www", True):
+            incomplete_parts.append("www")
+        incomplete_san = bool(incomplete_parts)
+    weak_ciphers = getattr(parsed, "weak_ciphers_accepted", []) or []
+    suspicious = getattr(parsed, "suspicious_ct_issuers", []) or []
+    return {
+        "weak_rsa_key": weak_rsa,
+        "weak_signature": weak_sig,
+        "incomplete_san_coverage": incomplete_san,
+        "incomplete_san_evidence": ", ".join(incomplete_parts),
+        "certificate_sans_evidence": sans_evidence,
+        "weak_ciphers_evidence": ", ".join(weak_ciphers),
+        "suspicious_ct_issuers_evidence": ", ".join(suspicious[:3]),
+    }
+
+
+def _ports_enricher(parsed: Any, asset: ScanTarget) -> dict[str, Any]:
+    open_ports = getattr(parsed, "open_ports", []) or []
+    context: dict[str, Any] = {"open_ports": open_ports}
+    for service in getattr(parsed, "services", []) or []:
+        if not getattr(service, "open", False):
+            continue
+        parts = [f"TCP/{service.port} open"]
+        if getattr(service, "product", None):
+            parts.append(service.product)
+        if getattr(service, "version", None):
+            parts.append(service.version)
+        elif getattr(service, "banner", None) and not getattr(service, "product", None):
+            parts.append(str(service.banner)[:120])
+        context[f"port_{service.port}_evidence"] = " — ".join(parts)
+    return context
+
+
+def _whois_enricher(parsed: Any, asset: ScanTarget) -> dict[str, Any]:
+    expires = getattr(parsed, "expires", None)
+    return {
+        "expires_evidence": expires.isoformat() if expires is not None else "unknown",
+    }
+
+
+def _tls_enricher(parsed: Any, asset: ScanTarget) -> dict[str, Any]:
+    legacy = [item for item in getattr(parsed, "legacy_protocols_accepted", []) or []]
+    weak = getattr(parsed, "weak_ciphers_accepted", []) or []
+    return {
+        "legacy_protocol_enabled": bool(legacy),
+        "legacy_protocols_evidence": ", ".join(legacy),
+        "weak_ciphers_evidence": ", ".join(weak),
     }
 
 
@@ -114,4 +205,9 @@ _CONTEXT_ENRICHERS = {
     "http_headers": _http_headers_enricher,
     "robots": _robots_enricher,
     "security_txt": _security_txt_enricher,
+    "dns": _dns_enricher,
+    "ssl": _ssl_enricher,
+    "ports": _ports_enricher,
+    "whois": _whois_enricher,
+    "tls": _tls_enricher,
 }

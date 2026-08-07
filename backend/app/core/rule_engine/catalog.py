@@ -1,5 +1,11 @@
 """Declarative rule catalog — update rules here without touching scanner code."""
 
+from app.core.rule_engine.catalog_cloud import CLOUD_RULES
+from app.core.rule_engine.catalog_dns import DNS_RULES
+from app.core.rule_engine.catalog_ports import PORTS_RULES
+from app.core.rule_engine.catalog_ssl import SSL_RULES
+from app.core.rule_engine.catalog_tls import TLS_RULES
+from app.core.rule_engine.catalog_whois import WHOIS_RULES
 from app.core.rule_engine.models import RuleSpec
 from app.plugins.base.contracts import FindingCheckStatus
 
@@ -115,6 +121,30 @@ HTTP_HEADERS_RULES: list[RuleSpec] = [
         condition={"path_nonempty": "weak_cookies"},
         evidence="{weak_cookies_evidence}",
     ),
+    RuleSpec(
+        rule_code="HTTP-016",
+        finding_code="HTTP_CORS_WILDCARD",
+        category="headers",
+        condition={"cors_wildcard": True},
+        evidence="Access-Control-Allow-Origin is wildcard (*) on {identifier}",
+        description="Wildcard CORS allows any origin to read responses from this endpoint.",
+        reference_links=("https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS",),
+    ),
+    RuleSpec(
+        rule_code="HTTP-017",
+        finding_code="HTTP_CORS_CREDENTIALS_WILDCARD",
+        category="headers",
+        condition={"path_truthy": "cors_credentials_with_wildcard"},
+        evidence="Access-Control-Allow-Credentials is true while Allow-Origin is wildcard",
+    ),
+    RuleSpec(
+        rule_code="HTTP-018",
+        finding_code="HTTP_API_SCHEMA_EXPOSED",
+        category="exposure",
+        condition={"path_nonempty": "api_schema_paths"},
+        evidence="Public API schema discovered: {api_schema_evidence}",
+        status=FindingCheckStatus.WARNING,
+    ),
 ]
 
 ROBOTS_RULES: list[RuleSpec] = [
@@ -224,6 +254,12 @@ PLUGIN_RULES: dict[str, list[RuleSpec]] = {
     "http_headers": HTTP_HEADERS_RULES,
     "robots": ROBOTS_RULES,
     "security_txt": SECURITY_TXT_RULES,
+    "dns": DNS_RULES,
+    "ssl": SSL_RULES,
+    "ports": PORTS_RULES,
+    "whois": WHOIS_RULES,
+    "tls": TLS_RULES,
+    "cloud": CLOUD_RULES,
 }
 
 

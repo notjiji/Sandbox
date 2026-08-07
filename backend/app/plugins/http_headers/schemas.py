@@ -50,6 +50,7 @@ class HttpHeadersRawResponse(BaseSchema):
     primary: HttpProbeRaw
     http_probe: HttpProbeRaw | None = None
     trace_probe: HttpTraceProbeRaw | None = None
+    api_schema_paths: list[str] = []
 
 
 class ParsedCookie(BaseSchema):
@@ -100,6 +101,7 @@ class HttpHeadersParsedData(BaseSchema):
     mixed_content_urls: list[str] = []
     redirect_chain_issues: list[str] = []
     open_redirect_candidate: bool = False
+    api_schema_paths: list[str] = []
 
     @property
     def has_x_content_type_options(self) -> bool:
