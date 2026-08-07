@@ -115,8 +115,27 @@ def test_scan_result_schema() -> None:
     assert payload["plugin"] == "ssl"
     assert payload["version"] == "1.0"
     assert payload["status"] == "success"
+    assert payload["duration_ms"] == 0
     assert payload["findings"][0]["rule_id"] == "SSL_EXPIRED"
     assert "score" not in payload["findings"][0]
+
+
+def test_scan_result_timeout_shape() -> None:
+    from app.plugins.base.contracts import ScanResult, ScanResultStatus
+
+    started_at = datetime.now(UTC)
+    output = ScanResult.timeout(
+        plugin="ssl",
+        version="3.1.0",
+        started_at=started_at,
+        error="TLS handshake timed out",
+    )
+    payload = output.model_dump()
+    assert payload["plugin"] == "ssl"
+    assert payload["status"] == ScanResultStatus.TIMEOUT.value
+    assert payload["error"] == "TLS handshake timed out"
+    assert payload["findings"] == []
+    assert payload["duration_ms"] >= 0
 
 
 def test_profile_resolves_quick_scan_plugins() -> None:
@@ -271,6 +290,79 @@ def test_dispatcher_runs_plugins_in_parallel() -> None:
     assert len(results) == 3
     assert all(result.status.value == "success" for result in results)
     assert elapsed < 0.12
+
+
+def test_dispatcher_maps_wait_for_timeout() -> None:
+    import asyncio
+
+    from app.core.scan_engine.dispatcher import ScanDispatcher
+    from app.plugins.base.config import PluginConfig
+    from app.plugins.base.contracts import ScanOptions, ScanResultStatus
+    from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+    from app.scans.enums import ScanType
+
+    class HangingPlugin(ScannerPlugin):
+        id = "ssl"
+        name = "SSL Scanner"
+        version = "3.1.0"
+        supported_asset_types = ["website"]
+        supported_scan_types = [ScanType.FULL.value]
+        default_config = PluginConfig(timeout=0.05, version="3.1.0")
+
+        async def run(self, asset: ScanTarget, options: ScanOptions):
+            await asyncio.sleep(1)
+            raise AssertionError("should have timed out")
+
+    result = ScanDispatcher().dispatch(
+        plugin=HangingPlugin(),
+        asset=ScanTarget(asset_id="1", identifier="vinca.family", asset_type="website"),
+    )
+    assert result.status == ScanResultStatus.TIMEOUT
+    assert result.error is not None
+    assert "timed out" in result.error.lower()
+    assert result.duration_ms >= 0
+
+
+def test_orchestrator_continues_when_one_plugin_fails() -> None:
+    from app.core.scan_engine.orchestrator import ScanOrchestrator
+    from app.core.scan_engine.types import PluginExecutionRecord
+    from app.plugins.base.contracts import ScanResult, ScanResultStatus
+    from app.plugins.base.plugin import ScanTarget
+    from app.scans.enums import PluginRunStatus
+
+    target = ScanTarget(asset_id=ASSET_ID, identifier="vinca.family", asset_type="website")
+    started_at = datetime.now(UTC)
+    records = [
+        PluginExecutionRecord(
+            plugin_name="ssl",
+            target=target,
+            status=PluginRunStatus.FAILED,
+            output=ScanResult.timeout(
+                plugin="ssl",
+                version="3.1.0",
+                started_at=started_at,
+                error="TLS handshake timed out",
+            ),
+            error_message="TLS handshake timed out",
+        ),
+        PluginExecutionRecord(
+            plugin_name="dns",
+            target=target,
+            status=PluginRunStatus.COMPLETED,
+            output=ScanResult.success(
+                plugin="dns",
+                version="3.1.0",
+                started_at=started_at,
+                findings=[],
+            ),
+        ),
+    ]
+
+    from app.core.scan_engine.result_combiner import resolve_scan_status
+
+    assert resolve_scan_status(records).value == "completed"
+    assert ScanOrchestrator()._combine_results(records).completed_plugins == 1
+    assert ScanOrchestrator()._combine_results(records).failed_plugins == 1
 
 
 def test_plugin_config_exposed() -> None:

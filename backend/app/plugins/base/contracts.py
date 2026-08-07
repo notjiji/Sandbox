@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from enum import Enum
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, computed_field
 
 from app.findings.enums import FindingSeverity
 from app.shared.schemas.base import BaseSchema
@@ -12,6 +12,7 @@ from app.shared.schemas.base import BaseSchema
 class ScanResultStatus(str, Enum):
     SUCCESS = "success"
     FAILED = "failed"
+    TIMEOUT = "timeout"
     SKIPPED = "skipped"
 
 
@@ -72,6 +73,11 @@ class ScanResult(BaseSchema):
     def duration(self) -> float:
         return max((self.finished_at - self.started_at).total_seconds(), 0.0)
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def duration_ms(self) -> int:
+        return round(self.duration * 1000)
+
     @classmethod
     def success(
         cls,
@@ -113,6 +119,29 @@ class ScanResult(BaseSchema):
             findings=[],
             metadata=metadata or {"error": error},
             error=error,
+        )
+
+    @classmethod
+    def timeout(
+        cls,
+        *,
+        plugin: str,
+        version: str,
+        started_at: datetime,
+        finished_at: datetime | None = None,
+        error: str | None = None,
+        metadata: dict | None = None,
+    ) -> "ScanResult":
+        message = error or f"{plugin} scan timed out"
+        return cls(
+            plugin=plugin,
+            version=version,
+            started_at=started_at,
+            finished_at=finished_at or datetime.now(UTC),
+            status=ScanResultStatus.TIMEOUT,
+            findings=[],
+            metadata=metadata or {"error": message},
+            error=message,
         )
 
 

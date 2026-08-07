@@ -129,6 +129,14 @@ class ScanOrchestrator:
         item: _PluginWorkItem,
         output: ScanResult,
     ) -> PluginExecutionRecord:
+        metadata = {
+            **(output.metadata or {}),
+            "status": output.status.value,
+            "duration_ms": output.duration_ms,
+        }
+        if output.error:
+            metadata["error"] = output.error
+
         run_status = (
             PluginRunStatus.COMPLETED
             if output.status == ScanResultStatus.SUCCESS
@@ -136,14 +144,14 @@ class ScanOrchestrator:
         )
 
         if run_status == PluginRunStatus.FAILED:
-            error_message = output.error or str(output.metadata.get("error", "Plugin returned failure"))
+            error_message = output.error or str(metadata.get("error", "Plugin returned failure"))
             complete_plugin_run(
                 db,
                 item.plugin_run,
                 status=PluginRunStatus.FAILED,
                 duration_seconds=output.duration,
                 error_message=error_message,
-                metadata=output.metadata or None,
+                metadata=metadata,
             )
             return PluginExecutionRecord(
                 plugin_name=item.plugin.id,
@@ -161,7 +169,7 @@ class ScanOrchestrator:
             status=PluginRunStatus.COMPLETED,
             findings_count=len(normalized_findings),
             duration_seconds=output.duration,
-            metadata=output.metadata or None,
+            metadata=metadata,
         )
         return PluginExecutionRecord(
             plugin_name=item.plugin.id,

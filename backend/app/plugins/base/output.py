@@ -25,6 +25,8 @@ class PluginOutputStatus(str, Enum):
             return cls.COMPLETED
         if status == ScanResultStatus.SKIPPED:
             return cls.SKIPPED
+        if status == ScanResultStatus.TIMEOUT:
+            return cls.FAILED
         return cls.FAILED
 
 
