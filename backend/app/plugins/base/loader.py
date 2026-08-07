@@ -7,6 +7,7 @@ from app.plugins.base.plugin import ScannerPlugin
 from app.plugins.base.registry import PluginRegistry, registry
 from app.plugins.cookies.plugin import CookiesPlugin
 from app.plugins.dns.plugin import DnsPlugin
+from app.plugins.fingerprint.plugin import FingerprintPlugin
 from app.plugins.future.cloud.plugin import CloudPlugin
 from app.plugins.future.cve.plugin import CvePlugin
 from app.plugins.future.kubernetes.plugin import KubernetesPlugin
@@ -21,6 +22,7 @@ from app.scans.profiles import resolve_profile_plugins
 
 BUILTIN_PLUGIN_CLASSES: list[type[ScannerPlugin]] = [
     HttpHeadersPlugin,
+    FingerprintPlugin,
     SslPlugin,
     TlsPlugin,
     DnsPlugin,
