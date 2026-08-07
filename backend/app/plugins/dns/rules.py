@@ -170,6 +170,18 @@ def rule_missing_tls_rpt(parsed: DnsParsedData, asset: ScanTarget, plugin_id: st
     )
 
 
+def rule_dnssec_invalid(parsed: DnsParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if not parsed.dnssec_validation_failed:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="DNS_DNSSEC_INVALID", asset_id=asset.asset_id,
+        title="DNSSEC Validation Failed", category="dns",
+        evidence="DNSSEC records present but chain failed validation (no AD flag from validating resolver)",
+        recommendation="Fix DNSSEC chain of trust — ensure DS records match DNSKEY and zone is fully signed.",
+        severity=FindingSeverity.HIGH, status=FindingCheckStatus.FAILED,
+    )
+
+
 def rule_subdomain_takeover(parsed: DnsParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
     if not parsed.subdomain_takeover_risks:
         return None
@@ -218,6 +230,18 @@ def rule_wildcard_detected(parsed: DnsParsedData, asset: ScanTarget, plugin_id: 
     )
 
 
+def rule_resolver_discrepancy(parsed: DnsParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if not parsed.resolver_discrepancies:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="DNS_RESOLVER_DISCREPANCY", asset_id=asset.asset_id,
+        title="DNS Resolver Discrepancy", category="dns",
+        evidence="; ".join(parsed.resolver_discrepancies),
+        recommendation="Investigate split-horizon DNS, stale records, or resolver-specific caching issues.",
+        severity=FindingSeverity.MEDIUM, status=FindingCheckStatus.WARNING,
+    )
+
+
 def rule_low_ttl(parsed: DnsParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
     if parsed.minimum_ttl is None or parsed.minimum_ttl >= _LOW_TTL_SECONDS:
         return None
@@ -241,6 +265,7 @@ RULES: list[RuleFn] = [
     rule_missing_dkim,
     rule_dnssec_disabled,
     rule_dnssec_incomplete,
+    rule_dnssec_invalid,
     rule_missing_caa,
     rule_missing_mta_sts,
     rule_missing_tls_rpt,
@@ -249,6 +274,7 @@ RULES: list[RuleFn] = [
     rule_mx_misconfigured,
     rule_wildcard_detected,
     rule_low_ttl,
+    rule_resolver_discrepancy,
 ]
 
 

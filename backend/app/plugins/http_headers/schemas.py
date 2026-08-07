@@ -91,6 +91,9 @@ class HttpHeadersParsedData(BaseSchema):
     csp_has_unsafe_inline: bool = False
     csp_has_unsafe_eval: bool = False
     csp_has_wildcard: bool = False
+    csp_has_data_uri: bool = False
+    csp_has_blob_uri: bool = False
+    csp_has_broad_https: bool = False
     hsts_max_age: int | None = None
     hsts_includes_subdomains: bool = False
     hsts_preload: bool = False

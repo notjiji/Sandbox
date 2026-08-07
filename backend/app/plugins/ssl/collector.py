@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import shutil
 import socket
 import ssl
-import subprocess
 from typing import Any
 
 import certifi
 
 from app.plugins.base.contracts import ScanOptions
 from app.plugins.base.plugin import ScanTarget
+from app.plugins.ssl.legacy_probe import merge_protocol_probes, probe_protocols_openssl
+from app.plugins.ssl.ocsp import probe_ocsp_stapling
+from app.plugins.ssl.ct import analyze_ct_issuers
 from app.plugins.ssl.schemas import CipherRaw, ProtocolProbeRaw, SslRawResponse
 from app.plugins.ssl.utils import resolve_host_port
 
@@ -33,14 +34,6 @@ _WEAK_CIPHERS = (
     "AES128-SHA",
     "AES256-SHA",
 )
-
-
-def is_weak_cipher_name(name: str) -> bool:
-    upper = name.upper()
-    weak_names = frozenset(
-        "DES-CBC3-SHA RC4-SHA RC4-MD5 NULL-SHA NULL-MD5 ECDHE-RSA-AES128-SHA AES128-SHA AES256-SHA EXPORT".split()
-    )
-    return any(weak in upper for weak in weak_names)
 
 
 def _create_context(*, min_version: ssl.TLSVersion, max_version: ssl.TLSVersion, verify: bool = False) -> ssl.SSLContext:
@@ -66,15 +59,6 @@ def _cipher_from_tuple(cipher: tuple[str, str, int] | None) -> CipherRaw | None:
         return None
     name, protocol, secret_bits = cipher
     return CipherRaw(name=name, protocol=protocol, secret_bits=int(secret_bits))
-
-
-def is_weak_cipher_name(name: str) -> bool:
-    upper = name.upper()
-    weak_names = (
-        "DES-CBC3-SHA", "RC4-SHA", "RC4-MD5", "NULL-SHA", "NULL-MD5",
-        "ECDHE-RSA-AES128-SHA", "AES128-SHA", "AES256-SHA", "EXPORT",
-    )
-    return any(weak in upper for weak in weak_names)
 
 
 def _connect(
@@ -134,26 +118,14 @@ def _probe_weak_ciphers(host: str, port: int, timeout: float) -> list[str]:
     return list(dict.fromkeys(accepted))
 
 
-def _probe_ocsp_stapling(host: str, port: int, timeout: float) -> bool | None:
-    openssl = shutil.which("openssl")
-    if not openssl:
+def _format_x509_name(field) -> str | None:
+    if not field:
         return None
-    try:
-        result = subprocess.run(
-            [openssl, "s_client", "-connect", f"{host}:{port}", "-servername", host, "-status"],
-            input=b"",
-            capture_output=True,
-            timeout=timeout,
-            check=False,
-        )
-        output = result.stdout.decode("utf-8", errors="replace").lower()
-        if "ocsp response:" in output and "no response sent" not in output:
-            return True
-        if "no response sent" in output:
-            return False
-    except Exception:
-        return None
-    return None
+    parts: list[str] = []
+    for item in field:
+        if isinstance(item, (list, tuple)) and len(item) == 2:
+            parts.append(f"{item[0]}={item[1]}")
+    return ", ".join(parts) if parts else None
 
 
 def _collect_sync(host: str, port: int, timeout: float) -> SslRawResponse:
@@ -172,10 +144,15 @@ def _collect_sync(host: str, port: int, timeout: float) -> SslRawResponse:
             protocol_probes=[],
         )
 
-    protocol_probes = [
+    stdlib_probes = [
         _probe_protocol(host, port, label, min_ver, max_ver, timeout)
         for label, min_ver, max_ver in _PROTOCOL_PROBES
     ]
+    openssl_probes = probe_protocols_openssl(host, port, timeout)
+    protocol_probes = merge_protocol_probes(stdlib_probes, openssl_probes)
+
+    live_issuer = _format_x509_name(cert_dict.get("issuer") if cert_dict else None)
+    ct_issuers, suspicious_ct_issuers = analyze_ct_issuers(host, live_issuer)
 
     return SslRawResponse(
         host=host,
@@ -185,8 +162,10 @@ def _collect_sync(host: str, port: int, timeout: float) -> SslRawResponse:
         negotiated_cipher=negotiated_cipher,
         protocol_probes=protocol_probes,
         chain_trusted=_probe_trusted_chain(host, port, timeout),
-        ocsp_stapling=_probe_ocsp_stapling(host, port, timeout),
+        ocsp_stapling=probe_ocsp_stapling(host, port, timeout),
         weak_ciphers_accepted=_probe_weak_ciphers(host, port, timeout),
+        ct_issuers=ct_issuers,
+        suspicious_ct_issuers=suspicious_ct_issuers,
     )
 
 

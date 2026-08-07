@@ -255,6 +255,27 @@ def rule_weak_csp(parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: s
     )
 
 
+def rule_csp_broad_sources(parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if not parsed.has_csp:
+        return None
+    issues = []
+    if parsed.csp_has_data_uri:
+        issues.append("data:")
+    if parsed.csp_has_blob_uri:
+        issues.append("blob:")
+    if parsed.csp_has_broad_https:
+        issues.append("https:")
+    if not issues:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="HTTP_CSP_BROAD_SOURCES", asset_id=asset.asset_id,
+        title="Overly Broad CSP Sources", category="headers",
+        evidence=f"CSP allows broad sources: {', '.join(issues)}",
+        recommendation="Avoid data:, blob:, and scheme-wide https: in script/default directives.",
+        severity=FindingSeverity.MEDIUM, status=FindingCheckStatus.FAILED,
+    )
+
+
 def rule_weak_hsts(parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
     if not parsed.has_hsts or not parsed.hsts_is_weak:
         return None
@@ -311,6 +332,7 @@ def rule_missing_security_txt(
 RULES: list[RuleFn] = [
     rule_missing_csp,
     rule_weak_csp,
+    rule_csp_broad_sources,
     rule_missing_hsts,
     rule_weak_hsts,
     rule_missing_referrer_policy,

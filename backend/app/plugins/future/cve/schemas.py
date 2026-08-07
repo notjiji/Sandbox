@@ -6,6 +6,7 @@ class InstalledPackage(BaseSchema):
     version: str
     cve_ids: list[str]
     cvss: float | None = None
+    source: str | None = None
 
 
 class CveRawResponse(BaseSchema):

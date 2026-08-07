@@ -47,26 +47,6 @@ _COMMON_SUBDOMAINS = (
     "demo",
 )
 
-_DANGLING_CNAME_SUFFIXES = (
-    ".github.io",
-    ".herokuapp.com",
-    ".azurewebsites.net",
-    ".cloudfront.net",
-    ".s3.amazonaws.com",
-    ".shopify.com",
-    ".fastly.net",
-    ".pantheonsite.io",
-    ".zendesk.com",
-    ".ghost.io",
-    ".surge.sh",
-    ".netlify.app",
-    ".vercel.app",
-    ".firebaseapp.com",
-    ".web.app",
-    ".azurefd.net",
-    ".trafficmanager.net",
-)
-
 
 def extract_domain(identifier: str) -> str:
     cleaned = identifier.strip().replace("https://", "").replace("http://", "")
@@ -129,8 +109,9 @@ def dkim_selector_names(dkim_records: dict[str, list[str]]) -> list[str]:
 
 
 def is_dangling_cname_target(target: str) -> bool:
-    lowered = target.lower().rstrip(".")
-    return any(lowered.endswith(suffix) for suffix in _DANGLING_CNAME_SUFFIXES)
+    from app.plugins.dns.takeover import is_dangling_cname_target as _check
+
+    return _check(target)
 
 
 def parse_mx_host(mx_record: str) -> str:

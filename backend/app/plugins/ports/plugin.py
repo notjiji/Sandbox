@@ -10,10 +10,10 @@ from app.scans.enums import ScanType
 class PortsPlugin(ScannerPipeline[PortsRawResponse, PortsParsedData]):
     id = "ports"
     name = "Port Scanner"
-    version = "1.0.0"
+    version = "2.0.0"
     supported_asset_types = ["public_ip", "server", "windows_server", "docker_host"]
     supported_scan_types = [ScanType.FULL.value]
-    default_config = PluginConfig(enabled=True, timeout=60.0, retries=1, parallel=True, version="1.0.0")
+    default_config = PluginConfig(enabled=True, timeout=60.0, retries=1, parallel=True, version="2.0.0")
 
     async def collect(self, asset: ScanTarget, options: ScanOptions) -> PortsRawResponse:
         return await collector.collect(asset, options)

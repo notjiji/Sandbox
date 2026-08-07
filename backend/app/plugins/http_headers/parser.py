@@ -2,6 +2,8 @@
 
 from urllib.parse import urlparse
 
+from app.plugins.http_headers.csp_analysis import analyze_csp_deep
+from app.plugins.http_headers.html_analysis import find_mixed_content_html
 from app.plugins.http_headers.schemas import (
     HttpHeadersParsedData,
     HttpHeadersRawResponse,
@@ -9,10 +11,8 @@ from app.plugins.http_headers.schemas import (
     SecurityHeaders,
 )
 from app.plugins.http_headers.utils import (
-    analyze_csp,
     analyze_hsts,
     analyze_redirect_chain,
-    find_mixed_content,
     header_lookup,
     is_session_like_cookie,
     redirect_targets_https,
@@ -67,7 +67,7 @@ def parse(raw: HttpHeadersRawResponse) -> HttpHeadersParsedData:
     headers = probe.headers
     csp = header_lookup(headers, "content-security-policy")
     hsts = header_lookup(headers, "strict-transport-security")
-    csp_unsafe_inline, csp_unsafe_eval, csp_wildcard = analyze_csp(csp)
+    csp_unsafe_inline, csp_unsafe_eval, csp_wildcard, csp_data, csp_blob, csp_broad_https = analyze_csp_deep(csp)
     hsts_max_age, hsts_subdomains, hsts_preload, hsts_weak = analyze_hsts(hsts)
 
     security = SecurityHeaders(
@@ -83,7 +83,7 @@ def parse(raw: HttpHeadersRawResponse) -> HttpHeadersParsedData:
     is_https = urlparse(probe.final_url).scheme == "https"
     trace_enabled = bool(raw.trace_probe and raw.trace_probe.allowed)
     redirect_issues, open_redirect = analyze_redirect_chain(probe.redirects, is_https_start=is_https)
-    mixed = find_mixed_content(probe.body, is_https=is_https)
+    mixed = find_mixed_content_html(probe.body, page_url=probe.final_url, is_https=is_https)
     security_txt_present = bool(
         raw.security_txt_probe
         and raw.security_txt_probe.status_code == 200
@@ -110,6 +110,9 @@ def parse(raw: HttpHeadersRawResponse) -> HttpHeadersParsedData:
         csp_has_unsafe_inline=csp_unsafe_inline,
         csp_has_unsafe_eval=csp_unsafe_eval,
         csp_has_wildcard=csp_wildcard,
+        csp_has_data_uri=csp_data,
+        csp_has_blob_uri=csp_blob,
+        csp_has_broad_https=csp_broad_https,
         hsts_max_age=hsts_max_age,
         hsts_includes_subdomains=hsts_subdomains,
         hsts_preload=hsts_preload,

@@ -31,6 +31,8 @@ class SslRawResponse(BaseSchema):
     ocsp_stapling: bool | None = None
     weak_ciphers_accepted: list[str] = []
     connection_error: str | None = None
+    ct_issuers: list[str] = []
+    suspicious_ct_issuers: list[str] = []
 
 
 class ParsedCertificate(BaseSchema):
@@ -72,6 +74,8 @@ class SslParsedData(BaseSchema):
     san_covers_www: bool = True
     cipher_is_weak: bool = False
     lacks_forward_secrecy: bool = False
+    ct_issuers: list[str] = []
+    suspicious_ct_issuers: list[str] = []
 
     @property
     def issuer(self) -> str:

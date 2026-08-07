@@ -10,16 +10,18 @@ from app.scans.enums import ScanType
 class CvePlugin(ScannerPipeline[CveRawResponse, CveParsedData]):
     id = "cve"
     name = "CVE Vulnerability Scanner"
-    version = "0.1.0"
+    version = "1.0.0"
     supported_asset_types = [
         "server",
         "windows_server",
         "docker_host",
         "public_ip",
         "kubernetes_cluster",
+        "website",
+        "api_endpoint",
     ]
     supported_scan_types = [ScanType.FULL.value, ScanType.CUSTOM.value]
-    default_config = PluginConfig(enabled=False, timeout=180.0, retries=1, parallel=True, version="0.1.0")
+    default_config = PluginConfig(enabled=False, timeout=180.0, retries=1, parallel=True, version="1.0.0")
 
     async def collect(self, asset: ScanTarget, options: ScanOptions) -> CveRawResponse:
         return await collector.collect(asset, options)
@@ -31,4 +33,4 @@ class CvePlugin(ScannerPipeline[CveRawResponse, CveParsedData]):
         return rules.evaluate_rules(parsed, asset, plugin_id=self.id)
 
     def build_metadata(self, parsed: CveParsedData) -> dict:
-        return {"preview": True, "cve_count": len(parsed.vulnerable_packages)}
+        return {"preview": False, "cve_count": len(parsed.vulnerable_packages)}

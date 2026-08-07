@@ -10,10 +10,10 @@ from app.scans.enums import ScanType
 class HttpHeadersPlugin(ScannerPipeline[HttpHeadersRawResponse, HttpHeadersParsedData]):
     id = "http_headers"
     name = "HTTP Scanner"
-    version = "3.0.0"
+    version = "3.1.0"
     supported_asset_types = ["website", "api_endpoint"]
     supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
-    default_config = PluginConfig(enabled=True, timeout=20.0, retries=1, parallel=False, version="3.0.0")
+    default_config = PluginConfig(enabled=True, timeout=20.0, retries=1, parallel=False, version="3.1.0")
 
     async def collect(self, asset: ScanTarget, options: ScanOptions) -> HttpHeadersRawResponse:
         return await collector.collect(asset, options)

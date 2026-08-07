@@ -1,7 +1,7 @@
 """Convert raw TLS data into structured objects."""
 
 from app.plugins.ssl.cert_parser import analyze_san_coverage, hostname_matches_certificate, parse_certificate_b64
-from app.plugins.ssl.collector import is_weak_cipher_name
+from app.plugins.ssl.utils import is_weak_cipher_name
 from app.plugins.ssl.schemas import ParsedCipher, SslParsedData, SslRawResponse
 
 _FORWARD_SECRECY_PREFIXES = ("ECDHE", "DHE", "TLS_AES_", "TLS_CHACHA20_")
@@ -56,4 +56,6 @@ def parse(raw: SslRawResponse) -> SslParsedData:
         san_covers_www=san_covers_www,
         cipher_is_weak=cipher_is_weak,
         lacks_forward_secrecy=lacks_forward_secrecy,
+        ct_issuers=raw.ct_issuers,
+        suspicious_ct_issuers=raw.suspicious_ct_issuers,
     )

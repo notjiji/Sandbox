@@ -30,6 +30,22 @@ def resolve_host_port(identifier: str, default_port: int = 443) -> tuple[str, in
     return cleaned, default_port
 
 
+def is_weak_cipher_name(name: str) -> bool:
+    upper = name.upper()
+    weak_names = (
+        "DES-CBC3-SHA",
+        "RC4-SHA",
+        "RC4-MD5",
+        "NULL-SHA",
+        "NULL-MD5",
+        "ECDHE-RSA-AES128-SHA",
+        "AES128-SHA",
+        "AES256-SHA",
+        "EXPORT",
+    )
+    return any(weak in upper for weak in weak_names)
+
+
 def hostname_matches_pattern(host: str, pattern: str) -> bool:
     host = host.lower().rstrip(".")
     pattern = pattern.lower().rstrip(".")

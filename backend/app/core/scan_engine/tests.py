@@ -238,4 +238,4 @@ def test_plugin_config_exposed() -> None:
     assert plugin.config.enabled is True
     assert plugin.config.timeout == 45.0
     assert plugin.config.retries == 2
-    assert plugin.config.version == "3.0.0"
+    assert plugin.config.version == "3.1.0"

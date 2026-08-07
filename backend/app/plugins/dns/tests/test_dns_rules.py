@@ -1,5 +1,5 @@
 from app.plugins.base.plugin import ScanTarget
-from app.plugins.dns.rules import evaluate_rules, rule_missing_spf, rule_weak_dmarc
+from app.plugins.dns.rules import evaluate_rules, rule_resolver_discrepancy, rule_weak_dmarc
 from app.plugins.dns.schemas import DnsParsedData
 
 
@@ -17,3 +17,13 @@ def test_rule_weak_dmarc() -> None:
     finding = rule_weak_dmarc(parsed, ASSET, "dns")
     assert finding is not None
     assert finding.rule_id == "DNS_WEAK_DMARC"
+
+
+def test_rule_resolver_discrepancy() -> None:
+    parsed = DnsParsedData(
+        domain="example.com",
+        resolver_discrepancies=["A differs between system and cloudflare"],
+    )
+    finding = rule_resolver_discrepancy(parsed, ASSET, "dns")
+    assert finding is not None
+    assert finding.rule_id == "DNS_RESOLVER_DISCREPANCY"

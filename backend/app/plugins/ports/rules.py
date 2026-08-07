@@ -4,7 +4,10 @@ from app.plugins.base.plugin import ScanTarget
 from app.plugins.ports.schemas import PortsParsedData
 
 _PORT_RULES = {
+    21: ("PORT_FTP_OPEN", "FTP Port Open", FindingSeverity.MEDIUM, "Disable FTP or use SFTP instead."),
     23: ("PORT_TELNET_OPEN", "Telnet Port Open", FindingSeverity.CRITICAL, "Disable Telnet and use SSH instead."),
+    445: ("PORT_SMB_OPEN", "SMB Port Open", FindingSeverity.HIGH, "Restrict SMB to trusted networks."),
+    3389: ("PORT_RDP_OPEN", "RDP Port Open", FindingSeverity.HIGH, "Restrict RDP and enforce MFA/VPN access."),
 }
 
 

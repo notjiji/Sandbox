@@ -28,6 +28,11 @@ def test_collect_queries_all_record_types(monkeypatch) -> None:
 
     monkeypatch.setattr("app.plugins.dns.collector._query", fake_query)
     monkeypatch.setattr("app.plugins.dns.collector._query_dkim", lambda *args, **kwargs: {})
+    monkeypatch.setattr("app.plugins.dns.collector.fetch_crtsh_names", lambda domain: [])
+    monkeypatch.setattr("app.plugins.dns.collector._collect_resolver_snapshots", lambda domain, timeout: [])
+    monkeypatch.setattr("app.plugins.dns.collector._verify_http_takeovers", lambda probes, timeout: [])
+    monkeypatch.setattr("app.plugins.dns.collector.validate_dnssec", lambda domain, timeout=5.0: (None, None))
+    monkeypatch.setattr("app.plugins.dns.collector.count_spf_dns_lookups", lambda *args, **kwargs: 0)
 
     raw = asyncio.run(
         collect(

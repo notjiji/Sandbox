@@ -12,7 +12,12 @@ import dns.zone
 
 from app.plugins.base.contracts import ScanOptions
 from app.plugins.base.plugin import ScanTarget
-from app.plugins.dns.schemas import DnsRawResponse, MxHostProbe, SubdomainCnameProbe
+from app.plugins.dns.crtsh import extract_dkim_selectors, fetch_crtsh_names, subdomains_from_ct
+from app.plugins.dns.dnssec import validate_dnssec
+from app.plugins.dns.resolvers import PUBLIC_RESOLVERS, make_resolver
+from app.plugins.dns.schemas import DnsRawResponse, MxHostProbe, ResolverSnapshot, SubdomainCnameProbe
+from app.plugins.dns.spf import count_spf_dns_lookups
+from app.plugins.dns.takeover import is_dangling_cname_target, verify_takeover_http
 from app.plugins.dns.utils import (
     _COMMON_DKIM_SELECTORS,
     _COMMON_SUBDOMAINS,
@@ -24,6 +29,8 @@ from app.plugins.dns.utils import (
 
 _RECORD_TYPES = ("A", "AAAA", "MX", "TXT", "NS", "SOA", "CNAME")
 _EXTRA_TYPES = ("DNSKEY", "DS", "RRSIG", "CAA")
+_RESOLVER_COMPARE_TYPES = ("A", "AAAA", "MX", "NS", "TXT")
+_CT_SUBDOMAIN_LIMIT = 50
 
 
 def _format_rdata(rdata) -> str:
@@ -40,9 +47,7 @@ def _format_rdata(rdata) -> str:
 
 
 def _make_resolver(timeout: float) -> dns.resolver.Resolver:
-    resolver = dns.resolver.Resolver()
-    resolver.lifetime = timeout
-    return resolver
+    return make_resolver(PUBLIC_RESOLVERS[0], timeout)
 
 
 def _query(
@@ -59,9 +64,18 @@ def _query(
         return [], None, str(exc)
 
 
-def _query_dkim(resolver: dns.resolver.Resolver, domain: str) -> dict[str, list[str]]:
+def _query_dkim(
+    resolver: dns.resolver.Resolver,
+    domain: str,
+    extra_selectors: list[str] | None = None,
+) -> dict[str, list[str]]:
+    selectors = list(_COMMON_DKIM_SELECTORS)
+    for selector in extra_selectors or []:
+        if selector not in selectors:
+            selectors.append(selector)
+
     found: dict[str, list[str]] = {}
-    for selector in _COMMON_DKIM_SELECTORS:
+    for selector in selectors:
         name = f"{selector}._domainkey.{domain}"
         values, _, _ = _query(resolver, name, "TXT")
         if values:
@@ -69,9 +83,18 @@ def _query_dkim(resolver: dns.resolver.Resolver, domain: str) -> dict[str, list[
     return found
 
 
-def _probe_subdomains(resolver: dns.resolver.Resolver, domain: str) -> list[SubdomainCnameProbe]:
+def _probe_subdomains(
+    resolver: dns.resolver.Resolver,
+    domain: str,
+    extra_labels: list[str] | None = None,
+) -> list[SubdomainCnameProbe]:
+    labels = list(_COMMON_SUBDOMAINS)
+    for label in extra_labels or []:
+        if label not in labels:
+            labels.append(label)
+
     probes: list[SubdomainCnameProbe] = []
-    for label in _COMMON_SUBDOMAINS:
+    for label in labels:
         fqdn = f"{label}.{domain}"
         cnames, _, _ = _query(resolver, fqdn, "CNAME")
         a_records, _, _ = _query(resolver, fqdn, "A")
@@ -113,6 +136,29 @@ def _attempt_zone_transfer(resolver: dns.resolver.Resolver, domain: str, ns_reco
     return False
 
 
+def _collect_resolver_snapshots(domain: str, timeout: float) -> list[ResolverSnapshot]:
+    snapshots: list[ResolverSnapshot] = []
+    for config in PUBLIC_RESOLVERS:
+        resolver = make_resolver(config, timeout)
+        records: dict[str, list[str]] = {}
+        for rdtype in _RESOLVER_COMPARE_TYPES:
+            values, _, _ = _query(resolver, domain, rdtype)
+            records[rdtype] = sorted(values)
+        snapshots.append(ResolverSnapshot(resolver=config.name, records=records))
+    return snapshots
+
+
+def _verify_http_takeovers(probes: list[SubdomainCnameProbe], timeout: float) -> list[str]:
+    confirmed: list[str] = []
+    for probe in probes:
+        if not probe.cname_target or not is_dangling_cname_target(probe.cname_target):
+            continue
+        result = verify_takeover_http(probe.subdomain, timeout=timeout)
+        if result:
+            confirmed.append(result)
+    return confirmed
+
+
 def _collect_sync(domain: str, timeout: float) -> DnsRawResponse:
     resolver = _make_resolver(timeout)
     records: dict[str, list[str]] = {}
@@ -141,8 +187,12 @@ def _collect_sync(domain: str, timeout: float) -> DnsRawResponse:
     tls_rpt_records, _, _ = _query(resolver, f"_smtp._tls.{domain}", "TXT")
     bimi_records, _, _ = _query(resolver, f"default._bimi.{domain}", "TXT")
 
-    dkim_records = _query_dkim(resolver, domain)
-    subdomain_probes = _probe_subdomains(resolver, domain)
+    ct_names = fetch_crtsh_names(domain)
+    ct_dkim_selectors = extract_dkim_selectors(ct_names, domain)
+    ct_subdomains = subdomains_from_ct(ct_names, domain, limit=_CT_SUBDOMAIN_LIMIT)
+
+    dkim_records = _query_dkim(resolver, domain, extra_selectors=ct_dkim_selectors)
+    subdomain_probes = _probe_subdomains(resolver, domain, extra_labels=ct_subdomains)
     mx_probes = _probe_mx_hosts(resolver, records.get("MX", []))
 
     probe_name = wildcard_probe_name(domain)
@@ -151,6 +201,14 @@ def _collect_sync(domain: str, timeout: float) -> DnsRawResponse:
         wildcard_values, _, _ = _query(resolver, probe_name, "AAAA")
 
     zone_transfer_allowed = _attempt_zone_transfer(resolver, domain, records.get("NS", []))
+    resolver_snapshots = _collect_resolver_snapshots(domain, timeout)
+    http_takeover_confirmed = _verify_http_takeovers(subdomain_probes, timeout)
+    dnssec_validated, dnssec_validation_error = validate_dnssec(domain, timeout=min(timeout, 5.0))
+
+    spf_recursive_lookup_count: int | None = None
+    spf_record = find_spf_records(records.get("TXT", []))
+    if spf_record:
+        spf_recursive_lookup_count = count_spf_dns_lookups(domain, spf_record[0], resolver)
 
     return DnsRawResponse(
         domain=domain,
@@ -172,6 +230,13 @@ def _collect_sync(domain: str, timeout: float) -> DnsRawResponse:
         wildcard_resolves=bool(wildcard_values),
         zone_transfer_allowed=zone_transfer_allowed,
         query_errors=query_errors,
+        resolver_snapshots=resolver_snapshots,
+        ct_subdomains=ct_subdomains,
+        ct_dkim_selectors=ct_dkim_selectors,
+        http_takeover_confirmed=http_takeover_confirmed,
+        dnssec_validated=dnssec_validated,
+        dnssec_validation_error=dnssec_validation_error,
+        spf_recursive_lookup_count=spf_recursive_lookup_count,
     )
 
 

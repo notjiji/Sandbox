@@ -3,6 +3,11 @@
 from app.shared.schemas.base import BaseSchema
 
 
+class ResolverSnapshot(BaseSchema):
+    resolver: str
+    records: dict[str, list[str]]
+
+
 class SubdomainCnameProbe(BaseSchema):
     subdomain: str
     cname_target: str | None = None
@@ -37,6 +42,13 @@ class DnsRawResponse(BaseSchema):
     wildcard_resolves: bool = False
     zone_transfer_allowed: bool = False
     query_errors: dict[str, str] = {}
+    resolver_snapshots: list[ResolverSnapshot] = []
+    ct_subdomains: list[str] = []
+    ct_dkim_selectors: list[str] = []
+    http_takeover_confirmed: list[str] = []
+    dnssec_validated: bool | None = None
+    dnssec_validation_error: str | None = None
+    spf_recursive_lookup_count: int | None = None
 
 
 class DnsParsedData(BaseSchema):
@@ -63,6 +75,8 @@ class DnsParsedData(BaseSchema):
     dnssec_has_ds: bool = False
     dnssec_has_rrsig: bool = False
     dnssec_incomplete: bool = False
+    dnssec_validated: bool | None = None
+    dnssec_validation_failed: bool = False
     caa_records: list[str] = []
     caa_present: bool = False
     mta_sts_present: bool = False
@@ -73,6 +87,9 @@ class DnsParsedData(BaseSchema):
     subdomain_takeover_risks: list[str] = []
     mx_misconfigured: list[str] = []
     zone_transfer_allowed: bool = False
+    resolver_discrepancies: list[str] = []
+    ct_subdomains: list[str] = []
+    http_takeover_confirmed: list[str] = []
 
     @property
     def has_spf(self) -> bool:

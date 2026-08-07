@@ -238,6 +238,18 @@ def rule_incomplete_san_coverage(parsed: SslParsedData, asset: ScanTarget, plugi
     )
 
 
+def rule_ct_suspicious_issuer(parsed: SslParsedData, asset: ScanTarget, plugin_id: str) -> ScanFinding | None:
+    if not parsed.suspicious_ct_issuers:
+        return None
+    return scan_finding(
+        plugin=plugin_id, rule_id="SSL_CT_SUSPICIOUS_ISSUER", asset_id=asset.asset_id,
+        title="Suspicious Certificate Transparency Issuer", category="transport",
+        evidence=f"CT log issuers: {', '.join(parsed.suspicious_ct_issuers[:3])}",
+        recommendation="Review CT log entries for unauthorized or unexpected certificate issuers.",
+        severity=FindingSeverity.MEDIUM, status=FindingCheckStatus.WARNING,
+    )
+
+
 RULES: list[RuleFn] = [
     rule_expired_certificate,
     rule_expiring_soon,
@@ -253,6 +265,7 @@ RULES: list[RuleFn] = [
     rule_weak_cipher_negotiated,
     rule_additional_weak_ciphers,
     rule_no_forward_secrecy,
+    rule_ct_suspicious_issuer,
 ]
 
 
