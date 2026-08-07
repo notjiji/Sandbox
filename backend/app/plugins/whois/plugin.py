@@ -10,10 +10,10 @@ from app.scans.enums import ScanType
 class WhoisPlugin(ScannerPipeline[WhoisRawResponse, WhoisParsedData]):
     id = "whois"
     name = "WHOIS Scanner"
-    version = "1.0.0"
+    version = "2.0.0"
     supported_asset_types = ["domain", "email_domain"]
     supported_scan_types = [ScanType.FULL.value]
-    default_config = PluginConfig(enabled=True, timeout=30.0, retries=1, parallel=False, version="1.0.0")
+    default_config = PluginConfig(enabled=True, timeout=30.0, retries=1, parallel=False, version="2.0.0")
 
     async def collect(self, asset: ScanTarget, options: ScanOptions) -> WhoisRawResponse:
         return await collector.collect(asset, options)
@@ -25,4 +25,13 @@ class WhoisPlugin(ScannerPipeline[WhoisRawResponse, WhoisParsedData]):
         return rules.evaluate_rules(parsed, asset, plugin_id=self.id)
 
     def build_metadata(self, parsed: WhoisParsedData) -> dict:
-        return {"expires": parsed.expires}
+        return {
+            "domain": parsed.domain,
+            "registrar": parsed.registrar,
+            "created": parsed.created.isoformat() if parsed.created else None,
+            "updated": parsed.updated.isoformat() if parsed.updated else None,
+            "expires": parsed.expires.isoformat() if parsed.expires else None,
+            "name_servers": parsed.name_servers,
+            "days_until_expiry": parsed.days_until_expiry,
+            "privacy_enabled": parsed.privacy_enabled,
+        }
