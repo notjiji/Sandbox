@@ -83,4 +83,3 @@ def test_evaluate_rules_runs_all_independent_rules() -> None:
     assert "HTTP_NO_X_FRAME_OPTIONS" in rule_ids
     assert "HTTP_NO_X_CONTENT_TYPE_OPTIONS" in rule_ids
     assert "HTTP_SERVER_HEADER_EXPOSED" in rule_ids
-    assert "HTTP_MISSING_SECURITY_TXT" in rule_ids

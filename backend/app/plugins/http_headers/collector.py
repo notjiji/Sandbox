@@ -17,7 +17,6 @@ from app.plugins.http_headers.utils import (
     cookies_from_set_cookie_headers,
     normalize_headers,
     normalize_https_url,
-    security_txt_url,
     to_http_url,
     truncate_body,
 )
@@ -102,16 +101,9 @@ async def collect(asset: ScanTarget, options: ScanOptions) -> HttpHeadersRawResp
         primary = await _run_get_probe(client, https_url, follow_redirects=True)
         http_probe = await _run_get_probe(client, to_http_url(https_url), follow_redirects=False)
         trace_probe = await _run_trace_probe(client, primary.final_url)
-        try:
-            security_txt_probe = await _run_get_probe(
-                client, security_txt_url(primary.final_url), follow_redirects=True
-            )
-        except httpx.HTTPError:
-            security_txt_probe = None
 
     return HttpHeadersRawResponse(
         primary=primary,
         http_probe=http_probe,
         trace_probe=trace_probe,
-        security_txt_probe=security_txt_probe,
     )

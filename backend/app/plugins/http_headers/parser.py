@@ -84,11 +84,6 @@ def parse(raw: HttpHeadersRawResponse) -> HttpHeadersParsedData:
     trace_enabled = bool(raw.trace_probe and raw.trace_probe.allowed)
     redirect_issues, open_redirect = analyze_redirect_chain(probe.redirects, is_https_start=is_https)
     mixed = find_mixed_content_html(probe.body, page_url=probe.final_url, is_https=is_https)
-    security_txt_present = bool(
-        raw.security_txt_probe
-        and raw.security_txt_probe.status_code == 200
-        and "contact" in raw.security_txt_probe.body.lower()
-    )
 
     return HttpHeadersParsedData(
         url=probe.url,
@@ -119,6 +114,5 @@ def parse(raw: HttpHeadersRawResponse) -> HttpHeadersParsedData:
         hsts_is_weak=hsts_weak,
         mixed_content_urls=mixed,
         redirect_chain_issues=redirect_issues,
-        security_txt_present=security_txt_present,
         open_redirect_candidate=open_redirect,
     )

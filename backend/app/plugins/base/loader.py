@@ -15,6 +15,7 @@ from app.plugins.future.malware.plugin import MalwarePlugin
 from app.plugins.http_headers.plugin import HttpHeadersPlugin
 from app.plugins.ports.plugin import PortsPlugin
 from app.plugins.robots.plugin import RobotsPlugin
+from app.plugins.security_txt.plugin import SecurityTxtPlugin
 from app.plugins.ssl.plugin import SslPlugin
 from app.plugins.tls.plugin import TlsPlugin
 from app.plugins.whois.plugin import WhoisPlugin
@@ -29,6 +30,7 @@ BUILTIN_PLUGIN_CLASSES: list[type[ScannerPlugin]] = [
     WhoisPlugin,
     PortsPlugin,
     RobotsPlugin,
+    SecurityTxtPlugin,
     CookiesPlugin,
     MalwarePlugin,
     CloudPlugin,

@@ -314,21 +314,6 @@ def rule_insecure_redirect_chain(
     )
 
 
-def rule_missing_security_txt(
-    parsed: HttpHeadersParsedData, asset: ScanTarget, plugin_id: str
-) -> ScanFinding | None:
-    if parsed.security_txt_present:
-        return None
-    return scan_finding(
-        plugin=plugin_id, rule_id="HTTP_MISSING_SECURITY_TXT", asset_id=asset.asset_id,
-        title="Missing security.txt", category="exposure",
-        evidence="/.well-known/security.txt not found or invalid",
-        recommendation="Publish a security.txt with contact and disclosure policy per RFC 9116.",
-        reference_links=["https://securitytxt.org/"],
-        severity=FindingSeverity.LOW, status=FindingCheckStatus.WARNING,
-    )
-
-
 RULES: list[RuleFn] = [
     rule_missing_csp,
     rule_weak_csp,
@@ -345,7 +330,6 @@ RULES: list[RuleFn] = [
     rule_insecure_redirect_chain,
     rule_mixed_content,
     rule_weak_cookies,
-    rule_missing_security_txt,
 ]
 
 

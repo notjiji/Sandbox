@@ -10,10 +10,10 @@ from app.scans.enums import ScanType
 class RobotsPlugin(ScannerPipeline[RobotsRawResponse, RobotsParsedData]):
     id = "robots"
     name = "Robots.txt Scanner"
-    version = "1.0.0"
+    version = "2.0.0"
     supported_asset_types = ["website", "domain", "api_endpoint"]
     supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
-    default_config = PluginConfig(enabled=True, timeout=20.0, retries=1, parallel=False, version="1.0.0")
+    default_config = PluginConfig(enabled=True, timeout=20.0, retries=1, parallel=False, version="2.0.0")
 
     async def collect(self, asset: ScanTarget, options: ScanOptions) -> RobotsRawResponse:
         return await collector.collect(asset, options)
@@ -25,4 +25,22 @@ class RobotsPlugin(ScannerPipeline[RobotsRawResponse, RobotsParsedData]):
         return rules.evaluate_rules(parsed, asset, plugin_id=self.id)
 
     def build_metadata(self, parsed: RobotsParsedData) -> dict:
-        return {"path": parsed.path, "rules": parsed.rule_count}
+        return {
+            "url": parsed.url,
+            "present": parsed.present,
+            "status_code": parsed.status_code,
+            "path": parsed.path,
+            "rule_count": parsed.rule_count,
+            "user_agents": parsed.user_agents,
+            "disallowed_count": len(parsed.disallowed_paths),
+            "allowed_count": len(parsed.allowed_paths),
+            "sitemap_count": len(parsed.sitemaps),
+            "disallowed_paths": [rule.path for rule in parsed.disallowed_paths[:30]],
+            "allowed_paths": [rule.path for rule in parsed.allowed_paths[:30]],
+            "sitemaps": parsed.sitemaps,
+            "admin_paths": parsed.admin_paths,
+            "debug_paths": parsed.debug_paths,
+            "sensitive_paths": parsed.sensitive_paths,
+            "matched_paths": [item.model_dump() for item in parsed.matched_paths[:30]],
+            "error": parsed.error,
+        }

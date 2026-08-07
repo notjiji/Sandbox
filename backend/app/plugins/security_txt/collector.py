@@ -1,22 +1,19 @@
-"""Download /robots.txt from the target."""
+"""Download /.well-known/security.txt."""
 
 import httpx
 
 from app.plugins.base.contracts import ScanOptions
 from app.plugins.base.plugin import ScanTarget
-from app.plugins.http_headers.utils import normalize_https_url
-from app.plugins.robots.schemas import RobotsRawResponse
+from app.plugins.http_headers.utils import normalize_https_url, security_txt_url
+from app.plugins.security_txt.schemas import SecurityTxtRawResponse
 
 
-def robots_txt_url(identifier: str) -> str:
-    return normalize_https_url(identifier).rstrip("/") + "/robots.txt"
-
-
-async def collect(asset: ScanTarget, options: ScanOptions) -> RobotsRawResponse:
-    url = robots_txt_url(asset.identifier)
+async def collect(asset: ScanTarget, options: ScanOptions) -> SecurityTxtRawResponse:
+    base_url = normalize_https_url(asset.identifier)
+    url = security_txt_url(base_url)
     timeout = httpx.Timeout(options.timeout, connect=min(options.timeout, 10.0))
     headers = {
-        "User-Agent": "Sandbox-Robots-Scanner/2.0 (+https://sandbox.local/scanner)",
+        "User-Agent": "Sandbox-SecurityTxt-Scanner/1.0 (+https://sandbox.local/scanner)",
         "Accept": "text/plain,*/*",
     }
 
@@ -29,11 +26,12 @@ async def collect(asset: ScanTarget, options: ScanOptions) -> RobotsRawResponse:
         ) as client:
             response = await client.get(url, follow_redirects=True)
     except httpx.HTTPError as exc:
-        return RobotsRawResponse(url=url, error=str(exc))
+        return SecurityTxtRawResponse(url=url, error=str(exc))
 
     body = response.text if response.status_code == 200 else ""
-    return RobotsRawResponse(
+    return SecurityTxtRawResponse(
         url=url,
+        final_url=str(response.url),
         body=body,
         status_code=response.status_code,
     )

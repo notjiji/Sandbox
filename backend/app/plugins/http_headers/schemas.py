@@ -50,7 +50,6 @@ class HttpHeadersRawResponse(BaseSchema):
     primary: HttpProbeRaw
     http_probe: HttpProbeRaw | None = None
     trace_probe: HttpTraceProbeRaw | None = None
-    security_txt_probe: HttpProbeRaw | None = None
 
 
 class ParsedCookie(BaseSchema):
@@ -100,7 +99,6 @@ class HttpHeadersParsedData(BaseSchema):
     hsts_is_weak: bool = False
     mixed_content_urls: list[str] = []
     redirect_chain_issues: list[str] = []
-    security_txt_present: bool = False
     open_redirect_candidate: bool = False
 
     @property
