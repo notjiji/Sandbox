@@ -32,6 +32,8 @@ class RiskRule(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     score: Mapped[float] = mapped_column(Float, nullable=False)
     recommendation_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    rule_code: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    condition: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
