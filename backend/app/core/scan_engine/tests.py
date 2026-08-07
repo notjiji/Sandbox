@@ -231,6 +231,48 @@ def test_dispatcher_catches_plugin_errors() -> None:
     assert "boom" in (result.error or "")
 
 
+def test_dispatcher_runs_plugins_in_parallel() -> None:
+    import asyncio
+    import time
+
+    from app.core.scan_engine.dispatcher import ScanDispatcher
+    from app.plugins.base.config import PluginConfig
+    from app.plugins.base.contracts import ScanOptions, ScanResult
+    from app.plugins.base.plugin import ScanTarget, ScannerPlugin
+    from app.scans.enums import ScanType
+
+    class SlowPlugin(ScannerPlugin):
+        def __init__(self, plugin_id: str) -> None:
+            self.id = plugin_id
+            self.name = plugin_id
+            self.version = "0.0.1"
+            self.supported_asset_types = ["website"]
+            self.supported_scan_types = [ScanType.FULL.value]
+            self.default_config = PluginConfig(version="0.0.1")
+
+        async def run(self, asset: ScanTarget, options: ScanOptions) -> ScanResult:
+            await asyncio.sleep(0.05)
+            started_at = datetime.now(UTC)
+            return ScanResult.success(
+                plugin=self.id,
+                version=self.version,
+                started_at=started_at,
+                findings=[],
+                metadata={},
+            )
+
+    target = ScanTarget(asset_id="1", identifier="vinca.family", asset_type="website")
+    jobs = [(SlowPlugin("http_headers"), target), (SlowPlugin("ssl"), target), (SlowPlugin("dns"), target)]
+
+    started = time.perf_counter()
+    results = asyncio.run(ScanDispatcher().dispatch_parallel(jobs))
+    elapsed = time.perf_counter() - started
+
+    assert len(results) == 3
+    assert all(result.status.value == "success" for result in results)
+    assert elapsed < 0.12
+
+
 def test_plugin_config_exposed() -> None:
     from app.plugins.ssl.plugin import SslPlugin
 

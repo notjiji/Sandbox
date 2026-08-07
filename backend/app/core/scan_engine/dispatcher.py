@@ -13,7 +13,7 @@ logger = get_logger("sandbox.scan_engine.dispatcher")
 
 
 class ScanDispatcher:
-    def dispatch(
+    async def dispatch_async(
         self,
         *,
         plugin: ScannerPlugin,
@@ -34,7 +34,7 @@ class ScanDispatcher:
 
             result = plugin.run(asset, scan_options)
             if inspect.isawaitable(result):
-                output = asyncio.run(result)
+                output = await result
             else:
                 output = result
 
@@ -61,6 +61,24 @@ class ScanDispatcher:
                 started_at=started_at,
                 error=str(exc),
             )
+
+    async def dispatch_parallel(
+        self,
+        jobs: list[tuple[ScannerPlugin, ScanTarget]],
+    ) -> list[ScanResult]:
+        """Run multiple plugin scans concurrently."""
+        if not jobs:
+            return []
+        return list(await asyncio.gather(*(self.dispatch_async(plugin=plugin, asset=target) for plugin, target in jobs)))
+
+    def dispatch(
+        self,
+        *,
+        plugin: ScannerPlugin,
+        asset: ScanTarget,
+        options: ScanOptions | None = None,
+    ) -> ScanResult:
+        return asyncio.run(self.dispatch_async(plugin=plugin, asset=asset, options=options))
 
     @staticmethod
     def is_success(output: ScanResult) -> bool:

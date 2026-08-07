@@ -1,6 +1,8 @@
 """Coordinates scan lifecycle: load plugins → run → record status → normalize → persist."""
 
+import asyncio
 import uuid
+from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
@@ -13,11 +15,11 @@ from app.core.scan_engine.result_combiner import combine_normalized_findings, re
 from app.core.scan_engine.types import CombinedScanResults, PluginExecutionRecord
 from app.findings.enums import FindingStatus
 from app.findings.repositories.finding_repository import create_finding
-from app.plugins.base.contracts import ScanResultStatus
+from app.plugins.base.contracts import ScanResult, ScanResultStatus
 from app.plugins.base.loader import plugin_loader
 from app.plugins.base.plugin import ScanTarget, ScannerPlugin
 from app.scans.enums import PluginRunStatus, ScanStatus
-from app.scans.models import Scan
+from app.scans.models import Scan, ScanPluginRun
 from app.scans.repositories.scan_plugin_repository import (
     complete_plugin_run,
     create_plugin_run,
@@ -25,6 +27,13 @@ from app.scans.repositories.scan_plugin_repository import (
 from app.scans.repositories.scan_repository import update_scan_status
 
 logger = get_logger("sandbox.scan_engine")
+
+
+@dataclass(frozen=True)
+class _PluginWorkItem:
+    target: ScanTarget
+    plugin: ScannerPlugin
+    plugin_run: ScanPluginRun
 
 
 class ScanOrchestrator:
@@ -60,21 +69,12 @@ class ScanOrchestrator:
             update_scan_status(db, scan, status=ScanStatus.FAILED)
             return scan
 
-        records: list[PluginExecutionRecord] = []
-
-        for target in targets:
-            target_plugins = [
-                plugin for plugin in selection.enabled if plugin.supports_asset(target.asset_type)
-            ]
-            for plugin in target_plugins:
-                records.append(
-                    self._run_plugin(
-                        db,
-                        scan=scan,
-                        target=target,
-                        plugin=plugin,
-                    )
-                )
+        work_items = self._prepare_work_items(db, scan=scan, targets=targets, plugins=selection.enabled)
+        outputs = asyncio.run(self._run_plugins_parallel(work_items))
+        records = [
+            self._finalize_plugin_run(db, item, output)
+            for item, output in zip(work_items, outputs, strict=True)
+        ]
 
         combined = self._combine_results(records)
         self._persist_findings(db, scan=scan, combined=combined)
@@ -89,28 +89,46 @@ class ScanOrchestrator:
                 "findings": combined.total_findings,
                 "completed_plugins": combined.completed_plugins,
                 "failed_plugins": combined.failed_plugins,
+                "parallel_plugins": len(work_items),
             },
         )
         return scan
 
-    def _run_plugin(
+    def _prepare_work_items(
         self,
         db: Session,
         *,
         scan: Scan,
-        target: ScanTarget,
-        plugin: ScannerPlugin,
-    ) -> PluginExecutionRecord:
-        asset_id = uuid.UUID(target.asset_id)
-        plugin_run = create_plugin_run(
-            db,
-            scan_id=scan.id,
-            asset_id=asset_id,
-            plugin_name=plugin.id,
-            status=PluginRunStatus.RUNNING,
-        )
+        targets: list[ScanTarget],
+        plugins: list[ScannerPlugin],
+    ) -> list[_PluginWorkItem]:
+        items: list[_PluginWorkItem] = []
+        for target in targets:
+            for plugin in plugins:
+                if not plugin.supports_asset(target.asset_type):
+                    continue
+                plugin_run = create_plugin_run(
+                    db,
+                    scan_id=scan.id,
+                    asset_id=uuid.UUID(target.asset_id),
+                    plugin_name=plugin.id,
+                    status=PluginRunStatus.RUNNING,
+                )
+                items.append(_PluginWorkItem(target=target, plugin=plugin, plugin_run=plugin_run))
+        return items
 
-        output = self._dispatcher.dispatch(plugin=plugin, asset=target)
+    async def _run_plugins_parallel(self, work_items: list[_PluginWorkItem]) -> list[ScanResult]:
+        if not work_items:
+            return []
+        jobs = [(item.plugin, item.target) for item in work_items]
+        return await self._dispatcher.dispatch_parallel(jobs)
+
+    def _finalize_plugin_run(
+        self,
+        db: Session,
+        item: _PluginWorkItem,
+        output: ScanResult,
+    ) -> PluginExecutionRecord:
         run_status = (
             PluginRunStatus.COMPLETED
             if output.status == ScanResultStatus.SUCCESS
@@ -121,15 +139,15 @@ class ScanOrchestrator:
             error_message = output.error or str(output.metadata.get("error", "Plugin returned failure"))
             complete_plugin_run(
                 db,
-                plugin_run,
+                item.plugin_run,
                 status=PluginRunStatus.FAILED,
                 duration_seconds=output.duration,
                 error_message=error_message,
                 metadata=output.metadata or None,
             )
             return PluginExecutionRecord(
-                plugin_name=plugin.id,
-                target=target,
+                plugin_name=item.plugin.id,
+                target=item.target,
                 status=PluginRunStatus.FAILED,
                 output=output,
                 error_message=error_message,
@@ -139,48 +157,19 @@ class ScanOrchestrator:
         normalized_findings = self._normalizer.normalize_output(output)
         complete_plugin_run(
             db,
-            plugin_run,
+            item.plugin_run,
             status=PluginRunStatus.COMPLETED,
             findings_count=len(normalized_findings),
             duration_seconds=output.duration,
             metadata=output.metadata or None,
         )
         return PluginExecutionRecord(
-            plugin_name=plugin.id,
-            target=target,
+            plugin_name=item.plugin.id,
+            target=item.target,
             status=PluginRunStatus.COMPLETED,
             output=output,
             normalized_findings=normalized_findings,
             duration=output.duration,
-        )
-
-    def _record_skipped_plugin(
-        self,
-        db: Session,
-        *,
-        scan: Scan,
-        target: ScanTarget,
-        plugin: ScannerPlugin,
-        reason: str,
-    ) -> PluginExecutionRecord:
-        plugin_run = create_plugin_run(
-            db,
-            scan_id=scan.id,
-            asset_id=uuid.UUID(target.asset_id),
-            plugin_name=plugin.id,
-            status=PluginRunStatus.SKIPPED,
-        )
-        complete_plugin_run(
-            db,
-            plugin_run,
-            status=PluginRunStatus.SKIPPED,
-            error_message=reason,
-        )
-        return PluginExecutionRecord(
-            plugin_name=plugin.id,
-            target=target,
-            status=PluginRunStatus.SKIPPED,
-            error_message=reason,
         )
 
     def _combine_results(self, records: list[PluginExecutionRecord]) -> CombinedScanResults:
