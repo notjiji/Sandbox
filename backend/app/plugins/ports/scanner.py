@@ -1,40 +1,15 @@
-"""Async TCP connect port scanner."""
+"""Async TCP connect scan with protocol-aware banner capture."""
 
 from __future__ import annotations
 
 import asyncio
-import re
-import socket
 
-from app.plugins.ports.schemas import PortProbeRaw
+from app.plugins.ports.banners import extract_from_banner
+from app.plugins.ports.schemas import NmapServiceRaw, PortProbeRaw
 
-_COMMON_PORTS = (
-    21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 993, 995, 3306, 3389, 5432, 5900, 8080, 8443, 8888, 9200, 27017,
+SCAN_PORTS: tuple[int, ...] = (
+    21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 993, 995, 3306, 3389, 5432, 5900, 6379, 8080, 8443, 8888, 9200, 27017,
 )
-_SERVICE_BY_PORT = {
-    21: "ftp",
-    22: "ssh",
-    23: "telnet",
-    25: "smtp",
-    53: "dns",
-    80: "http",
-    110: "pop3",
-    143: "imap",
-    443: "https",
-    445: "smb",
-    993: "imaps",
-    995: "pop3s",
-    3306: "mysql",
-    3389: "rdp",
-    5432: "postgresql",
-    5900: "vnc",
-    8080: "http-proxy",
-    8443: "https-alt",
-    8888: "http-alt",
-    9200: "elasticsearch",
-    27017: "mongodb",
-}
-_BANNER_PORTS = {21, 22, 25, 110, 143}
 
 
 def resolve_host(identifier: str) -> str:
@@ -51,49 +26,109 @@ def resolve_host(identifier: str) -> str:
     return cleaned.strip("[]")
 
 
-async def _probe_port(host: str, port: int, timeout: float) -> PortProbeRaw:
-    probe = PortProbeRaw(port=port, open=False, service=_SERVICE_BY_PORT.get(port))
+async def _read_banner(reader: asyncio.StreamReader, *, timeout: float, max_bytes: int = 512) -> str | None:
+    try:
+        data = await asyncio.wait_for(reader.read(max_bytes), timeout=timeout)
+    except (TimeoutError, asyncio.TimeoutError):
+        return None
+    if not data:
+        return None
+    return data.decode("utf-8", errors="replace").strip()
+
+
+async def _grab_banner(host: str, port: int, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, timeout: float) -> str | None:
+    probe_timeout = min(timeout, 3.0)
+    if port == 22:
+        return await _read_banner(reader, timeout=probe_timeout)
+
+    if port in {21, 25, 110, 143}:
+        return await _read_banner(reader, timeout=probe_timeout)
+
+    if port in {80, 8080, 8443, 8888}:
+        request = f"GET / HTTP/1.0\r\nHost: {host}\r\n\r\n".encode()
+        writer.write(request)
+        await writer.drain()
+        return await _read_banner(reader, timeout=probe_timeout)
+
+    if port == 6379:
+        writer.write(b"PING\r\n")
+        await writer.drain()
+        banner = await _read_banner(reader, timeout=probe_timeout)
+        if banner:
+            return banner
+        writer.write(b"INFO\r\n")
+        await writer.drain()
+        return await _read_banner(reader, timeout=probe_timeout, max_bytes=1024)
+
+    if port == 3306:
+        return await _read_banner(reader, timeout=probe_timeout, max_bytes=256)
+
+    if port == 27017:
+        # Minimal wire probe; many deployments require auth — connect success is enough for open detection.
+        return None
+
+    if port == 3389:
+        return None
+
+    writer.write(b"\r\n")
+    await writer.drain()
+    return await _read_banner(reader, timeout=probe_timeout)
+
+
+async def probe_port(host: str, port: int, timeout: float) -> PortProbeRaw:
+    probe = PortProbeRaw(port=port, open=False)
+    writer = None
     try:
         reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout)
         probe.open = True
-        if port in _BANNER_PORTS:
-            try:
-                if port == 22:
-                    banner = await asyncio.wait_for(reader.read(256), timeout=min(timeout, 3.0))
-                else:
-                    writer.write(b"\r\n")
-                    await writer.drain()
-                    banner = await asyncio.wait_for(reader.read(256), timeout=min(timeout, 3.0))
-                probe.banner = banner.decode("utf-8", errors="replace").strip() or None
-            except Exception:
-                probe.banner = None
-        writer.close()
-        try:
-            await writer.wait_closed()
-        except Exception:
-            pass
+        probe.banner = await _grab_banner(host, port, reader, writer, timeout)
+        _, _, version = extract_from_banner(port, probe.banner)
+        probe.version = version
     except (TimeoutError, asyncio.TimeoutError, ConnectionRefusedError, OSError):
         return probe
+    finally:
+        if writer is not None:
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
     return probe
 
 
-async def scan_ports(host: str, *, timeout: float, ports: tuple[int, ...] = _COMMON_PORTS) -> list[PortProbeRaw]:
+async def scan_ports(host: str, *, timeout: float, ports: tuple[int, ...] = SCAN_PORTS) -> list[PortProbeRaw]:
     semaphore = asyncio.Semaphore(40)
 
     async def limited_probe(port: int) -> PortProbeRaw:
         async with semaphore:
-            return await _probe_port(host, port, timeout)
+            return await probe_port(host, port, timeout)
 
-    results = await asyncio.gather(*(limited_probe(port) for port in ports))
-    return list(results)
+    return list(await asyncio.gather(*(limited_probe(port) for port in ports)))
 
 
-def parse_banner_product(banner: str | None) -> tuple[str | None, str | None]:
-    if not banner:
-        return None, None
-    ssh_match = re.search(r"OpenSSH[_\s-]?([\d.p]+)", banner, re.I)
-    if ssh_match:
-        return "openssh", ssh_match.group(1)
-    if banner.upper().startswith("SSH-"):
-        return "openssh", None
-    return None, None
+def merge_nmap_into_probes(probes: list[PortProbeRaw], nmap_services: list[NmapServiceRaw]) -> list[PortProbeRaw]:
+    if not nmap_services:
+        return probes
+
+    nmap_by_port = {service.port: service for service in nmap_services}
+    merged: list[PortProbeRaw] = []
+    for probe in probes:
+        nmap = nmap_by_port.get(probe.port)
+        if not nmap:
+            merged.append(probe)
+            continue
+        version_parts = [part for part in (nmap.version, nmap.extrainfo) if part]
+        merged.append(
+            probe.model_copy(
+                update={
+                    "version": " ".join(version_parts) if version_parts else probe.version,
+                    "banner": probe.banner or _nmap_banner(nmap),
+                }
+            )
+        )
+    return merged
+
+
+def _nmap_banner(nmap: NmapServiceRaw) -> str | None:
+    parts = [part for part in (nmap.product, nmap.version, nmap.extrainfo) if part]
+    return " ".join(parts) if parts else nmap.service_name

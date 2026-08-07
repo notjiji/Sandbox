@@ -15,6 +15,7 @@ SCAN_PROFILE_PLUGINS: dict[ScanType, list[str]] = {
         "ports",
         "robots",
         "cookies",
+        "cve",
     ],
 }
 
@@ -26,7 +27,7 @@ SCAN_PROFILE_LABELS: dict[ScanType, str] = {
 
 SCAN_PROFILE_DESCRIPTIONS: dict[ScanType, str] = {
     ScanType.QUICK: "Fast baseline checks — HTTP headers, SSL, DNS, and cookies.",
-    ScanType.FULL: "Comprehensive scan — HTTP, SSL/TLS, DNS, WHOIS, ports, robots, and cookies.",
+    ScanType.FULL: "Comprehensive scan — HTTP, SSL/TLS, DNS, WHOIS, ports, robots, cookies, and CVE lookup.",
     ScanType.CUSTOM: "Choose exactly which scanners to run.",
 }
 

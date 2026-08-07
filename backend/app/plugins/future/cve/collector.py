@@ -6,7 +6,7 @@ from app.plugins.base.contracts import ScanOptions
 from app.plugins.base.plugin import ScanTarget
 from app.plugins.future.cve.osv import hints_from_http_headers, hints_from_ssh_banner, query_osv
 from app.plugins.future.cve.schemas import CveRawResponse, InstalledPackage
-from app.plugins.ports.scanner import _probe_port, resolve_host
+from app.plugins.ports.scanner import probe_port, resolve_host
 
 
 async def _http_headers(host: str, timeout: float) -> dict[str, str]:
@@ -27,7 +27,7 @@ async def collect(asset: ScanTarget, options: ScanOptions) -> CveRawResponse:
 
     headers, ssh_probe = await asyncio.gather(
         _http_headers(host, timeout),
-        _probe_port(host, 22, min(timeout, 3.0)),
+        probe_port(host, 22, min(timeout, 3.0)),
     )
 
     hints = hints_from_http_headers(headers)

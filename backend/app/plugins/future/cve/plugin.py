@@ -21,7 +21,7 @@ class CvePlugin(ScannerPipeline[CveRawResponse, CveParsedData]):
         "api_endpoint",
     ]
     supported_scan_types = [ScanType.FULL.value, ScanType.CUSTOM.value]
-    default_config = PluginConfig(enabled=False, timeout=180.0, retries=1, parallel=True, version="1.0.0")
+    default_config = PluginConfig(enabled=True, timeout=180.0, retries=1, parallel=True, version="1.0.0")
 
     async def collect(self, asset: ScanTarget, options: ScanOptions) -> CveRawResponse:
         return await collector.collect(asset, options)

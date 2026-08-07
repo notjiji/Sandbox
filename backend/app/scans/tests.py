@@ -15,6 +15,7 @@ def test_scans_module_imports() -> None:
     assert SCAN_PROFILE_PLUGINS[ScanType.QUICK] == ["http_headers", "ssl", "dns", "cookies"]
     assert "robots" in SCAN_PROFILE_PLUGINS[ScanType.FULL]
     assert "tls" in SCAN_PROFILE_PLUGINS[ScanType.FULL]
+    assert "cve" in SCAN_PROFILE_PLUGINS[ScanType.FULL]
     assert callable(scan_service.list_asset_scans)
     assert callable(scan_service.run_asset_scan)
     assert callable(scan_service.list_scan_profile_options)

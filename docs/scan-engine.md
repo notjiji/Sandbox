@@ -214,30 +214,39 @@ class ScannerPlugin(ABC):
         ...
 ```
 
-Example implementation:
+Example implementation (real scanners delegate to the shared pipeline):
 
 ```python
 class SslPlugin(ScannerPlugin):
     name = "ssl"
     description = "SSL Scanner"
-    version = "0.1.0"
+    version = "3.1.0"
     supported_assets = ["website", "domain", "api_endpoint", "email_domain"]
-    supported_scan_types = [ScanType.FULL.value]
+    supported_scan_types = [ScanType.FULL.value, ScanType.QUICK.value]
 
     async def scan(self, asset: ScanTarget) -> ScanResult:
-        ...
+        raw = await collect_ssl_data(asset)
+        parsed = parse_ssl_data(raw)
+        return evaluate_rules(parsed, asset)
 ```
 
 Built-in plugins are registered in one place — no string import paths scattered across the codebase:
 
 ```python
-# app/plugins/builtin.py
+# app/plugins/base/loader.py
 BUILTIN_PLUGIN_CLASSES = [
     HttpHeadersPlugin,
     SslPlugin,
+    TlsPlugin,
     DnsPlugin,
     WhoisPlugin,
     PortsPlugin,
+    RobotsPlugin,
+    CookiesPlugin,
+    MalwarePlugin,      # disabled by default
+    CloudPlugin,        # disabled by default
+    KubernetesPlugin,   # disabled by default
+    CvePlugin,
 ]
 ```
 
@@ -249,16 +258,16 @@ Instead of always running every scanner, scans use **reusable profiles** that de
 
 | Profile | Plugins |
 |---------|---------|
-| **Quick Scan** | `http_headers`, `ssl`, `dns` |
-| **Full Scan** | `http_headers`, `ssl`, `dns`, `whois`, `ports` |
+| **Quick Scan** | `http_headers`, `ssl`, `dns`, `cookies` |
+| **Full Scan** | `http_headers`, `ssl`, `tls`, `dns`, `whois`, `ports`, `robots`, `cookies`, `cve` |
 | **Custom Scan** | User-selected plugins (stored on the scan as `selected_plugins`) |
 
 ```mermaid
 flowchart TB
     CREATE["POST /assets/{id}/scans\n{ scan_type, plugins? }"]
     CREATE --> PROFILE["resolve_profile_plugins()"]
-    PROFILE --> QUICK["quick → http_headers, ssl, dns"]
-    PROFILE --> FULL["full → all 5 plugins"]
+    PROFILE --> QUICK["quick → http_headers, ssl, dns, cookies"]
+    PROFILE --> FULL["full → 9 plugins incl. whois, ports, cve"]
     PROFILE --> CUSTOM["custom → user plugins[]"]
 
     RUN["POST /scans/{id}/run"] --> LOADER["PluginLoader.select_for_scan(scan)"]
@@ -309,15 +318,61 @@ Profile → plugin slugs → Registry → enabled ScannerPlugin instances
 
 ### Built-in plugins
 
-| Plugin | Description | Scan types | Supported assets |
-|--------|-------------|------------|------------------|
-| `http_headers` | HTTP Headers Scanner | full, quick | website, api_endpoint |
-| `ssl` | SSL Scanner | full, quick | website, domain, api_endpoint, email_domain |
-| `dns` | DNS Scanner | full, quick | website, domain, public_ip, email_domain |
-| `whois` | WHOIS Scanner | full | domain, email_domain |
-| `ports` | Port Scanner | full | public_ip, server, windows_server, docker_host |
+| Plugin | Version | Description | Scan types | Supported assets |
+|--------|---------|-------------|------------|------------------|
+| `http_headers` | 3.1 | HTTP security headers, cookies, mixed content | full, quick | website, api_endpoint |
+| `ssl` | 3.1 | TLS/certificate analysis, CT issuers, OCSP | full, quick | website, domain, api_endpoint, email_domain |
+| `tls` | 1.0 | Extended TLS checks (stub) | full | website, domain, api_endpoint |
+| `dns` | 3.1 | DNS records, SPF/DMARC/DKIM, DNSSEC, takeover | full, quick | website, domain, public_ip, email_domain |
+| `whois` | 2.0 | Registrar, expiry, privacy, nameservers | full | domain, email_domain |
+| `ports` | 3.0 | TCP connect + banner + optional Nmap `-sV` | full | public_ip, server, windows_server, docker_host |
+| `robots` | 1.0 | robots.txt analysis | full | website, api_endpoint |
+| `cookies` | 1.0 | Cookie security attributes | full, quick | website, api_endpoint |
+| `cve` | 1.0 | OSV vulnerability lookup from banners/headers | full, custom | server, public_ip, website, … |
+
+Every real scanner follows the same internal pipeline:
+
+```
+collect → parse → evaluate_rules → ScanResult
+```
 
 Plugins can be disabled via `PluginConfig.enabled = False`. Disabled plugins are excluded from profile resolution.
+
+### Port scanner pipeline
+
+The port scanner (`ports` v3) uses the richest detection path available:
+
+```mermaid
+flowchart TD
+    A[TCP connect scan] --> B{Port open?}
+    B -->|No| SKIP[Skip port]
+    B -->|Yes| C[Grab protocol banner]
+    C --> D[Extract version from banner]
+    D --> E{Nmap installed?}
+    E -->|Yes| F["nmap -sV on open ports"]
+    E -->|No| G[Use banner-only data]
+    F --> H[Merge product/version]
+    G --> H
+    H --> I[Parser: port → service → product → version]
+    I --> J[Rule engine → findings]
+```
+
+**Example parsed service:** port `22` → service `ssh` → product `OpenSSH` → version `9.2`
+
+**Rules:** `PORT_FTP_OPEN`, `PORT_TELNET_OPEN`, `PORT_RDP_EXPOSED`, `PORT_MYSQL_PUBLIC`, `PORT_REDIS_PUBLIC`, `PORT_MONGODB_PUBLIC`
+
+Install **Nmap** and **OpenSSL** in the scan worker for richest results. The backend Docker image includes both:
+
+```dockerfile
+RUN apt-get install -y nmap openssl
+```
+
+Rebuild workers after changing the Dockerfile:
+
+```bash
+docker compose build backend celery-worker
+docker compose up -d backend celery-worker
+```
 
 ### Plugin run statuses
 
@@ -507,6 +562,17 @@ Tree view auto-disables when **searching** or filtering by **child asset types**
 | `014_scan_plugin_runs.py` | `scan_plugin_runs` table + `plugin_run_status` enum |
 | `016_scan_profiles.py` | `custom` scan type + `selected_plugins` column |
 | `017_scan_lifecycle.py` | `queued` status + lifecycle timestamp columns |
+| `030_scanner_risk_rules.py` | DNS/HTTP/SSL finding codes for risk engine |
+| `031_section7_gap_risk_rules.py` | DNSSEC, CT, CSP, port, CVE rules |
+| `032_whois_risk_rules.py` | WHOIS expired/privacy/registrar rules |
+| `033_port_scanner_risk_rules.py` | Port exposure rules (FTP, RDP, MySQL, Redis, MongoDB) |
+
+Apply all migrations before running scans:
+
+```bash
+cd backend
+alembic upgrade head
+```
 
 ---
 
@@ -565,11 +631,12 @@ Each plugin can return arbitrary **metadata** alongside findings. Metadata is di
 
 | Plugin | Example metadata |
 |--------|------------------|
-| **SSL** | certificate, issuer, expires, cipher, tls_versions |
-| **WHOIS** | registrar, created, updated, expiration |
-| **HTTP** | status_code, headers, redirect_count |
-| **DNS** | records, resolver |
-| **Ports** | open_ports, filtered_ports, scan_profile |
+| **SSL** | host, port, protocols, issuer, expires, cipher, sans |
+| **WHOIS** | registrar, created, updated, expires, name_servers, privacy_enabled |
+| **HTTP** | url, status_code, server, redirect_count, security_headers |
+| **DNS** | records, spf, dmarc, dkim_selectors, dnssec, takeover risks |
+| **Ports** | open_ports, services (port/service/product/version) |
+| **CVE** | cve_count, vulnerable packages |
 
 Stored on `scan_plugin_runs.metadata` and returned in `ScanPluginRunSummary.metadata`.
 
@@ -593,7 +660,7 @@ default_config = PluginConfig(
     timeout=45.0,
     retries=2,
     parallel=False,
-    version="0.1.0",
+    version="3.1.0",
 )
 ```
 
