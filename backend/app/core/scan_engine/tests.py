@@ -150,7 +150,7 @@ def test_profile_resolves_quick_scan_plugins() -> None:
         scan = SimpleNamespace(scan_type=ScanType.QUICK, selected_plugins=None)
         selection = plugin_loader.select_for_scan(scan)
         enabled_ids = {plugin.id for plugin in selection.enabled}
-        assert enabled_ids == {"http_headers", "ssl", "dns", "cookies"}
+        assert enabled_ids == {"http_headers", "tls", "dns", "cookies"}
     finally:
         registry._plugins.clear()
         plugin_loader.discover()
@@ -372,4 +372,4 @@ def test_plugin_config_exposed() -> None:
     assert plugin.config.enabled is True
     assert plugin.config.timeout == 45.0
     assert plugin.config.retries == 2
-    assert plugin.config.version == "3.1.0"
+    assert plugin.config.version == "4.0.0"

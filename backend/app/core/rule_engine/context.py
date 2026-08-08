@@ -6,6 +6,7 @@ from typing import Any
 
 from app.plugins.base.plugin import ScanTarget
 from app.plugins.http_headers.utils import header_lookup
+from app.plugins.shared.scan_context import scan_context
 
 
 def build_context(parsed: Any, asset: ScanTarget, *, plugin_id: str) -> dict[str, Any]:
@@ -160,12 +161,42 @@ def _whois_enricher(parsed: Any, asset: ScanTarget) -> dict[str, Any]:
 
 
 def _tls_enricher(parsed: Any, asset: ScanTarget) -> dict[str, Any]:
-    legacy = [item for item in getattr(parsed, "legacy_protocols_accepted", []) or []]
-    weak = getattr(parsed, "weak_ciphers_accepted", []) or []
+    ssl_context = _ssl_enricher(parsed, asset)
+    hints = scan_context.transport_hints()
+    has_hsts = bool(hints.get("has_hsts"))
+    legacy = [item for item in ("TLSv1.0", "TLSv1.1") if item in (getattr(parsed, "protocols_accepted", []) or [])]
+    tls_reachable = bool(getattr(parsed, "protocols_accepted", None) or getattr(parsed, "certificate", None))
+    ssl_context.update(
+        {
+            "tls_without_hsts": tls_reachable and not has_hsts,
+            "legacy_protocol_enabled": bool(legacy),
+            "legacy_protocols_accepted": legacy,
+            "legacy_protocols_evidence": ", ".join(legacy),
+        }
+    )
+    return ssl_context
+
+
+def _cookies_enricher(parsed: Any, asset: ScanTarget) -> dict[str, Any]:
+    def _names(items: list[Any], *, limit: int = 5) -> str:
+        names = [getattr(item, "name", str(item)) for item in items[:limit]]
+        suffix = f" (+{len(items) - limit} more)" if len(items) > limit else ""
+        return ", ".join(names) + suffix
+
+    sensitive_insecure = [
+        cookie
+        for cookie in getattr(parsed, "sensitive_cookies", []) or []
+        if (getattr(parsed, "is_https", False) and not cookie.secure) or not cookie.httponly
+    ]
     return {
-        "legacy_protocol_enabled": bool(legacy),
-        "legacy_protocols_evidence": ", ".join(legacy),
-        "weak_ciphers_evidence": ", ".join(weak),
+        "missing_secure_evidence": _names(getattr(parsed, "cookies_missing_secure", []) or []),
+        "missing_httponly_evidence": _names(getattr(parsed, "cookies_missing_httponly", []) or []),
+        "missing_samesite_evidence": _names(getattr(parsed, "cookies_missing_samesite", []) or []),
+        "sensitive_insecure_cookies": sensitive_insecure,
+        "sensitive_insecure_evidence": _names(sensitive_insecure),
+        "long_expiration_evidence": _names(getattr(parsed, "cookies_long_expiration", []) or []),
+        "oversized_evidence": _names(getattr(parsed, "cookies_oversized", []) or []),
+        "duplicate_names_evidence": ", ".join(getattr(parsed, "duplicate_names", []) or []),
     }
 
 
@@ -210,4 +241,5 @@ _CONTEXT_ENRICHERS = {
     "ports": _ports_enricher,
     "whois": _whois_enricher,
     "tls": _tls_enricher,
+    "cookies": _cookies_enricher,
 }

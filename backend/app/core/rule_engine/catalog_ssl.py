@@ -25,6 +25,21 @@ SSL_RULES: list[RuleSpec] = [
         },
         evidence="Certificate expires on {certificate.not_after}",
         description="The TLS certificate expires within 30 days.",
+    ),
+    RuleSpec(
+        finding_code="SSL_EXPIRING_90",
+        category="transport",
+        condition={
+            "op": "and",
+            "conditions": [
+                {"path_falsy": "certificate.is_expired"},
+                {"op": "truthy", "path": "certificate.days_until_expiry"},
+                {"op": "gt", "path": "certificate.days_until_expiry", "value": 30},
+                {"op": "lte", "path": "certificate.days_until_expiry", "value": 90},
+            ],
+        },
+        evidence="Certificate expires in {certificate.days_until_expiry} days on {certificate.not_after}",
+        description="The TLS certificate expires within 90 days.",
         status=FindingCheckStatus.WARNING,
     ),
     RuleSpec(

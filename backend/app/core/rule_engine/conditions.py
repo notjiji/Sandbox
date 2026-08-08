@@ -152,6 +152,13 @@ def evaluate_condition(condition: dict[str, Any] | None, context: dict[str, Any]
                 return target is not None and target <= limit
             except TypeError:
                 return False
+        if op == "gt":
+            target = _get_path(context, str(condition["path"]))
+            limit = condition.get("value")
+            try:
+                return target is not None and target > limit
+            except TypeError:
+                return False
         if op == "contains":
             target = _get_path(context, str(condition["path"]))
             needle = condition.get("value")

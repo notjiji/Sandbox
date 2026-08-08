@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
+from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.x509.oid import ExtensionOID, NameOID
 
 from app.plugins.ssl.schemas import ParsedCertificate
@@ -66,6 +67,8 @@ def parse_certificate_der(der_bytes: bytes, *, hostname: str) -> ParsedCertifica
         subject=subject,
         common_name=common_name,
         sans=sans,
+        serial_number=str(cert.serial_number),
+        fingerprint_sha256=cert.fingerprint(SHA256()).hex(),
         not_before=not_before,
         not_after=not_after,
         is_expired=not_after < now,

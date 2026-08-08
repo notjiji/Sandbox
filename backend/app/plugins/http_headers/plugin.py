@@ -1,9 +1,12 @@
+from datetime import UTC, datetime
+
 from app.plugins.base.config import PluginConfig
-from app.plugins.base.contracts import ScanOptions
+from app.plugins.base.contracts import ScanOptions, ScanResult
 from app.plugins.base.pipeline import ScannerPipeline
 from app.plugins.base.plugin import ScanTarget
 from app.plugins.http_headers import collector, parser, rules
 from app.plugins.http_headers.schemas import HttpHeadersParsedData, HttpHeadersRawResponse
+from app.plugins.shared.scan_context import scan_context
 from app.scans.enums import ScanType
 
 
@@ -36,3 +39,22 @@ class HttpHeadersPlugin(ScannerPipeline[HttpHeadersRawResponse, HttpHeadersParse
             "timing_ms": parsed.timing.total_ms,
             "security_headers": parsed.security_headers.model_dump(exclude_none=True),
         }
+
+    async def run(self, asset: ScanTarget, options: ScanOptions) -> ScanResult:
+        started_at = datetime.now(UTC)
+        raw = await self.collect(asset, options)
+        parsed = self.parse(raw)
+        scan_context.publish_transport_hints(
+            {
+                "has_hsts": parsed.has_hsts,
+                "is_https": parsed.is_https,
+            }
+        )
+        findings = self.evaluate_rules(parsed, asset)
+        return ScanResult.success(
+            plugin=self.id,
+            version=self.version,
+            started_at=started_at,
+            findings=findings,
+            metadata=self.build_metadata(parsed),
+        )

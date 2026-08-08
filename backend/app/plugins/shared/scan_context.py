@@ -23,6 +23,7 @@ class CachedHttpProbe:
     body: str
     body_length: int
     cookies: list[dict[str, str]] = field(default_factory=list)
+    set_cookie_headers: list[str] = field(default_factory=list)
     redirects: list[CachedHttpRedirect] = field(default_factory=list)
     content_type: str | None = None
     timing_total_ms: float = 0.0
@@ -33,6 +34,7 @@ class ScanExecutionContext:
     http_primary: dict[str, CachedHttpProbe] = field(default_factory=dict)
     http_locks: dict[str, asyncio.Lock] = field(default_factory=dict)
     service_hints: list[dict[str, Any]] = field(default_factory=list)
+    transport_hints: dict[str, Any] = field(default_factory=dict)
 
 
 class ScanContext:
@@ -78,6 +80,16 @@ class ScanContext:
         if ctx is None:
             return
         ctx.http_primary[key] = probe
+
+    def publish_transport_hints(self, hints: dict[str, Any]) -> None:
+        ctx = self.get()
+        if ctx is None:
+            return
+        ctx.transport_hints.update(hints)
+
+    def transport_hints(self) -> dict[str, Any]:
+        ctx = self.get()
+        return dict(ctx.transport_hints) if ctx else {}
 
 
 scan_context = ScanContext()

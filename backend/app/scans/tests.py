@@ -12,7 +12,7 @@ def test_scans_module_imports() -> None:
     assert ScanType.CUSTOM.value == "custom"
     assert ScanStatus.QUEUED.value == "queued"
     assert ScanStatus.PENDING.value == "pending"
-    assert SCAN_PROFILE_PLUGINS[ScanType.QUICK] == ["http_headers", "ssl", "dns", "cookies"]
+    assert SCAN_PROFILE_PLUGINS[ScanType.QUICK] == ["http_headers", "tls", "dns", "cookies"]
     assert "robots" in SCAN_PROFILE_PLUGINS[ScanType.FULL]
     assert "tls" in SCAN_PROFILE_PLUGINS[ScanType.FULL]
     assert "cve" in SCAN_PROFILE_PLUGINS[ScanType.FULL]

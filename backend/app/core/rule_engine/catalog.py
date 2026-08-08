@@ -1,6 +1,7 @@
 """Declarative rule catalog — update rules here without touching scanner code."""
 
 from app.core.rule_engine.catalog_cloud import CLOUD_RULES
+from app.core.rule_engine.catalog_cookies import COOKIES_RULES
 from app.core.rule_engine.catalog_dns import DNS_RULES
 from app.core.rule_engine.catalog_ports import PORTS_RULES
 from app.core.rule_engine.catalog_ssl import SSL_RULES
@@ -256,12 +257,20 @@ PLUGIN_RULES: dict[str, list[RuleSpec]] = {
     "security_txt": SECURITY_TXT_RULES,
     "dns": DNS_RULES,
     "ssl": SSL_RULES,
+    "tls": SSL_RULES + TLS_RULES,
     "ports": PORTS_RULES,
     "whois": WHOIS_RULES,
-    "tls": TLS_RULES,
     "cloud": CLOUD_RULES,
+    "cookies": COOKIES_RULES,
 }
+
+_PLUGIN_ALIASES = {"tls": "ssl"}
 
 
 def get_plugin_rules(plugin_id: str) -> list[RuleSpec]:
-    return list(PLUGIN_RULES.get(plugin_id, []))
+    if plugin_id in PLUGIN_RULES:
+        return list(PLUGIN_RULES[plugin_id])
+    alias = _PLUGIN_ALIASES.get(plugin_id)
+    if alias and alias in PLUGIN_RULES:
+        return list(PLUGIN_RULES[alias])
+    return []

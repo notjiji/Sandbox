@@ -1,26 +1,15 @@
-"""Declarative TLS cipher/protocol rules."""
+"""Declarative TLS cross-capability rules."""
 
 from app.core.rule_engine.models import RuleSpec
 from app.plugins.base.contracts import FindingCheckStatus
 
 TLS_RULES: list[RuleSpec] = [
     RuleSpec(
-        finding_code="TLS_WEAK_CIPHER",
+        finding_code="TLS_NO_HSTS",
         category="transport",
-        condition={"path_truthy": "weak_cipher"},
-        evidence="{negotiated_cipher} accepted",
-    ),
-    RuleSpec(
-        finding_code="TLS_LEGACY_PROTOCOL",
-        category="transport",
-        condition={"path_truthy": "legacy_protocol_enabled"},
-        evidence="Legacy TLS protocols accepted: {legacy_protocols_evidence}",
-    ),
-    RuleSpec(
-        finding_code="TLS_WEAK_CIPHERS_ACCEPTED",
-        category="transport",
-        condition={"path_nonempty": "weak_ciphers_accepted"},
-        evidence="Server accepts weak cipher suites: {weak_ciphers_evidence}",
+        condition={"path_truthy": "tls_without_hsts"},
+        evidence="TLS is enabled on {host} but no Strict-Transport-Security header was observed",
+        description="HTTPS is deployed without HSTS, leaving users vulnerable to downgrade attacks.",
         status=FindingCheckStatus.WARNING,
     ),
 ]

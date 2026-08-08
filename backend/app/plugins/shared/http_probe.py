@@ -48,6 +48,11 @@ async def fetch_primary(
         body_text = response.text
         body_preview, body_length = truncate_body(body_text)
         normalized = normalize_headers(dict(response.headers))
+        set_cookie_headers = (
+            list(response.headers.get_list("set-cookie"))
+            if hasattr(response.headers, "get_list")
+            else [value for key, value in response.headers.items() if key.lower() == "set-cookie"]
+        )
         probe = CachedHttpProbe(
             url=url,
             final_url=str(response.url),
@@ -59,6 +64,7 @@ async def fetch_primary(
                 {"name": cookie.name, "value": cookie.value}
                 for cookie in cookies_from_set_cookie_headers(normalized)
             ],
+            set_cookie_headers=set_cookie_headers,
             redirects=[
                 CachedHttpRedirect(url=str(item.url), status_code=item.status_code) for item in response.history
             ],

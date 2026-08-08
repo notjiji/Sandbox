@@ -19,15 +19,23 @@ def get_rule_for_finding(
     plugin: str,
     finding_code: str,
 ) -> RiskRule | None:
-    return (
-        db.query(RiskRule)
-        .filter(
-            RiskRule.plugin == plugin,
-            RiskRule.finding_code == finding_code,
-            RiskRule.enabled.is_(True),
+    plugin_aliases = {"tls": "ssl"}
+    lookup_plugins = [plugin]
+    if plugin in plugin_aliases:
+        lookup_plugins.append(plugin_aliases[plugin])
+    for lookup_plugin in lookup_plugins:
+        rule = (
+            db.query(RiskRule)
+            .filter(
+                RiskRule.plugin == lookup_plugin,
+                RiskRule.finding_code == finding_code,
+                RiskRule.enabled.is_(True),
+            )
+            .first()
         )
-        .first()
-    )
+        if rule is not None:
+            return rule
+    return None
 
 
 def get_recommendation_by_code(db: Session, *, code: str) -> Recommendation | None:

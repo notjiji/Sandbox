@@ -40,6 +40,8 @@ class ParsedCertificate(BaseSchema):
     subject: str
     common_name: str | None = None
     sans: list[str] = []
+    serial_number: str | None = None
+    fingerprint_sha256: str | None = None
     not_before: datetime | None = None
     not_after: datetime | None = None
     is_expired: bool = False
