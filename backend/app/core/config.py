@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     REDIS_URL: str
     OPENAI_API_KEY: str = ""
+    AI_MODEL: str = "gpt-4o-mini"
+    AI_TEMPERATURE: float = 0.2
+    AI_MAX_OUTPUT_TOKENS: int = 2048
+    AI_REQUEST_TIMEOUT_SECONDS: float = 60.0
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     LOG_LEVEL: str = "INFO"
 

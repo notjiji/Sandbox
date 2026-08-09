@@ -41,3 +41,4 @@ class AuditAction:
     REPORT_UPDATE = "report.update"
     REPORT_GENERATE = "report.generate"
     REPORT_DELETE = "report.delete"
+    AI_CHAT = "ai.chat"

@@ -1,5 +1,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import AiChatSidebar, { AiChatFloatingButton } from "@/features/ai/components/AiChatSidebar";
+import { ChatPanelProvider } from "@/features/ai/context/ChatPanelContext";
 import { organizationsApi } from "../api";
 import { tokenStorage } from "@/features/auth/storage";
 import { getActiveOrganizations, resolveActiveOrganization } from "../org";
@@ -75,5 +77,11 @@ export default function OrgProtectedRoute() {
     return <Navigate to="/select-organization" replace />;
   }
 
-  return <Outlet />;
+  return (
+    <ChatPanelProvider>
+      <Outlet />
+      <AiChatSidebar />
+      <AiChatFloatingButton />
+    </ChatPanelProvider>
+  );
 }

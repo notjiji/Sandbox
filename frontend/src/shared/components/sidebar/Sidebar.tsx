@@ -1,5 +1,6 @@
 import { useLocation, useParams } from "react-router-dom";
-import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { Bot, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { useChatPanel } from "@/features/ai/context/ChatPanelContext";
 import Logo from "@/shared/components/Logo";
 import { MAIN_NAV_ITEMS } from "@/shared/config/navigation";
 import { cn } from "@/shared/lib/utils";
@@ -25,7 +26,8 @@ export default function Sidebar({
   showOrgSwitcher = true,
 }: SidebarProps) {
   const { pathname } = useLocation();
-  const { projectId } = useParams<{ projectId?: string }>();
+  const { projectId, assetId } = useParams<{ projectId?: string; assetId?: string }>();
+  const { openChat } = useChatPanel();
   const navContext = { pathname, projectId };
 
   const handleNavigate = () => {
@@ -91,6 +93,32 @@ export default function Sidebar({
       )}
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3" aria-label="Main">
+        <button
+          type="button"
+          onClick={() =>
+            openChat({
+              capability: assetId ? "asset_summary" : "organization_overview",
+              context: { projectId, assetId },
+            })
+          }
+          className={cn(
+            "group mb-2 flex w-full items-center gap-3 rounded-lg border border-brand-600/40 bg-brand-900/30 px-3 py-2.5 text-sm text-brand-100 transition-colors",
+            "hover:border-brand-500/50 hover:bg-brand-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/60",
+            collapsed && !mobile && "justify-center px-2",
+          )}
+          title={collapsed && !mobile ? "Ask AI" : undefined}
+        >
+          <Bot size={18} aria-hidden className="shrink-0 text-brand-300" />
+          {(!collapsed || mobile) && (
+            <>
+              <span className="flex-1 truncate text-left font-dyslexic">Ask AI</span>
+              <span className="rounded border border-brand-600/40 bg-brand-950/80 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-brand-400">
+                Beta
+              </span>
+            </>
+          )}
+        </button>
+
         {MAIN_NAV_ITEMS.map((item) => (
           <SidebarNavLink
             key={item.id}

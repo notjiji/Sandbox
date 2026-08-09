@@ -1,5 +1,5 @@
 """AI feature module — chat, summaries, and provider configuration."""
 
-from app.ai.service import AIService
+from app.services.ai import ai_service
 
-__all__ = ["AIService"]
+__all__ = ["ai_service"]

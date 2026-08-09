@@ -1,0 +1,5 @@
+"""AI assistant service package."""
+
+from app.services.ai.service import AIService, ai_service
+
+__all__ = ["AIService", "ai_service"]

@@ -1,14 +1,5 @@
-"""AI domain service — delegates inference to core.ai_engine."""
+"""AI domain entrypoint — delegates to services.ai."""
 
-from app.core.ai_engine.service import AIService as CoreAIService
+from app.services.ai import ai_service
 
-
-class AIService:
-    def __init__(self) -> None:
-        self._engine = CoreAIService()
-
-    def summarize(self, *, text: str) -> str:
-        return self._engine.summarize_findings(finding_ids=[])
-
-    def chat(self, *, message: str) -> str:
-        return self._engine.chat(message=message)
+__all__ = ["ai_service"]

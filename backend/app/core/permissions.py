@@ -38,6 +38,8 @@ class Permission(str, enum.Enum):
 
     DASHBOARD_VIEW = "dashboard:view"
 
+    AI_USE = "ai:use"
+
 
 ALL_PERMISSIONS = frozenset(Permission)
 
@@ -69,6 +71,7 @@ SECURITY_ANALYST_PERMISSIONS = frozenset(
         Permission.REPORT_READ,
         Permission.REPORT_GENERATE,
         Permission.DASHBOARD_VIEW,
+        Permission.AI_USE,
     }
 )
 
@@ -82,6 +85,7 @@ MANAGER_PERMISSIONS = frozenset(
         Permission.FINDING_READ,
         Permission.REPORT_READ,
         Permission.DASHBOARD_VIEW,
+        Permission.AI_USE,
     }
 )
 
