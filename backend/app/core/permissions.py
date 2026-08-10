@@ -97,5 +97,6 @@ VIEWER_PERMISSIONS = frozenset(
         Permission.SCAN_READ,
         Permission.FINDING_READ,
         Permission.REPORT_READ,
+        Permission.DASHBOARD_VIEW,
     }
 )

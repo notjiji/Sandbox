@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Bug } from "lucide-react";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
@@ -36,11 +36,17 @@ function severityClass(severity: FindingSeverity | string): string {
 
 export default function Findings() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [findings, setFindings] = useState<FindingWithDescription[]>([]);
   const [search, setSearch] = useState("");
-  const [severity, setSeverity] = useState("");
+  const [severity, setSeverity] = useState(searchParams.get("severity") ?? "");
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const param = searchParams.get("severity");
+    if (param) setSeverity(param);
+  }, [searchParams]);
 
   useEffect(() => {
     let active = true;
