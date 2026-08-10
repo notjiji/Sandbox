@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
@@ -83,6 +83,60 @@ def download_asset_report(
         media_type="application/pdf",
         filename=filename,
     )
+
+
+@router.post("/{report_id}/download-url")
+def create_asset_report_download_url(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.REPORT_READ)),
+) -> JSONResponse:
+    payload = report_service.create_report_download_url(
+        db,
+        membership,
+        project_id=project_id,
+        report_id=report_id,
+        asset_id=asset_id,
+    )
+    return success_response(data=payload.model_dump(mode="json"))
+
+
+@router.get("/{report_id}/preview")
+def preview_asset_report(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.REPORT_READ)),
+) -> HTMLResponse:
+    html = report_service.preview_project_report(
+        db,
+        membership,
+        project_id=project_id,
+        report_id=report_id,
+        asset_id=asset_id,
+    )
+    return HTMLResponse(content=html)
+
+
+@router.post("/{report_id}/regenerate")
+def regenerate_asset_report(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.REPORT_GENERATE)),
+) -> JSONResponse:
+    _ = asset_id
+    report = report_service.regenerate_project_report(
+        db,
+        membership,
+        project_id=project_id,
+        report_id=report_id,
+    )
+    return success_response(data=report.model_dump(mode="json"))
 
 
 @router.post("/{report_id}/generate")

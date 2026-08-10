@@ -18,10 +18,17 @@ class SecuritySettings(BaseSchema):
     session_timeout_minutes: int = Field(default=480, ge=15, le=1440)
 
 
+class ReportBrandingSettings(BaseSchema):
+    primary_color: str = Field(default="#7c3aed", pattern=r"^#[0-9A-Fa-f]{6}$")
+    contact_email: str | None = Field(default=None, max_length=255)
+    footer_text: str | None = Field(default=None, max_length=500)
+
+
 class OrganizationSettings(BaseSchema):
     language: str = "en"
     notifications: NotificationSettings = Field(default_factory=NotificationSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
+    branding: ReportBrandingSettings = Field(default_factory=ReportBrandingSettings)
 
 
 class OrganizationSummary(BaseSchema):
@@ -71,6 +78,7 @@ class UpdateOrganizationSettings(BaseSchema):
     language: str | None = None
     notifications: NotificationSettings | None = None
     security: SecuritySettings | None = None
+    branding: ReportBrandingSettings | None = None
 
 
 class UpdateOrganizationRequest(BaseSchema):

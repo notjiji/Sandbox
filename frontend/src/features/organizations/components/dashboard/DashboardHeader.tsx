@@ -1,18 +1,22 @@
 import { Link } from "react-router-dom";
-import { Radar } from "lucide-react";
+import { FileText, Radar } from "lucide-react";
 import { formatRelativeTime } from "@/features/organizations/utils/format";
 import type { DashboardLastScan } from "@/shared/types/dashboard";
 
 interface DashboardHeaderProps {
   lastScan: DashboardLastScan;
   canRunScan: boolean;
+  canGenerateReport?: boolean;
   primaryProjectId: string | null;
+  onGenerateReport?: () => void;
 }
 
 export default function DashboardHeader({
   lastScan,
   canRunScan,
+  canGenerateReport = false,
   primaryProjectId,
+  onGenerateReport,
 }: DashboardHeaderProps) {
   const runScanHref = primaryProjectId ? `/projects/${primaryProjectId}/assets` : "/projects";
 
@@ -32,12 +36,20 @@ export default function DashboardHeader({
           )}
         </p>
       </div>
-      {canRunScan && (
-        <Link to={runScanHref} className="btn-primary inline-flex shrink-0 items-center gap-2">
-          <Radar size={16} />
-          Run Scan
-        </Link>
-      )}
+      <div className="flex flex-wrap gap-2">
+        {canGenerateReport && primaryProjectId && onGenerateReport && (
+          <button type="button" onClick={onGenerateReport} className="btn-ghost inline-flex shrink-0 items-center gap-2">
+            <FileText size={16} />
+            Generate Report
+          </button>
+        )}
+        {canRunScan && (
+          <Link to={runScanHref} className="btn-primary inline-flex shrink-0 items-center gap-2">
+            <Radar size={16} />
+            Run Scan
+          </Link>
+        )}
+      </div>
     </div>
   );
 }

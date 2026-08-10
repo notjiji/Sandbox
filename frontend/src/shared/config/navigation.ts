@@ -81,9 +81,8 @@ export const MAIN_NAV_ITEMS: SidebarNavItem[] = [
     id: "reports",
     label: "Reports",
     icon: FileText,
-    resolveHref: ({ projectId }) =>
-      projectId ? `/projects/${projectId}/reports` : "/projects",
-    isActive: (path) => path.includes("/reports"),
+    resolveHref: () => "/reports",
+    isActive: (path) => path === "/reports" || path.includes("/reports"),
   },
   {
     id: "ai-assistant",

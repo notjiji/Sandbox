@@ -74,6 +74,9 @@ interface BrandingForm {
   website: string;
   industry: string;
   country: string;
+  primary_color: string;
+  contact_email: string;
+  footer_text: string;
 }
 
 export default function OrgSettings() {
@@ -94,6 +97,9 @@ export default function OrgSettings() {
     website: "",
     industry: "",
     country: "",
+    primary_color: "#7c3aed",
+    contact_email: "",
+    footer_text: "",
   });
   const [notifications, setNotifications] = useState<NotificationSettings>(
     DEFAULT_SETTINGS.notifications,
@@ -127,6 +133,9 @@ export default function OrgSettings() {
       website: data.website ?? "",
       industry: data.industry ?? "",
       country: data.country ?? "",
+      primary_color: settings.branding?.primary_color ?? "#7c3aed",
+      contact_email: settings.branding?.contact_email ?? "",
+      footer_text: settings.branding?.footer_text ?? "",
     });
     setNotifications({ ...DEFAULT_SETTINGS.notifications, ...settings.notifications });
     setSecurity({ ...DEFAULT_SETTINGS.security, ...settings.security });
@@ -222,6 +231,13 @@ export default function OrgSettings() {
       website: branding.website.trim() || undefined,
       industry: branding.industry.trim() || undefined,
       country: branding.country.trim().toUpperCase() || undefined,
+      settings: {
+        branding: {
+          primary_color: branding.primary_color.trim() || "#7c3aed",
+          contact_email: branding.contact_email.trim() || null,
+          footer_text: branding.footer_text.trim() || null,
+        },
+      },
     });
   };
 
@@ -444,7 +460,7 @@ export default function OrgSettings() {
             <form onSubmit={handleBrandingSave} className="glass-panel space-y-5 p-8">
               <h2 className="text-lg font-semibold text-brand-100">Branding</h2>
               <p className="text-sm text-brand-500">
-                Customize how your organization appears across the workspace.
+                Customize how your organization appears across the workspace and in generated PDF reports.
               </p>
               {branding.logo_url && (
                 <div className="flex items-center gap-4 rounded-lg border border-brand-800/50 bg-void-200/20 p-4">
@@ -473,6 +489,65 @@ export default function OrgSettings() {
                     setBranding((prev) => ({ ...prev, logo_url: e.target.value }))
                   }
                   className="input-field"
+                  disabled={!canManage}
+                />
+              </div>
+              <div className="grid gap-5 md:grid-cols-2">
+                <div>
+                  <label htmlFor="primary_color" className="terminal-text mb-2 block">
+                    report primary color
+                  </label>
+                  <div className="flex gap-3">
+                    <input
+                      id="primary_color"
+                      type="color"
+                      value={branding.primary_color}
+                      onChange={(e) =>
+                        setBranding((prev) => ({ ...prev, primary_color: e.target.value }))
+                      }
+                      className="h-10 w-14 cursor-pointer rounded border border-brand-800/50 bg-transparent"
+                      disabled={!canManage}
+                    />
+                    <input
+                      value={branding.primary_color}
+                      onChange={(e) =>
+                        setBranding((prev) => ({ ...prev, primary_color: e.target.value }))
+                      }
+                      className="input-field"
+                      placeholder="#7c3aed"
+                      disabled={!canManage}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="contact_email" className="terminal-text mb-2 block">
+                    report contact email
+                  </label>
+                  <input
+                    id="contact_email"
+                    type="email"
+                    value={branding.contact_email}
+                    onChange={(e) =>
+                      setBranding((prev) => ({ ...prev, contact_email: e.target.value }))
+                    }
+                    className="input-field"
+                    disabled={!canManage}
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="footer_text" className="terminal-text mb-2 block">
+                  report footer text
+                </label>
+                <textarea
+                  id="footer_text"
+                  rows={2}
+                  value={branding.footer_text}
+                  onChange={(e) =>
+                    setBranding((prev) => ({ ...prev, footer_text: e.target.value }))
+                  }
+                  className="input-field"
+                  placeholder="Confidential — For authorized recipients only."
                   disabled={!canManage}
                 />
               </div>

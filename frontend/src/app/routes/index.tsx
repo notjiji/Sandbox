@@ -28,6 +28,7 @@ import Scans from "@/features/scans/pages/Scans";
 import Findings from "@/features/findings/pages/Findings";
 import AssetFindings from "@/features/findings/pages/AssetFindings";
 import Reports from "@/features/reports/pages/Reports";
+import OrgReports from "@/features/reports/pages/OrgReports";
 import AssetReports from "@/features/reports/pages/AssetReports";
 import AiAssistant from "@/features/ai/pages/AiAssistant";
 
@@ -63,6 +64,7 @@ export default function AppRoutes() {
           <Route path="/projects/:projectId/assets/:assetId/scans" element={<Scans />} />
           <Route path="/projects/:projectId/assets/:assetId/findings" element={<AssetFindings />} />
           <Route path="/projects/:projectId/assets/:assetId/reports" element={<AssetReports />} />
+          <Route path="/reports" element={<OrgReports />} />
           <Route path="/projects/:projectId/findings" element={<Findings />} />
           <Route path="/projects/:projectId/reports" element={<Reports />} />
           <Route path="/ai-assistant" element={<AiAssistant />} />

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import DashboardShell from "../components/DashboardShell";
@@ -26,10 +27,12 @@ import { PanelSkeleton } from "@/shared/components/ui/Skeleton";
 import { useOrganizationRole } from "@/shared/hooks/useOrganizationRole";
 import { useQueryClient } from "@tanstack/react-query";
 import { dashboardKeys } from "@/features/dashboard/query-keys";
+import GenerateReportModal from "@/features/reports/components/GenerateReportModal";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
-  const { canRunScan } = useOrganizationRole();
+  const { canRunScan, canGenerateReport } = useOrganizationRole();
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const overviewQuery = useDashboardOverview();
   const riskTrendQuery = useDashboardRiskTrend();
   const findingsQuery = useDashboardFindingsSummary();
@@ -93,7 +96,9 @@ export default function Dashboard() {
         <DashboardHeader
           lastScan={overview.last_scan}
           canRunScan={canRunScan}
+          canGenerateReport={canGenerateReport}
           primaryProjectId={projectId}
+          onGenerateReport={() => setReportModalOpen(true)}
         />
 
         <SecurityScorePanel
@@ -211,6 +216,14 @@ export default function Dashboard() {
           )}
         </SectionPanel>
       </div>
+
+      {projectId && (
+        <GenerateReportModal
+          open={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          projectId={projectId}
+        />
+      )}
     </DashboardShell>
   );
 }

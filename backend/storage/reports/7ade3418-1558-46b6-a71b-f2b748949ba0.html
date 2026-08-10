@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Executive — Example Site</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; color: #1a1a2e; margin: 32px; font-size: 12px; }
+    h1 { color: #7c3aed; font-size: 28px; margin-bottom: 4px; }
+    h2 { color: #7c3aed; font-size: 16px; margin-top: 24px; border-bottom: 2px solid #eee; padding-bottom: 4px; }
+    .cover { text-align: center; padding: 80px 0 40px; }
+    .meta { color: #666; margin: 8px 0; }
+    .score-box { display: inline-block; border: 3px solid #7c3aed; border-radius: 12px; padding: 24px 40px; margin: 16px 0; }
+    .score { font-size: 48px; font-weight: bold; color: #7c3aed; }
+    .grid { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .grid th, .grid td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    .grid th { background: #f5f5f5; }
+    .severity-critical { color: #dc2626; font-weight: bold; }
+    .severity-high { color: #ea580c; font-weight: bold; }
+    .bar { background: #7c3aed; height: 12px; }
+    .muted { color: #666; font-size: 11px; }
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <h1>Security Assessment Report</h1>
+    <p class="meta"><strong>Test Org</strong></p>
+    <p class="meta">Project: Test Project</p>
+    <p class="meta">Assessment: 2026-08-10</p>
+    <p class="meta">Report ID: 7ade3418…</p>
+    <div class="score-box">
+      <div class="score">—</div>
+      <div>SECURITY SCORE / 100</div>
+      
+    </div>
+  </div>
+
+  <h2>1. Executive Summary</h2>
+  <table class="grid">
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Overall Security Score</td><td>— (Grade N/A)</td></tr>
+    <tr><td>Assets Assessed</td><td>1</td></tr>
+    <tr><td>Critical Findings</td><td class="severity-critical">1</td></tr>
+    <tr><td>High Findings</td><td class="severity-high">0</td></tr>
+    <tr><td>Medium Findings</td><td>0</td></tr>
+    <tr><td>Low Findings</td><td>0</td></tr>
+  </table>
+
+  <h2>2. Security Posture</h2>
+  <p>Risk trend: <strong>stable</strong></p>
+  
+
+  <h2>3. Key Risks</h2>
+  
+  <table class="grid">
+    <tr><th>Finding</th><th>Severity</th><th>Asset</th></tr>
+    
+    <tr>
+      <td>Expired SSL</td>
+      <td class="severity-critical">critical</td>
+      <td>Example Site</td>
+    </tr>
+    
+  </table>
+  
+
+  <h2>4. Recommendations</h2>
+  <ol>
+    
+  </ol>
+
+  <h2>5. Asset Overview</h2>
+  <table class="grid">
+    <tr><th>Type</th><th>Count</th></tr>
+    <tr><td>Websites</td><td>1</td></tr>
+    <tr><td>Domains</td><td>0</td></tr>
+    <tr><td>Public IPs</td><td>0</td></tr>
+    <tr><td>Servers</td><td>0</td></tr>
+  </table>
+
+  
+  <div class="page-break"></div>
+  <h2>6. AI-Generated Summary</h2>
+  <p>A security score is not yet available. There are 1 critical and 0 high severity open findings across 1 assessed assets. Priority should be given to resolving critical issues and maintaining scan cadence.</p>
+  
+
+  <h2>Conclusion</h2>
+  <p class="muted">Generated for Test Org on 2026-08-10. Findings sourced from scanner results stored in the platform database.</p>
+</body>
+</html>

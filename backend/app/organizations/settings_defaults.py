@@ -11,6 +11,11 @@ DEFAULT_ORGANIZATION_SETTINGS: dict = {
         "password_min_length": 12,
         "session_timeout_minutes": 480,
     },
+    "branding": {
+        "primary_color": "#7c3aed",
+        "contact_email": None,
+        "footer_text": None,
+    },
 }
 
 
@@ -19,6 +24,7 @@ def merge_organization_settings(current: dict | None) -> dict:
         "language": DEFAULT_ORGANIZATION_SETTINGS["language"],
         "notifications": dict(DEFAULT_ORGANIZATION_SETTINGS["notifications"]),
         "security": dict(DEFAULT_ORGANIZATION_SETTINGS["security"]),
+        "branding": dict(DEFAULT_ORGANIZATION_SETTINGS["branding"]),
     }
     if not current:
         return base
@@ -33,5 +39,9 @@ def merge_organization_settings(current: dict | None) -> dict:
     if security := current.get("security"):
         if isinstance(security, dict):
             base["security"].update(security)
+
+    if branding := current.get("branding"):
+        if isinstance(branding, dict):
+            base["branding"].update(branding)
 
     return base

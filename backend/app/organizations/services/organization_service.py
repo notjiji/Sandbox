@@ -153,6 +153,8 @@ def update_current_organization(
             )
         if body.settings.security is not None:
             current["security"].update(body.settings.security.model_dump(exclude_none=True))
+        if body.settings.branding is not None:
+            current["branding"].update(body.settings.branding.model_dump(exclude_none=True))
         settings_payload = current
 
     update_organization(

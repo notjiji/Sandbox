@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ data.title }}</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; color: #1a1a2e; margin: 32px; font-size: 12px; }
+    h1 { color: {{ data.branding.primary_color }}; font-size: 28px; margin-bottom: 4px; }
+    h2 { color: {{ data.branding.primary_color }}; font-size: 16px; margin-top: 24px; border-bottom: 2px solid #eee; padding-bottom: 4px; }
+    .cover { text-align: center; padding: 80px 0 40px; }
+    .meta { color: #666; margin: 8px 0; }
+    .score-box { display: inline-block; border: 3px solid {{ data.branding.primary_color }}; border-radius: 12px; padding: 24px 40px; margin: 16px 0; }
+    .score { font-size: 48px; font-weight: bold; color: {{ data.branding.primary_color }}; }
+    .grid { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .grid th, .grid td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    .grid th { background: #f5f5f5; }
+    .severity-critical { color: #dc2626; font-weight: bold; }
+    .severity-high { color: #ea580c; font-weight: bold; }
+    .bar { background: {{ data.branding.primary_color }}; height: 12px; }
+    .muted { color: #666; font-size: 11px; }
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    {% if data.branding.logo_url %}
+    <p><img src="{{ data.branding.logo_url }}" alt="{{ data.branding.organization_name }}" style="max-height: 64px; max-width: 220px;" /></p>
+    {% endif %}
+    <h1>Security Assessment Report</h1>
+    <p class="meta"><strong>{{ data.branding.organization_name }}</strong></p>
+    <p class="meta">Project: {{ data.project.name }}</p>
+    <p class="meta">Assessment: {{ data.assessment_date[:10] if data.assessment_date else 'N/A' }}</p>
+    <p class="meta">Report ID: {{ data.report_id[:8] }}…</p>
+    <div class="score-box">
+      <div class="score">{{ data.score.current | default('—', true) }}</div>
+      <div>SECURITY SCORE / 100</div>
+      {% if data.score.change %}<div class="muted">{{ '+' if data.score.change > 0 else '' }}{{ data.score.change }} vs previous</div>{% endif %}
+    </div>
+  </div>
+
+  <h2>1. Executive Summary</h2>
+  <table class="grid">
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Overall Security Score</td><td>{{ data.score.current | default('—', true) }} (Grade {{ data.score.grade | default('N/A', true) }})</td></tr>
+    <tr><td>Assets Assessed</td><td>{{ data.asset_counts.total }}</td></tr>
+    <tr><td>Critical Findings</td><td class="severity-critical">{{ data.severity_distribution.critical }}</td></tr>
+    <tr><td>High Findings</td><td class="severity-high">{{ data.severity_distribution.high }}</td></tr>
+    <tr><td>Medium Findings</td><td>{{ data.severity_distribution.medium }}</td></tr>
+    <tr><td>Low Findings</td><td>{{ data.severity_distribution.low }}</td></tr>
+  </table>
+
+  <h2>2. Security Posture</h2>
+  <p>Risk trend: <strong>{{ data.score.trend }}</strong></p>
+  {% if data.trend_points %}
+  <table class="grid">
+    <tr><th>Period</th><th>Score</th></tr>
+    {% for point in data.trend_points[-6:] %}
+    <tr><td>{{ point.date }}</td><td>{{ point.score }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  <h2>3. Key Risks</h2>
+  {% if data.key_risks %}
+  <table class="grid">
+    <tr><th>Finding</th><th>Severity</th><th>Asset</th></tr>
+    {% for f in data.key_risks %}
+    <tr>
+      <td>{{ f.title }}</td>
+      <td class="severity-{{ f.severity }}">{{ f.severity }}</td>
+      <td>{{ f.asset_name }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p>No critical or high findings.</p>{% endif %}
+
+  <h2>4. Recommendations</h2>
+  <ol>
+    {% for rec in data.recommendations %}
+    <li>{{ rec }}</li>
+    {% endfor %}
+  </ol>
+
+  <h2>5. Asset Overview</h2>
+  <table class="grid">
+    <tr><th>Type</th><th>Count</th></tr>
+    <tr><td>Websites</td><td>{{ data.asset_counts.websites }}</td></tr>
+    <tr><td>Domains</td><td>{{ data.asset_counts.domains }}</td></tr>
+    <tr><td>Public IPs</td><td>{{ data.asset_counts.ips }}</td></tr>
+    <tr><td>Servers</td><td>{{ data.asset_counts.servers }}</td></tr>
+  </table>
+
+  {% if data.ai_summary %}
+  <div class="page-break"></div>
+  <h2>6. AI-Generated Summary</h2>
+  <p>{{ data.ai_summary }}</p>
+  {% endif %}
+
+  <h2>Conclusion</h2>
+  <p class="muted">Generated for {{ data.branding.organization_name }} on {{ data.assessment_date[:10] if data.assessment_date else 'N/A' }}. Findings sourced from scanner results stored in the platform database.</p>
+  {% if data.branding.footer_text %}<p class="muted">{{ data.branding.footer_text }}</p>{% endif %}
+  {% if data.branding.contact_email %}<p class="muted">Contact: {{ data.branding.contact_email }}</p>{% endif %}
+</body>
+</html>

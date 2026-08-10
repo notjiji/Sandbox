@@ -1,7 +1,7 @@
 import uuid
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.permissions import Permission
 from app.core.responses import success_response
 from app.members.models import OrganizationMember
-from app.reports.schemas import CreateReportRequest, UpdateReportRequest
+from app.reports.schemas import CreateReportRequest, ReportListQuery, UpdateReportRequest
 from app.reports.services import report_service
 
 router = APIRouter()
@@ -18,10 +18,26 @@ router = APIRouter()
 @router.get("")
 def list_reports(
     project_id: uuid.UUID,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    report_type: str | None = None,
+    status: str | None = None,
+    search: str | None = None,
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(Permission.REPORT_READ)),
 ) -> JSONResponse:
-    result = report_service.list_project_reports(db, membership, project_id=project_id)
+    query = ReportListQuery(page=page, limit=limit, search=search)
+    if report_type:
+        from app.reports.enums import ReportType
+
+        query.report_type = ReportType(report_type)
+    if status:
+        from app.reports.enums import ReportStatus
+
+        query.status = ReportStatus(status)
+    result = report_service.list_project_reports(
+        db, membership, project_id=project_id, query=query
+    )
     return success_response(data=result.model_dump(mode="json"))
 
 
@@ -86,6 +102,48 @@ def download_report(
         media_type="application/pdf",
         filename=filename,
     )
+
+
+@router.post("/{report_id}/download-url")
+def create_report_download_url(
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.REPORT_READ)),
+) -> JSONResponse:
+    payload = report_service.create_report_download_url(
+        db,
+        membership,
+        project_id=project_id,
+        report_id=report_id,
+    )
+    return success_response(data=payload.model_dump(mode="json"))
+
+
+@router.get("/{report_id}/preview")
+def preview_report(
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.REPORT_READ)),
+) -> HTMLResponse:
+    html = report_service.preview_project_report(
+        db, membership, project_id=project_id, report_id=report_id
+    )
+    return HTMLResponse(content=html)
+
+
+@router.post("/{report_id}/regenerate")
+def regenerate_report(
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.REPORT_GENERATE)),
+) -> JSONResponse:
+    report = report_service.regenerate_project_report(
+        db, membership, project_id=project_id, report_id=report_id
+    )
+    return success_response(data=report.model_dump(mode="json"))
 
 
 @router.post("/{report_id}/generate")

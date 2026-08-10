@@ -4,6 +4,8 @@ import { orgStorage } from "@/features/organizations/storage";
 import type { OrganizationRole } from "@/shared/types/organization";
 
 const SCAN_RUN_ROLES: OrganizationRole[] = ["owner", "admin", "security_analyst"];
+const REPORT_GENERATE_ROLES: OrganizationRole[] = ["owner", "admin", "security_analyst", "manager"];
+const REPORT_DELETE_ROLES: OrganizationRole[] = ["owner", "admin", "security_analyst"];
 const MANAGE_ROLES: OrganizationRole[] = ["owner", "admin"];
 
 export function useOrganizationRole() {
@@ -37,6 +39,8 @@ export function useOrganizationRole() {
     role,
     loading,
     canRunScan: role != null && SCAN_RUN_ROLES.includes(role),
+    canGenerateReport: role != null && REPORT_GENERATE_ROLES.includes(role),
+    canDeleteReport: role != null && REPORT_DELETE_ROLES.includes(role),
     canManage: role != null && MANAGE_ROLES.includes(role),
   };
 }

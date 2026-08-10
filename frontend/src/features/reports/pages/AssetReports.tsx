@@ -16,8 +16,12 @@ import { assetsApi } from "@/features/assets/api";
 import { projectsApi } from "@/features/projects/api";
 import ProjectNav from "@/features/projects/components/ProjectNav";
 import AssetReportsTable from "../components/AssetReportsTable";
+import GenerateReportModal from "../components/GenerateReportModal";
+import ReportPreviewModal from "../components/ReportPreviewModal";
+import { useReportPolling } from "../hooks/useReportPolling";
 import { reportsApi } from "../api";
 import { REPORT_TYPES } from "../utils";
+import { useOrganizationRole } from "@/shared/hooks/useOrganizationRole";
 
 const PAGE_SIZE = 20;
 
@@ -34,6 +38,9 @@ export default function AssetReports() {
   const [loading, setLoading] = useState(true);
   const [generatingType, setGeneratingType] = useState<ReportType | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [previewReport, setPreviewReport] = useState<ReportSummary | null>(null);
+  const { canGenerateReport, canDeleteReport } = useOrganizationRole();
 
   const loadData = useCallback(async () => {
     if (!projectId || !assetId) return;
@@ -75,6 +82,11 @@ export default function AssetReports() {
     };
   }, [loadData]);
 
+  useReportPolling({
+    reports,
+    onRefresh: loadData,
+  });
+
   const handleGenerate = async (reportType: ReportType) => {
     if (!projectId || !assetId) return;
     setGeneratingType(reportType);
@@ -97,7 +109,7 @@ export default function AssetReports() {
     if (!projectId || !assetId) return;
     setActionId(reportId);
     try {
-      await reportsApi.generateForAsset(projectId, assetId, reportId);
+      await reportsApi.regenerateForAsset(projectId, assetId, reportId);
       toast.success("Report generation started.");
       await loadData();
     } catch (error) {
@@ -110,11 +122,26 @@ export default function AssetReports() {
   const handleDownload = async (report: ReportSummary) => {
     if (!projectId || !assetId) return;
     try {
-      const filename = `${report.name.replace(/\s+/g, "-").toLowerCase()}.pdf`;
-      await reportsApi.downloadForAsset(projectId, assetId, report.id, filename);
+      const signed = await reportsApi.getDownloadUrlForAsset(projectId, assetId, report.id);
+      if (!signed) throw new Error("Missing download URL");
+      await reportsApi.downloadSigned(signed.url, signed.filename);
       toast.success("Report downloaded.");
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Unable to download report.");
+    }
+  };
+
+  const handleDelete = async (reportId: string) => {
+    if (!projectId) return;
+    setActionId(reportId);
+    try {
+      await reportsApi.delete(projectId, reportId);
+      toast.success("Report deleted.");
+      await loadData();
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Unable to delete report.");
+    } finally {
+      setActionId(null);
     }
   };
 
@@ -125,24 +152,25 @@ export default function AssetReports() {
     >
       <ProjectNav projectName={project?.name} assetName={asset?.name} active="reports" />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {REPORT_TYPES.map((type) => (
-          <button
-            key={type.value}
-            type="button"
-            disabled={generatingType === type.value}
-            onClick={() => handleGenerate(type.value)}
-            className="glass-panel flex flex-col items-start gap-2 p-4 text-left transition hover:border-brand-500/40"
-          >
-            <Sparkles size={18} className="text-brand-400" />
-            <span className="font-medium text-brand-100">{type.label}</span>
-            <span className="text-xs text-brand-600">{type.description}</span>
-            <span className="text-xs text-brand-400">
-              {generatingType === type.value ? "Generating..." : "Generate report"}
-            </span>
+      {canGenerateReport && (
+        <div className="mb-6 flex flex-wrap gap-3">
+          <button type="button" onClick={() => setModalOpen(true)} className="btn-primary inline-flex items-center gap-2">
+            <Sparkles size={16} />
+            Generate Report
           </button>
-        ))}
-      </div>
+          {REPORT_TYPES.filter((type) => type.value === "executive" || type.value === "technical").map((type) => (
+            <button
+              key={type.value}
+              type="button"
+              disabled={generatingType === type.value}
+              onClick={() => handleGenerate(type.value)}
+              className="btn-ghost inline-flex items-center gap-2"
+            >
+              Quick {type.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -217,6 +245,9 @@ export default function AssetReports() {
               actionId={actionId}
               onGenerate={handleRegenerate}
               onDownload={handleDownload}
+              onPreview={setPreviewReport}
+              canDelete={canDeleteReport}
+              onDelete={handleDelete}
             />
             <div className="mt-6">
               <AssetPagination
@@ -236,6 +267,27 @@ export default function AssetReports() {
       </motion.div>
 
       {asset && <AssetAskAiPanel assetName={asset.name} variant="compact" className="mt-6" />}
+
+      {projectId && assetId && (
+        <GenerateReportModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          projectId={projectId}
+          assetId={assetId}
+          onCreated={() => void loadData()}
+        />
+      )}
+
+      {previewReport && projectId && assetId && (
+        <ReportPreviewModal
+          open
+          onClose={() => setPreviewReport(null)}
+          projectId={projectId}
+          assetId={assetId}
+          reportId={previewReport.id}
+          title={previewReport.name}
+        />
+      )}
     </DashboardShell>
   );
 }

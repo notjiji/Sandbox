@@ -11,16 +11,24 @@ export interface SecuritySettings {
   session_timeout_minutes: number;
 }
 
+export interface ReportBrandingSettings {
+  primary_color: string;
+  contact_email?: string | null;
+  footer_text?: string | null;
+}
+
 export interface OrganizationSettings {
   language: string;
   notifications: NotificationSettings;
   security: SecuritySettings;
+  branding?: ReportBrandingSettings;
 }
 
 export interface UpdateOrganizationSettings {
   language?: string;
   notifications?: Partial<NotificationSettings>;
   security?: Partial<SecuritySettings>;
+  branding?: Partial<ReportBrandingSettings>;
 }
 
 export const LANGUAGE_OPTIONS = [

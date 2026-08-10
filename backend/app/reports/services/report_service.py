@@ -1,13 +1,17 @@
 import uuid
 from pathlib import Path
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.assets.repositories.asset_repository import get_asset_by_id
 from app.audit.service import record_audit_event
+from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationAppError
-from app.core.report_engine.generator import REPORT_TYPE_LABELS, generate_report_file, report_file_path
+from app.core.report_engine.generator import REPORT_TYPE_LABELS
+from app.core.report_engine.pipeline import preview_report_html, run_report_pipeline
+from app.core.report_engine.renderer import report_file_path
 from app.members.models import OrganizationMember
+from app.projects.models import Project
 from app.projects.validators import require_active_project
 from app.reports.enums import ReportStatus, ReportType
 from app.reports.events import ReportAuditAction
@@ -18,33 +22,56 @@ from app.reports.repositories.report_repository import (
     get_asset_report_by_id,
     get_report_by_id,
     list_reports_for_asset_paginated,
-    list_reports_for_project,
+    list_reports_for_organization_paginated,
+    list_reports_for_project_paginated,
     update_report,
 )
 from app.reports.schemas import (
     CreateAssetReportRequest,
     CreateReportRequest,
+    ReportDownloadUrlResponse,
     ReportListQuery,
     ReportListResponse,
     ReportSummary,
     UpdateReportRequest,
 )
+from app.reports.download_tokens import create_report_download_token, decode_report_download_token
 
 
 def to_report_summary(report: Report) -> ReportSummary:
+    creator_name = None
+    if report.creator:
+        creator_name = f"{report.creator.first_name} {report.creator.last_name}".strip()
+    project_name = report.project.name if getattr(report, "project", None) else None
     return ReportSummary(
         id=str(report.id),
         project_id=str(report.project_id),
+        project_name=project_name,
         asset_id=str(report.asset_id) if report.asset_id else None,
+        scan_id=str(report.scan_id) if report.scan_id else None,
         report_type=report.report_type,
+        report_version=report.report_version,
         name=report.name,
         description=report.description,
         status=report.status,
         file_url=report.file_url,
+        file_size=report.file_size,
         created_by=str(report.created_by) if report.created_by else None,
+        created_by_name=creator_name,
         created_at=report.created_at,
         updated_at=report.updated_at,
+        completed_at=report.completed_at,
     )
+
+
+def _hydrate_report(db: Session, report: Report) -> Report:
+    hydrated = (
+        db.query(Report)
+        .options(joinedload(Report.creator))
+        .filter(Report.id == report.id)
+        .first()
+    )
+    return hydrated or report
 
 
 def _default_report_name(report_type: ReportType, *, asset_name: str | None = None) -> str:
@@ -54,22 +81,55 @@ def _default_report_name(report_type: ReportType, *, asset_name: str | None = No
     return f"{label} Report"
 
 
-def _execute_generation(db: Session, report: Report) -> ReportSummary:
+def _parse_scan_id(raw: str | None) -> uuid.UUID | None:
+    if not raw:
+        return None
     try:
-        path = generate_report_file(db, report=report)
-        update_report(
-            db,
-            report,
-            status=ReportStatus.READY,
-            file_url=f"/storage/reports/{path.name}",
-        )
-    except Exception as exc:
-        update_report(db, report, status=ReportStatus.FAILED)
-        db.commit()
-        raise ValidationAppError(f"Report generation failed: {exc}") from exc
+        return uuid.UUID(raw)
+    except ValueError as exc:
+        raise ValidationAppError("Invalid scan_id") from exc
+
+
+def _queue_generation(report_id: uuid.UUID) -> None:
+    from app.jobs.reports import generate_report_task
+
+    generate_report_task.delay(report_id=str(report_id))
+
+
+def _start_generation(
+    db: Session,
+    membership: OrganizationMember,
+    report: Report,
+    *,
+    audit_action: str = ReportAuditAction.GENERATE,
+) -> ReportSummary:
+    if report.status == ReportStatus.GENERATING:
+        raise ValidationAppError("Report generation is already in progress")
+
+    update_report(db, report, status=ReportStatus.GENERATING)
+    record_audit_event(
+        db,
+        action=audit_action,
+        user_id=membership.user_id,
+        organization_id=membership.organization_id,
+        resource_type="report",
+        resource_id=report.id,
+        details={"project_id": str(report.project_id), "report_type": report.report_type.value},
+    )
     db.commit()
     db.refresh(report)
-    return to_report_summary(report)
+
+    if get_settings().REPORT_RUN_INLINE:
+        try:
+            run_report_pipeline(db, report_id=report.id)
+            db.commit()
+            db.refresh(report)
+        except Exception as exc:
+            raise ValidationAppError("Report generation failed") from exc
+    else:
+        _queue_generation(report.id)
+
+    return to_report_summary(_hydrate_report(db, report))
 
 
 def list_project_reports(
@@ -77,11 +137,15 @@ def list_project_reports(
     membership: OrganizationMember,
     *,
     project_id: uuid.UUID,
+    query: ReportListQuery | None = None,
 ) -> ReportListResponse:
     require_active_project(db, membership, project_id)
-    reports = list_reports_for_project(db, project_id=project_id)
+    params = query or ReportListQuery()
+    reports, total = list_reports_for_project_paginated(
+        db, project_id=project_id, query=params
+    )
     items = [to_report_summary(report) for report in reports]
-    return ReportListResponse(items=items, total=len(items))
+    return ReportListResponse(items=items, total=total, page=params.page, limit=params.limit)
 
 
 def list_asset_reports(
@@ -113,6 +177,22 @@ def list_asset_reports(
     return ReportListResponse(items=items, total=total, page=params.page, limit=params.limit)
 
 
+def list_organization_reports(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    query: ReportListQuery | None = None,
+) -> ReportListResponse:
+    params = query or ReportListQuery()
+    reports, total = list_reports_for_organization_paginated(
+        db,
+        organization_id=membership.organization_id,
+        query=params,
+    )
+    items = [to_report_summary(report) for report in reports]
+    return ReportListResponse(items=items, total=total, page=params.page, limit=params.limit)
+
+
 def create_project_report(
     db: Session,
     membership: OrganizationMember,
@@ -122,9 +202,12 @@ def create_project_report(
 ) -> ReportSummary:
     require_active_project(db, membership, project_id)
     name = body.name or _default_report_name(body.report_type)
+    asset_id = uuid.UUID(body.asset_id) if body.asset_id else None
     report = create_report(
         db,
         project_id=project_id,
+        asset_id=asset_id,
+        scan_id=_parse_scan_id(body.scan_id),
         name=name,
         description=body.description,
         created_by=membership.user_id,
@@ -145,7 +228,10 @@ def create_project_report(
     )
     db.commit()
     db.refresh(report)
-    return to_report_summary(report)
+
+    if body.generate:
+        return _start_generation(db, membership, report)
+    return to_report_summary(_hydrate_report(db, report))
 
 
 def create_asset_report(
@@ -171,6 +257,7 @@ def create_asset_report(
         db,
         project_id=project_id,
         asset_id=asset_id,
+        scan_id=_parse_scan_id(body.scan_id),
         name=name,
         description=body.description,
         created_by=membership.user_id,
@@ -194,21 +281,8 @@ def create_asset_report(
     db.refresh(report)
 
     if body.generate:
-        update_report(db, report, status=ReportStatus.GENERATING)
-        record_audit_event(
-            db,
-            action=ReportAuditAction.GENERATE,
-            user_id=membership.user_id,
-            organization_id=membership.organization_id,
-            resource_type="report",
-            resource_id=report.id,
-            details={"project_id": str(project_id), "asset_id": str(asset_id)},
-        )
-        db.commit()
-        db.refresh(report)
-        return _execute_generation(db, report)
-
-    return to_report_summary(report)
+        return _start_generation(db, membership, report)
+    return to_report_summary(_hydrate_report(db, report))
 
 
 def get_project_report(
@@ -219,7 +293,12 @@ def get_project_report(
     report_id: uuid.UUID,
 ) -> ReportSummary:
     require_active_project(db, membership, project_id)
-    report = get_report_by_id(db, project_id=project_id, report_id=report_id)
+    report = (
+        db.query(Report)
+        .options(joinedload(Report.creator))
+        .filter(Report.id == report_id, Report.project_id == project_id)
+        .first()
+    )
     if not report:
         raise NotFoundError("Report")
     return to_report_summary(report)
@@ -266,22 +345,26 @@ def generate_project_report(
     report = get_report_by_id(db, project_id=project_id, report_id=report_id)
     if not report:
         raise NotFoundError("Report")
-    if report.status == ReportStatus.GENERATING:
-        raise ValidationAppError("Report generation is already in progress")
+    return _start_generation(db, membership, report)
 
-    update_report(db, report, status=ReportStatus.GENERATING)
-    record_audit_event(
+
+def regenerate_project_report(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+) -> ReportSummary:
+    require_active_project(db, membership, project_id)
+    report = get_report_by_id(db, project_id=project_id, report_id=report_id)
+    if not report:
+        raise NotFoundError("Report")
+    return _start_generation(
         db,
-        action=ReportAuditAction.GENERATE,
-        user_id=membership.user_id,
-        organization_id=membership.organization_id,
-        resource_type="report",
-        resource_id=report.id,
-        details={"project_id": str(project_id)},
+        membership,
+        report,
+        audit_action=ReportAuditAction.REGENERATE,
     )
-    db.commit()
-    db.refresh(report)
-    return _execute_generation(db, report)
 
 
 def delete_project_report(
@@ -309,6 +392,29 @@ def delete_project_report(
     db.commit()
 
 
+def preview_project_report(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+    asset_id: uuid.UUID | None = None,
+) -> str:
+    require_active_project(db, membership, project_id)
+    if asset_id is not None:
+        report = get_asset_report_by_id(
+            db,
+            project_id=project_id,
+            asset_id=asset_id,
+            report_id=report_id,
+        )
+    else:
+        report = get_report_by_id(db, project_id=project_id, report_id=report_id)
+    if not report:
+        raise NotFoundError("Report")
+    return preview_report_html(db, report=report)
+
+
 def resolve_report_download(
     db: Session,
     membership: OrganizationMember,
@@ -316,6 +422,7 @@ def resolve_report_download(
     project_id: uuid.UUID,
     report_id: uuid.UUID,
     asset_id: uuid.UUID | None = None,
+    record_audit: bool = True,
 ) -> tuple[Report, Path]:
     require_active_project(db, membership, project_id)
     if asset_id is not None:
@@ -334,13 +441,89 @@ def resolve_report_download(
 
     path = report_file_path(report.id)
     if not path.exists():
-        path = generate_report_file(db, report=report)
-        update_report(db, report, file_url=f"/storage/reports/{path.name}")
+        run_report_pipeline(db, report_id=report.id)
+        db.commit()
+        path = report_file_path(report.id)
+
+    if record_audit:
+        record_audit_event(
+            db,
+            action=ReportAuditAction.DOWNLOAD,
+            user_id=membership.user_id,
+            organization_id=membership.organization_id,
+            resource_type="report",
+            resource_id=report.id,
+            details={"project_id": str(project_id)},
+        )
         db.commit()
     return report, path
 
 
+def create_report_download_url(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+    asset_id: uuid.UUID | None = None,
+) -> ReportDownloadUrlResponse:
+    report, _path = resolve_report_download(
+        db,
+        membership,
+        project_id=project_id,
+        report_id=report_id,
+        asset_id=asset_id,
+        record_audit=False,
+    )
+    token, expires_at = create_report_download_token(
+        report_id=report.id,
+        organization_id=membership.organization_id,
+        user_id=membership.user_id,
+    )
+    filename = f"{report.name.replace(' ', '-').lower()}.pdf"
+    return ReportDownloadUrlResponse(
+        url=f"/api/v1/reports/download?token={token}",
+        expires_at=expires_at,
+        filename=filename,
+    )
+
+
+def resolve_signed_report_download(db: Session, *, token: str) -> tuple[Report, Path]:
+    payload = decode_report_download_token(token)
+    report_id = uuid.UUID(payload["report_id"])
+    organization_id = uuid.UUID(payload["organization_id"])
+    user_id = uuid.UUID(payload["user_id"])
+
+    report = (
+        db.query(Report)
+        .join(Project, Report.project_id == Project.id)
+        .filter(Report.id == report_id, Project.organization_id == organization_id)
+        .first()
+    )
+    if not report:
+        raise NotFoundError("Report")
+    if report.status != ReportStatus.READY:
+        raise ValidationAppError("Report is not ready for download")
+
+    path = report_file_path(report.id)
+    if not path.exists():
+        raise NotFoundError("Report file")
+
+    record_audit_event(
+        db,
+        action=ReportAuditAction.DOWNLOAD,
+        user_id=user_id,
+        organization_id=organization_id,
+        resource_type="report",
+        resource_id=report.id,
+        details={"signed_url": True},
+    )
+    db.commit()
+    return report, path
+
+
 def _remove_report_file(report_id: uuid.UUID) -> None:
-    path = report_file_path(report_id)
-    if path.exists():
-        path.unlink()
+    for ext in ("pdf", "html"):
+        path = report_file_path(report_id, ext=ext)
+        if path.exists():
+            path.unlink()

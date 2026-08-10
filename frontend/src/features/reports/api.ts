@@ -4,6 +4,7 @@ import { tokenStorage } from "@/features/auth/storage";
 import type {
   CreateAssetReportRequest,
   CreateReportRequest,
+  ReportDownloadUrl,
   ReportListData,
   ReportListQuery,
   ReportSummary,
@@ -26,8 +27,8 @@ function toQuery(params: ReportListQuery = {}): string {
   return query ? `?${query}` : "";
 }
 
-async function downloadPdf(path: string, filename: string): Promise<void> {
-  const headers: Record<string, string> = {};
+async function fetchBinaryOrText(path: string, accept: string): Promise<Response> {
+  const headers: Record<string, string> = { Accept: accept };
   const accessToken = tokenStorage.getAccessToken();
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   const orgId = orgStorage.getActiveOrgId();
@@ -48,10 +49,12 @@ async function downloadPdf(path: string, filename: string): Promise<void> {
     });
   }
 
-  if (!response.ok) {
-    throw new Error("Unable to download report.");
-  }
+  return response;
+}
 
+async function downloadPdf(path: string, filename: string): Promise<void> {
+  const response = await fetchBinaryOrText(path, "application/pdf");
+  if (!response.ok) throw new Error("Unable to download report.");
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -61,7 +64,16 @@ async function downloadPdf(path: string, filename: string): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+async function fetchPreviewHtml(path: string): Promise<string> {
+  const response = await fetchBinaryOrText(path, "text/html");
+  if (!response.ok) throw new Error("Unable to load report preview.");
+  return response.text();
+}
+
 export const reportsApi = {
+  listForOrganization: (params?: ReportListQuery) =>
+    apiRequest<ReportListData>(`/organizations/current/reports${toQuery(params)}`, { auth: true }),
+
   list: (projectId: string, params?: ReportListQuery) =>
     apiRequest<ReportListData>(`${projectBase(projectId)}${toQuery(params)}`, { auth: true }),
 
@@ -107,6 +119,24 @@ export const reportsApi = {
       auth: true,
     }),
 
+  regenerate: (projectId: string, reportId: string) =>
+    apiRequest<ReportSummary>(`${projectBase(projectId)}/${reportId}/regenerate`, {
+      method: "POST",
+      auth: true,
+    }),
+
+  regenerateForAsset: (projectId: string, assetId: string, reportId: string) =>
+    apiRequest<ReportSummary>(`${assetBase(projectId, assetId)}/${reportId}/regenerate`, {
+      method: "POST",
+      auth: true,
+    }),
+
+  previewHtml: (projectId: string, reportId: string) =>
+    fetchPreviewHtml(`${projectBase(projectId)}/${reportId}/preview`),
+
+  previewHtmlForAsset: (projectId: string, assetId: string, reportId: string) =>
+    fetchPreviewHtml(`${assetBase(projectId, assetId)}/${reportId}/preview`),
+
   download: (projectId: string, reportId: string, filename: string) =>
     downloadPdf(`${projectBase(projectId)}/${reportId}/download`, filename),
 
@@ -116,6 +146,30 @@ export const reportsApi = {
     reportId: string,
     filename: string,
   ) => downloadPdf(`${assetBase(projectId, assetId)}/${reportId}/download`, filename),
+
+  getDownloadUrl: (projectId: string, reportId: string) =>
+    apiRequest<ReportDownloadUrl>(`${projectBase(projectId)}/${reportId}/download-url`, {
+      method: "POST",
+      auth: true,
+    }),
+
+  getDownloadUrlForAsset: (projectId: string, assetId: string, reportId: string) =>
+    apiRequest<ReportDownloadUrl>(
+      `${assetBase(projectId, assetId)}/${reportId}/download-url`,
+      { method: "POST", auth: true },
+    ),
+
+  downloadSigned: async (signedPath: string, filename: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}${signedPath}`);
+    if (!response.ok) throw new Error("Unable to download report.");
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  },
 
   delete: (projectId: string, reportId: string) =>
     apiRequest<void>(`${projectBase(projectId)}/${reportId}`, {

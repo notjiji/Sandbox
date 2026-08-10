@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ data.title }}</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; color: #111; margin: 28px; font-size: 11px; line-height: 1.45; }
+    h1 { color: {{ data.branding.primary_color }}; font-size: 24px; }
+    h2 { color: {{ data.branding.primary_color }}; font-size: 14px; margin-top: 20px; border-bottom: 1px solid #ccc; }
+    h3 { font-size: 12px; margin-top: 12px; }
+    .grid { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
+    .grid th, .grid td { border: 1px solid #ccc; padding: 6px; vertical-align: top; }
+    .grid th { background: #f3f4f6; }
+    .severity-critical { color: #b91c1c; font-weight: bold; }
+    .severity-high { color: #c2410c; font-weight: bold; }
+    .finding { margin-bottom: 16px; padding: 10px; border: 1px solid #e5e7eb; }
+    .muted { color: #666; }
+    .page-break { page-break-before: always; }
+    code { font-size: 10px; }
+  </style>
+</head>
+<body>
+  {% if data.branding.logo_url %}
+  <p><img src="{{ data.branding.logo_url }}" alt="{{ data.branding.organization_name }}" style="max-height: 48px; max-width: 180px;" /></p>
+  {% endif %}
+  <h1>Technical Security Assessment</h1>
+  <p class="muted">{{ data.branding.organization_name }} · {{ data.project.name }} · {{ data.assessment_date[:10] if data.assessment_date else 'N/A' }}</p>
+
+  <h2>1. Assessment Overview</h2>
+  <p>Security score: <strong>{{ data.score.current | default('N/A', true) }}</strong> (Grade {{ data.score.grade | default('N/A', true) }})</p>
+  {% if data.scan %}<p>Scan: {{ data.scan.scan_type }} — {{ data.scan.status }} ({{ data.scan.completed_at[:10] if data.scan.completed_at else 'pending' }})</p>{% endif %}
+
+  <h2>2. Scope</h2>
+  <p>{{ data.asset_counts.total }} asset(s) in scope{% if data.scan %} for scan {{ data.scan.id[:8] }}…{% endif %}.</p>
+
+  <h2>3. Assets Assessed</h2>
+  <table class="grid">
+    <tr><th>Asset</th><th>Type</th><th>Score</th><th>Open Findings</th></tr>
+    {% for asset in data.assets %}
+    <tr><td>{{ asset.name }}</td><td>{{ asset.asset_type }}</td><td>{{ asset.score | default('—', true) }}</td><td>{{ asset.open_findings }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <h2>4. Methodology</h2>
+  <p>Automated security scanning with normalized findings from platform scanners. Risk scores computed by the platform risk engine.</p>
+
+  <h2>5–8. Findings Summary</h2>
+  <table class="grid">
+    <tr><th>Severity</th><th>Count</th></tr>
+    <tr><td class="severity-critical">Critical</td><td>{{ data.severity_distribution.critical }}</td></tr>
+    <tr><td class="severity-high">High</td><td>{{ data.severity_distribution.high }}</td></tr>
+    <tr><td>Medium</td><td>{{ data.severity_distribution.medium }}</td></tr>
+    <tr><td>Low</td><td>{{ data.severity_distribution.low }}</td></tr>
+  </table>
+
+  <div class="page-break"></div>
+  <h2>11. Detailed Findings</h2>
+  {% for f in data.findings %}
+  <div class="finding">
+    <h3>{{ f.title }} <span class="severity-{{ f.severity }}">[{{ f.severity }}]</span></h3>
+    <p><strong>Asset:</strong> {{ f.asset_name }} · <strong>Plugin:</strong> {{ f.plugin | default('n/a', true) }} · <strong>Risk:</strong> {{ f.risk_score }}</p>
+    {% if f.description %}<p>{{ f.description }}</p>{% endif %}
+    {% if f.evidence %}<p><strong>Evidence:</strong><br/><code>{{ f.evidence[:500] }}</code></p>{% endif %}
+    {% if f.recommendation %}<p><strong>Recommendation:</strong> {{ f.recommendation }}</p>{% endif %}
+  </div>
+  {% endfor %}
+
+  <h2>12. Scanner Results</h2>
+  {% if data.scanner_results %}
+  <table class="grid">
+    <tr><th>Scanner</th><th>Status</th><th>Findings</th><th>Duration (s)</th><th>Summary</th></tr>
+    {% for result in data.scanner_results %}
+    <tr>
+      <td>{{ result.plugin_name }}</td>
+      <td>{{ result.status }}</td>
+      <td>{{ result.findings_count }}</td>
+      <td>{{ result.duration_seconds | default('—', true) }}</td>
+      <td>
+        {% if result.error_message %}Error: {{ result.error_message[:180] }}
+        {% elif result.metadata_summary %}{{ result.metadata_summary }}
+        {% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <table class="grid">
+    <tr><th>Plugin</th><th>Findings</th></tr>
+    {% for plugin, count in data.findings_by_plugin.items() %}
+    <tr><td>{{ plugin }}</td><td>{{ count }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  <h2>13. Remediation Plan</h2>
+  <ol>{% for rec in data.recommendations %}<li>{{ rec }}</li>{% endfor %}</ol>
+
+  {% if data.ai_summary %}
+  <h2>14. AI Analysis</h2>
+  <p>{{ data.ai_summary }}</p>
+  {% endif %}
+
+  <div class="page-break"></div>
+  <h2>15. Appendix</h2>
+  <p class="muted">Report ID {{ data.report_id }} · Version {{ data.report_version }} · Generated by {{ data.generated_by | default('system', true) }}</p>
+  {% if data.branding.footer_text %}<p class="muted">{{ data.branding.footer_text }}</p>{% endif %}
+  {% if data.branding.contact_email %}<p class="muted">Contact: {{ data.branding.contact_email }}</p>{% endif %}
+  {% if data.scanner_results %}
+  <h3>Scanner execution detail</h3>
+  <table class="grid">
+    <tr><th>Scanner</th><th>Status</th><th>Findings</th><th>Notes</th></tr>
+    {% for result in data.scanner_results %}
+    <tr>
+      <td>{{ result.plugin_name }}</td>
+      <td>{{ result.status }}</td>
+      <td>{{ result.findings_count }}</td>
+      <td>{% if result.error_message %}{{ result.error_message }}{% else %}{{ result.metadata_summary | default('Completed', true) }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</body>
+</html>
