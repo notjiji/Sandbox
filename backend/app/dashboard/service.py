@@ -1,4 +1,13 @@
+import logging
+import uuid as uuid_lib
+from collections.abc import Callable
+from functools import wraps
+from typing import ParamSpec, TypeVar
+
 from sqlalchemy.orm import Session
+
+from app.core.exceptions import AppException
+from app.dashboard.errors import DashboardUnavailableError
 
 from app.dashboard.repository import (
     count_assets_by_category,
@@ -27,6 +36,25 @@ from app.organizations.repositories.overview_repository import list_recent_activ
 from app.organizations.services.activity_service import present_activity_events
 from app.risk.repositories.risk_repository import get_previous_organization_score
 from app.risk.service import risk_service
+
+logger = logging.getLogger(__name__)
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def dashboard_operation(func: Callable[P, R]) -> Callable[P, R]:
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return func(*args, **kwargs)
+        except AppException:
+            raise
+        except Exception as exc:
+            logger.exception("dashboard operation failed: %s", func.__name__)
+            raise DashboardUnavailableError() from exc
+
+    return wrapper
 
 
 def _build_score(db: Session, *, organization_id, metrics) -> DashboardScore:
@@ -58,6 +86,7 @@ def _build_last_scan(scan) -> DashboardLastScan:
     )
 
 
+@dashboard_operation
 def get_dashboard_overview(
     db: Session,
     membership: OrganizationMember,
@@ -83,6 +112,7 @@ def get_dashboard_overview(
     )
 
 
+@dashboard_operation
 def get_dashboard_risk_trend(
     db: Session,
     membership: OrganizationMember,
@@ -91,6 +121,7 @@ def get_dashboard_risk_trend(
     return DashboardRiskTrendResponse(history=metrics.risk_trend)
 
 
+@dashboard_operation
 def get_dashboard_findings_summary(
     db: Session,
     membership: OrganizationMember,
@@ -118,14 +149,13 @@ def get_dashboard_findings_summary(
     return DashboardFindingsSummaryResponse(breakdown=breakdown, top_findings=top)
 
 
+@dashboard_operation
 def get_dashboard_top_assets(
     db: Session,
     membership: OrganizationMember,
     *,
     limit: int = 5,
 ) -> DashboardTopAssetsResponse:
-    import uuid as uuid_lib
-
     from app.assets.models import Asset
 
     org_risk = risk_service.calculate_organization_risk(db, membership, refresh=False)
@@ -157,6 +187,7 @@ def get_dashboard_top_assets(
     return DashboardTopAssetsResponse(items=items)
 
 
+@dashboard_operation
 def get_dashboard_activity(
     db: Session,
     membership: OrganizationMember,
@@ -175,6 +206,7 @@ def get_dashboard_activity(
     )
 
 
+@dashboard_operation
 def get_dashboard_upcoming_scans(
     db: Session,
     membership: OrganizationMember,

@@ -107,6 +107,40 @@ def bootstrap_org_context(
     }
 
 
+def invite_and_accept_member(
+    db: Session,
+    client,
+    owner_ctx: dict[str, Any],
+    *,
+    email: str,
+    role: str = "viewer",
+) -> dict[str, Any]:
+    """Invite a user to the owner's org and return their authenticated org context."""
+    create_verified_user(db, email=email)
+
+    invite_response = client.post(
+        "/api/v1/organizations/current/members",
+        json={"email": email, "role": role},
+        headers=owner_ctx["org_headers"],
+    )
+    assert invite_response.status_code == 201, invite_response.text
+
+    member_headers = login_headers(client, email=email)
+    accept_response = client.post(
+        "/api/v1/organizations/current/members/accept",
+        headers={**member_headers, "X-Organization-ID": owner_ctx["organization"]["id"]},
+    )
+    assert accept_response.status_code == 200, accept_response.text
+
+    org_headers = {**member_headers, "X-Organization-ID": owner_ctx["organization"]["id"]}
+    return {
+        "email": email,
+        "headers": member_headers,
+        "org_headers": org_headers,
+        "membership_id": accept_response.json()["data"]["membership_id"],
+    }
+
+
 def create_website_asset(
     db: Session,
     membership: OrganizationMember,

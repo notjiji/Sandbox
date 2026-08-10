@@ -8,6 +8,7 @@ interface SecurityScorePanelProps {
   overview: DashboardOverview;
   assetsHref: string;
   findingsHref: string;
+  lastScanHref?: string;
 }
 
 function trendIcon(trend: string) {
@@ -27,6 +28,7 @@ export default function SecurityScorePanel({
   overview,
   assetsHref,
   findingsHref,
+  lastScanHref,
 }: SecurityScorePanelProps) {
   const { score, assets, findings, last_scan: lastScan } = overview;
   const TrendIcon = trendIcon(score.trend);
@@ -104,12 +106,13 @@ export default function SecurityScorePanel({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Security Score"
           value={score.current != null ? score.current.toFixed(0) : "—"}
           icon={Shield}
           suffix="/ 100"
+          href={findingsHref}
           trend={
             score.change != null && score.change !== 0
               ? { value: score.change, label: "pts", decimals: 1 }
@@ -141,6 +144,7 @@ export default function SecurityScorePanel({
           }
           icon={Shield}
           suffix={lastScan.timestamp ? "local" : undefined}
+          href={lastScanHref}
         />
       </div>
     </motion.div>

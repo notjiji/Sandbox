@@ -70,6 +70,10 @@ export default function Dashboard() {
   const projectId = overview.primary_project_id;
   const assetsHref = projectId ? `/projects/${projectId}/assets` : "/projects";
   const findingsHref = projectId ? `/projects/${projectId}/findings?severity=critical` : "/projects";
+  const lastScanHref =
+    overview.last_scan.project_id && overview.last_scan.asset_id
+      ? `/projects/${overview.last_scan.project_id}/assets/${overview.last_scan.asset_id}/scans`
+      : undefined;
   const isEmpty =
     overview.assets.total === 0 &&
     !overview.last_scan.timestamp &&
@@ -96,9 +100,10 @@ export default function Dashboard() {
           overview={overview}
           assetsHref={assetsHref}
           findingsHref={findingsHref}
+          lastScanHref={lastScanHref}
         />
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <SectionPanel title="Risk Trend">
             {riskTrendQuery.isLoading ? (
               <PanelSkeleton lines={3} />
@@ -123,7 +128,7 @@ export default function Dashboard() {
           </SectionPanel>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <SectionPanel
             title="Critical Findings"
             action={
@@ -149,7 +154,7 @@ export default function Dashboard() {
           </SectionPanel>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <SectionPanel title="Highest Risk Assets">
             {topAssetsQuery.isLoading ? (
               <PanelSkeleton lines={4} />

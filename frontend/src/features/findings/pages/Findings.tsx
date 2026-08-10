@@ -36,17 +36,19 @@ function severityClass(severity: FindingSeverity | string): string {
 
 export default function Findings() {
   const { projectId } = useParams<{ projectId: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [findings, setFindings] = useState<FindingWithDescription[]>([]);
   const [search, setSearch] = useState("");
-  const [severity, setSeverity] = useState(searchParams.get("severity") ?? "");
+  const severity = searchParams.get("severity") ?? "";
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const param = searchParams.get("severity");
-    if (param) setSeverity(param);
-  }, [searchParams]);
+  const setSeverity = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set("severity", value);
+    else next.delete("severity");
+    setSearchParams(next, { replace: true });
+  };
 
   useEffect(() => {
     let active = true;
@@ -108,7 +110,7 @@ export default function Findings() {
           />
           <select
             value={severity}
-            onChange={(e) => setSeverity(e.target.value)}
+            onChange={(event) => setSeverity(event.target.value)}
             className="input-field"
             aria-label="Filter by severity"
           >
