@@ -122,9 +122,8 @@ export default function AssetReports() {
   const handleDownload = async (report: ReportSummary) => {
     if (!projectId || !assetId) return;
     try {
-      const signed = await reportsApi.getDownloadUrlForAsset(projectId, assetId, report.id);
-      if (!signed) throw new Error("Missing download URL");
-      await reportsApi.downloadSigned(signed.url, signed.filename);
+      const filename = `${report.name.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+      await reportsApi.downloadForAsset(projectId, assetId, report.id, filename);
       toast.success("Report downloaded.");
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Unable to download report.");

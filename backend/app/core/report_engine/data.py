@@ -95,6 +95,13 @@ class ReportScannerResult(BaseSchema):
     metadata_summary: str | None = None
 
 
+class ReportChartBar(BaseSchema):
+    label: str
+    value: int
+    width_pct: float
+    color: str
+
+
 class ReportFinding(BaseSchema):
     id: str
     asset_id: str
@@ -131,6 +138,9 @@ class ReportData(BaseSchema):
     recommendations: list[str] = Field(default_factory=list)
     findings_by_plugin: dict[str, int] = Field(default_factory=dict)
     scanner_results: list[ReportScannerResult] = Field(default_factory=list)
+    severity_bars: list[ReportChartBar] = Field(default_factory=list)
+    plugin_bars: list[ReportChartBar] = Field(default_factory=list)
+    trend_chart: list[ReportChartBar] = Field(default_factory=list)
     trend_points: list[dict] = Field(default_factory=list)
     ai_summary: str | None = None
     generated_by: str | None = None
@@ -181,6 +191,61 @@ def _collect_scanner_results(db: Session, *, scan_id: uuid.UUID) -> list[ReportS
             )
         )
     return results
+
+
+def _build_bar_chart(
+    items: list[tuple[str, int, str]],
+    *,
+    scale_max: int | None = None,
+) -> list[ReportChartBar]:
+    peak = scale_max if scale_max is not None else max((count for _, count, _ in items), default=0)
+    peak = peak or 1
+    return [
+        ReportChartBar(
+            label=label,
+            value=count,
+            width_pct=round((count / peak) * 100, 1),
+            color=color,
+        )
+        for label, count, color in items
+    ]
+
+
+def _severity_bars(severity: SeverityBreakdown) -> list[ReportChartBar]:
+    return _build_bar_chart(
+        [
+            ("Critical", severity.critical, "#dc2626"),
+            ("High", severity.high, "#ea580c"),
+            ("Medium", severity.medium, "#ca8a04"),
+            ("Low", severity.low, "#2563eb"),
+        ]
+    )
+
+
+def _plugin_bars(plugin_counts: dict[str, int]) -> list[ReportChartBar]:
+    ordered = sorted(plugin_counts.items(), key=lambda item: item[1], reverse=True)[:8]
+    return _build_bar_chart(
+        [(name.replace("_", " ").title(), count, "#5b21b6") for name, count in ordered]
+    )
+
+
+def _trend_chart(points: list[dict]) -> list[ReportChartBar]:
+    recent = points[-6:]
+    if not recent:
+        return []
+    scores = [float(point["score"]) for point in recent]
+    min_score = min(scores)
+    max_score = max(scores)
+    span = max(max_score - min_score, 1.0)
+    return [
+        ReportChartBar(
+            label=str(point["date"]),
+            value=int(round(float(point["score"]))),
+            width_pct=round(((float(point["score"]) - min_score) / span) * 100, 1),
+            color="#7c3aed",
+        )
+        for point in recent
+    ]
 
 
 def _severity_breakdown(findings: list[Finding]) -> SeverityBreakdown:
@@ -351,6 +416,8 @@ def collect_report_data(db: Session, *, report: Report) -> ReportData:
     if report.created_by and report.creator:
         creator_name = f"{report.creator.first_name} {report.creator.last_name}".strip()
 
+    severity_breakdown = _severity_breakdown(findings)
+
     return ReportData(
         report_id=str(report.id),
         report_type=report.report_type,
@@ -381,7 +448,7 @@ def collect_report_data(db: Session, *, report: Report) -> ReportData:
             grade=grade,
             trend="improving" if change and change > 0 else "declining" if change and change < 0 else "stable",
         ),
-        severity_distribution=_severity_breakdown(findings),
+        severity_distribution=severity_breakdown,
         asset_counts=_asset_counts(assets),
         assets=asset_summaries,
         findings=report_findings,
@@ -389,6 +456,9 @@ def collect_report_data(db: Session, *, report: Report) -> ReportData:
         recommendations=recommendations,
         findings_by_plugin=plugin_counts,
         scanner_results=_collect_scanner_results(db, scan_id=scan.id) if scan else [],
+        severity_bars=_severity_bars(severity_breakdown),
+        plugin_bars=_plugin_bars(plugin_counts),
+        trend_chart=_trend_chart(trend_points),
         trend_points=trend_points,
         generated_by=creator_name,
     )

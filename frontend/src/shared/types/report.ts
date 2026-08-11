@@ -30,12 +30,6 @@ export interface ReportListQuery {
   project_id?: string;
 }
 
-export interface ReportDownloadUrl {
-  url: string;
-  expires_at: string;
-  filename: string;
-}
-
 export interface ReportListData {
   items: ReportSummary[];
   total: number;

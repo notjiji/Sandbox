@@ -4,7 +4,6 @@ import { tokenStorage } from "@/features/auth/storage";
 import type {
   CreateAssetReportRequest,
   CreateReportRequest,
-  ReportDownloadUrl,
   ReportListData,
   ReportListQuery,
   ReportSummary,
@@ -146,30 +145,6 @@ export const reportsApi = {
     reportId: string,
     filename: string,
   ) => downloadPdf(`${assetBase(projectId, assetId)}/${reportId}/download`, filename),
-
-  getDownloadUrl: (projectId: string, reportId: string) =>
-    apiRequest<ReportDownloadUrl>(`${projectBase(projectId)}/${reportId}/download-url`, {
-      method: "POST",
-      auth: true,
-    }),
-
-  getDownloadUrlForAsset: (projectId: string, assetId: string, reportId: string) =>
-    apiRequest<ReportDownloadUrl>(
-      `${assetBase(projectId, assetId)}/${reportId}/download-url`,
-      { method: "POST", auth: true },
-    ),
-
-  downloadSigned: async (signedPath: string, filename: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}${signedPath}`);
-    if (!response.ok) throw new Error("Unable to download report.");
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  },
 
   delete: (projectId: string, reportId: string) =>
     apiRequest<void>(`${projectBase(projectId)}/${reportId}`, {

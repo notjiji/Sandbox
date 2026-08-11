@@ -42,12 +42,6 @@ class ReportListQuery(BaseSchema):
     project_id: str | None = None
 
 
-class ReportDownloadUrlResponse(BaseSchema):
-    url: str
-    expires_at: datetime
-    filename: str
-
-
 class CreateReportRequest(BaseSchema):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)

@@ -104,22 +104,6 @@ def download_report(
     )
 
 
-@router.post("/{report_id}/download-url")
-def create_report_download_url(
-    project_id: uuid.UUID,
-    report_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    membership: OrganizationMember = Depends(require_permission(Permission.REPORT_READ)),
-) -> JSONResponse:
-    payload = report_service.create_report_download_url(
-        db,
-        membership,
-        project_id=project_id,
-        report_id=report_id,
-    )
-    return success_response(data=payload.model_dump(mode="json"))
-
-
 @router.get("/{report_id}/preview")
 def preview_report(
     project_id: uuid.UUID,

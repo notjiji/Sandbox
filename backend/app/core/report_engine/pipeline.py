@@ -36,7 +36,7 @@ def run_report_pipeline(db: Session, *, report_id: uuid.UUID) -> Report:
             db,
             report,
             status=ReportStatus.READY,
-            file_url=f"/storage/reports/{pdf_path.name}",
+            file_url=None,
             file_size=file_size,
             completed_at=datetime.now(UTC),
             report_version=REPORT_VERSION,

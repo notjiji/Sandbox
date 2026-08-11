@@ -6,11 +6,8 @@ from app.organizations.router import router as organizations_router
 from app.projects.router import router as projects_router
 from app.users.router import router as users_router
 from app.ai.router import router as ai_router
-from app.reports.public_router import router as public_reports_router
 
 router = APIRouter()
-
-router.include_router(public_reports_router, prefix="/reports", tags=["reports-public"])
 
 router.include_router(auth_router, prefix="/auth", tags=["auth"])
 router.include_router(users_router, prefix="/users", tags=["users"])

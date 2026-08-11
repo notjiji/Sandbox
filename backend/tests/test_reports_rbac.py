@@ -95,8 +95,8 @@ def test_manager_can_generate_report_viewer_cannot(client, db) -> None:
     assert viewer_delete.status_code == 403
 
 
-def test_signed_download_url_works_without_auth_header(client, db) -> None:
-    ctx = bootstrap_org_context(db, client, email="reports-signed@example.com")
+def test_report_download_requires_authentication(client, db) -> None:
+    ctx = bootstrap_org_context(db, client, email="reports-auth@example.com")
     project_id, asset_id, scan_id = _seed_asset_scan(db, ctx)
     headers = ctx["org_headers"]
 
@@ -108,18 +108,13 @@ def test_signed_download_url_works_without_auth_header(client, db) -> None:
     assert create_response.status_code == 201
     report_id = create_response.json()["data"]["id"]
 
-    url_response = client.post(
-        f"/api/v1/projects/{project_id}/assets/{asset_id}/reports/{report_id}/download-url",
-        headers=headers,
+    unauthenticated = client.get(
+        f"/api/v1/projects/{project_id}/assets/{asset_id}/reports/{report_id}/download",
     )
-    assert url_response.status_code == 200
-    payload = url_response.json()["data"]
-    assert payload["url"].startswith("/api/v1/reports/download?token=")
+    assert unauthenticated.status_code in {401, 403}
 
-    signed_response = client.get(payload["url"])
-    assert signed_response.status_code == 200
-    assert signed_response.headers["content-type"] == "application/pdf"
-    assert signed_response.content.startswith(b"%PDF")
+    public_token_route = client.get("/api/v1/reports/download?token=invalid-token")
+    assert public_token_route.status_code == 404
 
 
 def test_organization_reports_list_includes_project_name(client, db) -> None:

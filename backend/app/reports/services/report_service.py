@@ -11,7 +11,6 @@ from app.core.report_engine.generator import REPORT_TYPE_LABELS
 from app.core.report_engine.pipeline import preview_report_html, run_report_pipeline
 from app.core.report_engine.renderer import report_file_path
 from app.members.models import OrganizationMember
-from app.projects.models import Project
 from app.projects.validators import require_active_project
 from app.reports.enums import ReportStatus, ReportType
 from app.reports.events import ReportAuditAction
@@ -29,13 +28,11 @@ from app.reports.repositories.report_repository import (
 from app.reports.schemas import (
     CreateAssetReportRequest,
     CreateReportRequest,
-    ReportDownloadUrlResponse,
     ReportListQuery,
     ReportListResponse,
     ReportSummary,
     UpdateReportRequest,
 )
-from app.reports.download_tokens import create_report_download_token, decode_report_download_token
 
 
 def to_report_summary(report: Report) -> ReportSummary:
@@ -422,7 +419,6 @@ def resolve_report_download(
     project_id: uuid.UUID,
     report_id: uuid.UUID,
     asset_id: uuid.UUID | None = None,
-    record_audit: bool = True,
 ) -> tuple[Report, Path]:
     require_active_project(db, membership, project_id)
     if asset_id is not None:
@@ -445,78 +441,14 @@ def resolve_report_download(
         db.commit()
         path = report_file_path(report.id)
 
-    if record_audit:
-        record_audit_event(
-            db,
-            action=ReportAuditAction.DOWNLOAD,
-            user_id=membership.user_id,
-            organization_id=membership.organization_id,
-            resource_type="report",
-            resource_id=report.id,
-            details={"project_id": str(project_id)},
-        )
-        db.commit()
-    return report, path
-
-
-def create_report_download_url(
-    db: Session,
-    membership: OrganizationMember,
-    *,
-    project_id: uuid.UUID,
-    report_id: uuid.UUID,
-    asset_id: uuid.UUID | None = None,
-) -> ReportDownloadUrlResponse:
-    report, _path = resolve_report_download(
-        db,
-        membership,
-        project_id=project_id,
-        report_id=report_id,
-        asset_id=asset_id,
-        record_audit=False,
-    )
-    token, expires_at = create_report_download_token(
-        report_id=report.id,
-        organization_id=membership.organization_id,
-        user_id=membership.user_id,
-    )
-    filename = f"{report.name.replace(' ', '-').lower()}.pdf"
-    return ReportDownloadUrlResponse(
-        url=f"/api/v1/reports/download?token={token}",
-        expires_at=expires_at,
-        filename=filename,
-    )
-
-
-def resolve_signed_report_download(db: Session, *, token: str) -> tuple[Report, Path]:
-    payload = decode_report_download_token(token)
-    report_id = uuid.UUID(payload["report_id"])
-    organization_id = uuid.UUID(payload["organization_id"])
-    user_id = uuid.UUID(payload["user_id"])
-
-    report = (
-        db.query(Report)
-        .join(Project, Report.project_id == Project.id)
-        .filter(Report.id == report_id, Project.organization_id == organization_id)
-        .first()
-    )
-    if not report:
-        raise NotFoundError("Report")
-    if report.status != ReportStatus.READY:
-        raise ValidationAppError("Report is not ready for download")
-
-    path = report_file_path(report.id)
-    if not path.exists():
-        raise NotFoundError("Report file")
-
     record_audit_event(
         db,
         action=ReportAuditAction.DOWNLOAD,
-        user_id=user_id,
-        organization_id=organization_id,
+        user_id=membership.user_id,
+        organization_id=membership.organization_id,
         resource_type="report",
         resource_id=report.id,
-        details={"signed_url": True},
+        details={"project_id": str(project_id)},
     )
     db.commit()
     return report, path

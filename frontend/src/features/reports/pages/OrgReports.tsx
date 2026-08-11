@@ -101,11 +101,12 @@ export default function OrgReports() {
 
   const handleDownload = async (report: ReportSummary) => {
     try {
-      const signed = report.asset_id
-        ? await reportsApi.getDownloadUrlForAsset(report.project_id, report.asset_id, report.id)
-        : await reportsApi.getDownloadUrl(report.project_id, report.id);
-      if (!signed) throw new Error("Missing download URL");
-      await reportsApi.downloadSigned(signed.url, signed.filename);
+      const filename = `${report.name.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+      if (report.asset_id) {
+        await reportsApi.downloadForAsset(report.project_id, report.asset_id, report.id, filename);
+      } else {
+        await reportsApi.download(report.project_id, report.id, filename);
+      }
       toast.success("Report downloaded.");
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Unable to download report.");

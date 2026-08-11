@@ -49,7 +49,6 @@ class Settings(BaseSettings):
 
     SCAN_RUN_INLINE: bool | None = None
     REPORT_RUN_INLINE: bool | None = None
-    REPORT_DOWNLOAD_TOKEN_EXPIRE_MINUTES: int = 15
 
     RESEND_API_KEY: str = ""
     RESEND_FROM: str = "Sandbox <onboarding@resend.dev>"

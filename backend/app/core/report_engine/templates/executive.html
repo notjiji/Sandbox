@@ -7,16 +7,21 @@
     body { font-family: Helvetica, Arial, sans-serif; color: #1a1a2e; margin: 32px; font-size: 12px; }
     h1 { color: {{ data.branding.primary_color }}; font-size: 28px; margin-bottom: 4px; }
     h2 { color: {{ data.branding.primary_color }}; font-size: 16px; margin-top: 24px; border-bottom: 2px solid #eee; padding-bottom: 4px; }
+    h3 { font-size: 13px; color: #444; margin: 16px 0 8px; }
     .cover { text-align: center; padding: 80px 0 40px; }
     .meta { color: #666; margin: 8px 0; }
     .score-box { display: inline-block; border: 3px solid {{ data.branding.primary_color }}; border-radius: 12px; padding: 24px 40px; margin: 16px 0; }
     .score { font-size: 48px; font-weight: bold; color: {{ data.branding.primary_color }}; }
     .grid { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    .grid th, .grid td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    .grid th, .grid td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: middle; }
     .grid th { background: #f5f5f5; }
+    .chart { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
+    .chart td { border: none; padding: 4px 6px; vertical-align: middle; }
+    .chart-label { width: 88px; font-weight: bold; }
+    .chart-value { width: 36px; text-align: right; color: #555; }
+    .chart-track { background: #eee; height: 14px; }
     .severity-critical { color: #dc2626; font-weight: bold; }
     .severity-high { color: #ea580c; font-weight: bold; }
-    .bar { background: {{ data.branding.primary_color }}; height: 12px; }
     .muted { color: #666; font-size: 11px; }
     .page-break { page-break-before: always; }
   </style>
@@ -42,6 +47,7 @@
   <table class="grid">
     <tr><th>Metric</th><th>Value</th></tr>
     <tr><td>Overall Security Score</td><td>{{ data.score.current | default('—', true) }} (Grade {{ data.score.grade | default('N/A', true) }})</td></tr>
+    <tr><td>Risk Level</td><td>{{ data.score.trend | title }}</td></tr>
     <tr><td>Assets Assessed</td><td>{{ data.asset_counts.total }}</td></tr>
     <tr><td>Critical Findings</td><td class="severity-critical">{{ data.severity_distribution.critical }}</td></tr>
     <tr><td>High Findings</td><td class="severity-high">{{ data.severity_distribution.high }}</td></tr>
@@ -50,14 +56,77 @@
   </table>
 
   <h2>2. Security Posture</h2>
-  <p>Risk trend: <strong>{{ data.score.trend }}</strong></p>
-  {% if data.trend_points %}
+  <p>Overall trend: <strong>{{ data.score.trend }}</strong></p>
+
+  <h3>Severity Distribution</h3>
+  {% if data.severity_bars %}
+  <table class="chart">
+    {% for bar in data.severity_bars %}
+    <tr>
+      <td class="chart-label">{{ bar.label }}</td>
+      <td>
+        <table class="chart-track" width="100%" cellpadding="0" cellspacing="0"><tr>
+          {% if bar.width_pct > 0 %}
+          <td width="{{ bar.width_pct }}%" bgcolor="{{ bar.color }}">&nbsp;</td>
+          {% endif %}
+          <td>&nbsp;</td>
+        </tr></table>
+      </td>
+      <td class="chart-value">{{ bar.value }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  <h3>Risk Trend</h3>
+  {% if data.trend_chart %}
+  <table class="chart">
+    {% for bar in data.trend_chart %}
+    <tr>
+      <td class="chart-label">{{ bar.label }}</td>
+      <td>
+        <table class="chart-track" width="100%" cellpadding="0" cellspacing="0"><tr>
+          {% if bar.width_pct > 0 %}
+          <td width="{{ bar.width_pct }}%" bgcolor="{{ bar.color }}">&nbsp;</td>
+          {% endif %}
+          <td>&nbsp;</td>
+        </tr></table>
+      </td>
+      <td class="chart-value">{{ bar.value }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% elif data.trend_points %}
   <table class="grid">
     <tr><th>Period</th><th>Score</th></tr>
     {% for point in data.trend_points[-6:] %}
     <tr><td>{{ point.date }}</td><td>{{ point.score }}</td></tr>
     {% endfor %}
   </table>
+  {% else %}
+  <p class="muted">Insufficient historical data for trend visualization.</p>
+  {% endif %}
+
+  <h3>Findings by Category</h3>
+  {% if data.plugin_bars %}
+  <table class="chart">
+    {% for bar in data.plugin_bars %}
+    <tr>
+      <td class="chart-label">{{ bar.label }}</td>
+      <td>
+        <table class="chart-track" width="100%" cellpadding="0" cellspacing="0"><tr>
+          {% if bar.width_pct > 0 %}
+          <td width="{{ bar.width_pct }}%" bgcolor="{{ bar.color }}">&nbsp;</td>
+          {% endif %}
+          <td>&nbsp;</td>
+        </tr></table>
+      </td>
+      <td class="chart-value">{{ bar.value }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No categorized findings for this assessment.</p>
   {% endif %}
 
   <h2>3. Key Risks</h2>
@@ -81,7 +150,17 @@
     {% endfor %}
   </ol>
 
-  <h2>5. Asset Overview</h2>
+  <h2>5. Security Trend</h2>
+  <table class="grid">
+    <tr><th>Previous Score</th><th>Current Score</th><th>Change</th></tr>
+    <tr>
+      <td>{{ data.score.previous | default('—', true) }}</td>
+      <td>{{ data.score.current | default('—', true) }}</td>
+      <td>{% if data.score.change %}{{ '+' if data.score.change > 0 else '' }}{{ data.score.change }}{% else %}—{% endif %}</td>
+    </tr>
+  </table>
+
+  <h2>6. Asset Overview</h2>
   <table class="grid">
     <tr><th>Type</th><th>Count</th></tr>
     <tr><td>Websites</td><td>{{ data.asset_counts.websites }}</td></tr>
@@ -92,7 +171,7 @@
 
   {% if data.ai_summary %}
   <div class="page-break"></div>
-  <h2>6. AI-Generated Summary</h2>
+  <h2>7. AI-Generated Summary</h2>
   <p>{{ data.ai_summary }}</p>
   {% endif %}
 
