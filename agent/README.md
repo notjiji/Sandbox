@@ -9,7 +9,7 @@ security-agent/
 ├── agent/
 │   ├── main.py
 │   ├── config.py
-│   ├── collectors/     # cpu, memory, disk, uptime, processes, docker, system
+│   ├── collectors/     # cpu, memory, disk, uptime, processes, services, docker, system
 │   ├── security/       # firewall, ssh, fail2ban, updates
 │   └── client/api.py
 ├── requirements.txt

@@ -18,6 +18,11 @@ export interface DiskFilesystem {
   usage_percent?: number | null;
 }
 
+export interface ServiceInfo {
+  name: string;
+  status: string;
+}
+
 export interface MetricsPayload {
   cpu_usage?: number | null;
   cpu_percent?: number | null;
@@ -40,12 +45,14 @@ export interface MetricsPayload {
   last_reboot_at?: string | null;
   process_count?: number | null;
   processes?: ProcessInfo[];
+  services?: ServiceInfo[];
 }
 
 export interface FirewallCheck {
   enabled?: boolean | null;
   backend?: string | null;
   default_incoming?: string | null;
+  default_outgoing?: string | null;
 }
 
 export interface SshCheck {
@@ -59,10 +66,24 @@ export interface Fail2BanCheck {
   jails?: string[];
 }
 
+export interface DockerContainerInfo {
+  name: string;
+  status?: string | null;
+  image?: string | null;
+  cpu_percent?: number | null;
+  memory_mb?: number | null;
+  restart_count?: number | null;
+}
+
 export interface DockerCheck {
   installed?: boolean | null;
   running?: boolean | null;
+  version?: string | null;
   containers?: number | null;
+  containers_running?: number | null;
+  containers_stopped?: number | null;
+  images?: number | null;
+  container_list?: DockerContainerInfo[];
 }
 
 export interface UpdatesCheck {

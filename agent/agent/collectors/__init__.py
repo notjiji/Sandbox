@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agent.collectors import cpu, disk, docker, memory, processes, system, uptime
+from agent.collectors import cpu, disk, docker, memory, processes, services, system, uptime
 
 
 def collect_metrics() -> dict:
@@ -10,6 +10,7 @@ def collect_metrics() -> dict:
     payload.update(disk.collect())
     payload.update(uptime.collect())
     payload.update(processes.collect())
+    payload.update(services.collect())
     return payload
 
 

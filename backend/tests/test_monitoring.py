@@ -103,12 +103,35 @@ def _ingest_payload(**overrides):
             "last_reboot_at": "2026-08-12T10:00:00+00:00",
             "process_count": 2,
             "processes": [{"pid": 1, "name": "systemd", "rss_mb": 12.0}],
+            "services": [
+                {"name": "nginx", "status": "RUNNING"},
+                {"name": "postgresql", "status": "RUNNING"},
+                {"name": "docker", "status": "RUNNING"},
+                {"name": "ssh", "status": "RUNNING"},
+                {"name": "fail2ban", "status": "RUNNING"},
+            ],
         },
         "security": {
-            "firewall": {"enabled": True, "backend": "ufw"},
+            "firewall": {
+                "enabled": True,
+                "backend": "ufw",
+                "default_incoming": "DENY",
+                "default_outgoing": "ALLOW",
+            },
             "ssh": {"permit_root_login": False, "password_authentication": False, "port": 22},
             "fail2ban": {"enabled": True, "jails": ["sshd"]},
-            "docker": {"installed": True, "running": True, "containers": 2},
+            "docker": {
+                "installed": True,
+                "running": True,
+                "version": "24.0.7",
+                "containers": 12,
+                "containers_running": 10,
+                "containers_stopped": 2,
+                "images": 15,
+                "container_list": [
+                    {"name": "web", "status": "running", "image": "nginx:latest"},
+                ],
+            },
             "updates": {"available": 0, "security": 0},
             "system": {"os": "Linux", "hostname": "vps-01"},
         },
@@ -192,7 +215,15 @@ def test_enroll_register_and_overview(client, db) -> None:
     assert data["metrics"]["load_1m"] == 0.2
     assert data["metrics"]["available_mb"] == 2496
     assert len(data["metrics"]["disks"]) == 1
+    assert len(data["metrics"]["services"]) == 5
+    assert data["metrics"]["services"][0]["name"] == "nginx"
     assert data["security"]["firewall"]["enabled"] is True
+    assert data["security"]["firewall"]["default_incoming"] == "DENY"
+    assert data["security"]["firewall"]["default_outgoing"] == "ALLOW"
+    assert data["security"]["docker"]["version"] == "24.0.7"
+    assert data["security"]["docker"]["containers_running"] == 10
+    assert data["security"]["docker"]["containers_stopped"] == 2
+    assert data["security"]["docker"]["images"] == 15
     assert data["latest"]["disk_percent"] == 55.0
     assert len(data["history"]) >= 1
 

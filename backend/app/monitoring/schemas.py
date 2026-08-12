@@ -28,6 +28,13 @@ class DiskFilesystem(AgentPayloadSchema):
     usage_percent: float | None = Field(default=None, ge=0, le=100)
 
 
+class ServiceInfo(AgentPayloadSchema):
+    """Linux systemd unit fact — status only, no malice classification."""
+
+    name: str = Field(max_length=255)
+    status: str = Field(default="UNKNOWN", max_length=32)
+
+
 class MetricsPayload(AgentPayloadSchema):
     cpu_usage: float | None = Field(default=None, ge=0, le=100)
     cpu_percent: float | None = Field(default=None, ge=0, le=100)
@@ -50,12 +57,14 @@ class MetricsPayload(AgentPayloadSchema):
     last_reboot_at: datetime | None = None
     process_count: int | None = Field(default=None, ge=0)
     processes: list[ProcessInfo] = Field(default_factory=list)
+    services: list[ServiceInfo] = Field(default_factory=list)
 
 
 class FirewallCheck(AgentPayloadSchema):
     enabled: bool | None = None
     backend: str | None = None
     default_incoming: str | None = None
+    default_outgoing: str | None = None
 
 
 class SshCheck(AgentPayloadSchema):
@@ -69,10 +78,24 @@ class Fail2BanCheck(AgentPayloadSchema):
     jails: list[str] = Field(default_factory=list)
 
 
+class DockerContainerInfo(AgentPayloadSchema):
+    name: str = ""
+    status: str | None = None
+    image: str | None = None
+    cpu_percent: float | None = None
+    memory_mb: float | None = None
+    restart_count: int | None = Field(default=None, ge=0)
+
+
 class DockerCheck(AgentPayloadSchema):
     installed: bool | None = None
     running: bool | None = None
-    containers: int | None = None
+    version: str | None = None
+    containers: int | None = Field(default=None, ge=0)
+    containers_running: int | None = Field(default=None, ge=0)
+    containers_stopped: int | None = Field(default=None, ge=0)
+    images: int | None = Field(default=None, ge=0)
+    container_list: list[DockerContainerInfo] = Field(default_factory=list)
 
 
 class UpdatesCheck(AgentPayloadSchema):

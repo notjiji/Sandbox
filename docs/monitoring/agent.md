@@ -29,7 +29,7 @@ agent/
 ├── agent/
 │   ├── main.py
 │   ├── config.py
-│   ├── collectors/   # cpu, memory, disk, uptime, processes, docker, system
+│   ├── collectors/   # cpu, memory, disk, uptime, processes, services, docker, system
 │   ├── security/     # firewall, ssh, fail2ban, updates
 │   └── client/api.py
 ├── requirements.txt
@@ -111,12 +111,59 @@ Thresholds are fixed for now; per-org configuration is planned.
 
 The dashboard renders uptime as e.g. `17 days 04h 32m`.
 
+### Running services (Linux systemd)
+
+Facts only — name + status. No expected/unexpected or malware classification in V1.
+
+```json
+{
+  "services": [
+    { "name": "nginx", "status": "RUNNING" },
+    { "name": "postgresql", "status": "RUNNING" },
+    { "name": "docker", "status": "RUNNING" },
+    { "name": "ssh", "status": "RUNNING" },
+    { "name": "fail2ban", "status": "RUNNING" }
+  ]
+}
+```
+
+### Docker (when installed)
+
+Sent under `security.docker`:
+
+```json
+{
+  "installed": true,
+  "running": true,
+  "version": "24.0.7",
+  "containers": 12,
+  "containers_running": 10,
+  "containers_stopped": 2,
+  "images": 15,
+  "container_list": [
+    { "name": "web", "status": "running", "image": "nginx:latest" }
+  ]
+}
+```
+
+### Firewall (read-only)
+
+Detects UFW → firewalld → nftables → iptables. Never modifies rules.
+
+```json
+{
+  "enabled": true,
+  "backend": "ufw",
+  "default_incoming": "DENY",
+  "default_outgoing": "ALLOW"
+}
+```
+
 ### Also collected
 
 - **Processes** — top CPU consumers, count
-- **Docker** — installed/running, container count
 - **System** — hostname, OS, kernel, architecture
-- **Security** — firewall, SSH settings, Fail2Ban, pending updates
+- **Security** — SSH settings, Fail2Ban, pending updates
 
 ## What not to do
 

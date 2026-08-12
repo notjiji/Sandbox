@@ -32,6 +32,9 @@ import DiskUsagePanel from "../components/DiskUsagePanel";
 import MetricsHistoryChart from "../components/MetricsHistoryChart";
 import SecurityChecksPanel from "../components/SecurityChecksPanel";
 import MonitoringAlertsList from "../components/MonitoringAlertsList";
+import ServicesPanel from "../components/ServicesPanel";
+import DockerPanel from "../components/DockerPanel";
+import FirewallPanel from "../components/FirewallPanel";
 import { cn } from "@/shared/lib/utils";
 
 function statusClass(status?: string): string {
@@ -312,9 +315,24 @@ export default function AssetMonitoring() {
               </div>
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <SectionPanel title="Firewall">
+                  <FirewallPanel firewall={overview?.security?.firewall} />
+                </SectionPanel>
+                <SectionPanel title="Docker">
+                  <DockerPanel docker={overview?.security?.docker} />
+                </SectionPanel>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <SectionPanel title="Running services">
+                  <ServicesPanel services={overview?.metrics?.services} />
+                </SectionPanel>
                 <SectionPanel title="Alerts">
                   <MonitoringAlertsList alerts={overview?.alerts ?? []} />
                 </SectionPanel>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <SectionPanel title="Processes">
                   {(overview?.metrics?.processes ?? []).length === 0 ? (
                     <p className="text-sm text-brand-600">Process list will appear after the first heartbeat.</p>

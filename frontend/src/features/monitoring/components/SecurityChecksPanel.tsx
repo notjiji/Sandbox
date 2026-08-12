@@ -22,21 +22,23 @@ export default function SecurityChecksPanel({ security }: SecurityChecksPanelPro
   const firewall = security.firewall;
   const ssh = security.ssh;
   const fail2ban = security.fail2ban;
-  const docker = security.docker;
   const updates = security.updates;
   const system = security.system;
 
+  const firewallSummary = firewall
+    ? [
+        checkLabel(firewall.enabled, "ENABLED", "DISABLED"),
+        firewall.backend ? firewall.backend.toUpperCase() : null,
+        firewall.default_incoming ? `in ${firewall.default_incoming}` : null,
+        firewall.default_outgoing ? `out ${firewall.default_outgoing}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "Not reported";
+
   return (
     <div>
-      <Row
-        label="Firewall"
-        value={
-          firewall
-            ? `${checkLabel(firewall.enabled, "Active", "Inactive")}${firewall.backend ? ` (${firewall.backend})` : ""}`
-            : "Not reported"
-        }
-        warn={firewall?.enabled === false}
-      />
+      <Row label="Firewall" value={firewallSummary} warn={firewall?.enabled === false} />
       <Row
         label="SSH root login"
         value={ssh ? checkLabel(ssh.permit_root_login, "Enabled", "Disabled") : "Not reported"}
@@ -57,18 +59,6 @@ export default function SecurityChecksPanel({ security }: SecurityChecksPanelPro
             : "Not reported"
         }
         warn={fail2ban?.enabled === false}
-      />
-      <Row
-        label="Docker"
-        value={
-          docker?.installed
-            ? `${checkLabel(docker.running, "Running", "Stopped")}${
-                docker.containers != null ? ` · ${docker.containers} container(s)` : ""
-              }`
-            : docker
-              ? "Not installed"
-              : "Not reported"
-        }
       />
       <Row
         label="Updates"
