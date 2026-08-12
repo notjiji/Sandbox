@@ -114,9 +114,11 @@ export interface MonitoringOverview {
 export interface EnrollmentResponse {
   agent_id: string;
   asset_id: string;
-  token: string;
+  enrollment_token: string;
+  expires_at: string;
   status: AgentStatus;
   install_command: string;
+  python_command: string;
   api_url: string;
 }
 

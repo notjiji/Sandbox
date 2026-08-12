@@ -47,6 +47,7 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str = "http://localhost"
     PUBLIC_API_URL: str = "http://localhost:8000/api/v1"
+    AGENT_ENROLLMENT_TOKEN_EXPIRE_MINUTES: int = 15
 
     SCAN_RUN_INLINE: bool | None = None
     REPORT_RUN_INLINE: bool | None = None

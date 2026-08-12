@@ -31,7 +31,15 @@ class MonitoringAgent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         index=True,
     )
-    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    enrollment_token_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True, index=True
+    )
+    enrollment_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    credential_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True, index=True
+    )
     status: Mapped[AgentStatus] = mapped_column(
         Enum(AgentStatus, name="agent_status", native_enum=True),
         nullable=False,

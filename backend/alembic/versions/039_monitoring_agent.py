@@ -52,7 +52,9 @@ def upgrade() -> None:
         sa.Column("organization_id", sa.UUID(), nullable=False),
         sa.Column("project_id", sa.UUID(), nullable=False),
         sa.Column("asset_id", sa.UUID(), nullable=False),
-        sa.Column("token_hash", sa.String(length=64), nullable=False),
+        sa.Column("enrollment_token_hash", sa.String(length=64), nullable=True),
+        sa.Column("enrollment_expires_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("credential_hash", sa.String(length=64), nullable=True),
         sa.Column("status", agent_status, nullable=False, server_default="pending"),
         sa.Column("hostname", sa.String(length=255), nullable=True),
         sa.Column("agent_version", sa.String(length=32), nullable=True),
@@ -82,7 +84,18 @@ def upgrade() -> None:
     op.create_index("ix_monitoring_agents_organization_id", "monitoring_agents", ["organization_id"])
     op.create_index("ix_monitoring_agents_project_id", "monitoring_agents", ["project_id"])
     op.create_index("ix_monitoring_agents_asset_id", "monitoring_agents", ["asset_id"])
-    op.create_index("ix_monitoring_agents_token_hash", "monitoring_agents", ["token_hash"], unique=True)
+    op.create_index(
+        "ix_monitoring_agents_enrollment_token_hash",
+        "monitoring_agents",
+        ["enrollment_token_hash"],
+        unique=True,
+    )
+    op.create_index(
+        "ix_monitoring_agents_credential_hash",
+        "monitoring_agents",
+        ["credential_hash"],
+        unique=True,
+    )
 
     op.create_table(
         "monitoring_snapshots",
@@ -166,7 +179,8 @@ def downgrade() -> None:
     op.drop_index("ix_monitoring_snapshots_agent_id", table_name="monitoring_snapshots")
     op.drop_table("monitoring_snapshots")
 
-    op.drop_index("ix_monitoring_agents_token_hash", table_name="monitoring_agents")
+    op.drop_index("ix_monitoring_agents_credential_hash", table_name="monitoring_agents")
+    op.drop_index("ix_monitoring_agents_enrollment_token_hash", table_name="monitoring_agents")
     op.drop_index("ix_monitoring_agents_asset_id", table_name="monitoring_agents")
     op.drop_index("ix_monitoring_agents_project_id", table_name="monitoring_agents")
     op.drop_index("ix_monitoring_agents_organization_id", table_name="monitoring_agents")

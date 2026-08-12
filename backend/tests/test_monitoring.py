@@ -23,25 +23,34 @@ def _create_asset(client, project_id, headers, **payload):
     return response.json()["data"]
 
 
-def _create_server(client, project_id, headers, *, name: str = "Ubuntu VPS"):
-    domain = _create_asset(
+def _create_server(
+    client,
+    project_id,
+    headers,
+    *,
+    name: str = "Ubuntu VPS",
+    hostname: str = "vps-01",
+    address: str = "203.0.113.10",
+    domain: str = "example.test",
+):
+    domain_asset = _create_asset(
         client,
         project_id,
         headers,
-        name="example.test",
+        name=domain,
         type="domain",
         status="active",
-        metadata={"domain": "example.test"},
+        metadata={"domain": domain},
     )
     public_ip = _create_asset(
         client,
         project_id,
         headers,
-        name="Primary IP",
+        name=f"IP {address}",
         type="public_ip",
         status="active",
-        parent_id=domain["id"],
-        metadata={"address": "203.0.113.10"},
+        parent_id=domain_asset["id"],
+        metadata={"address": address},
         allow_private_ip=True,
     )
     return _create_asset(
@@ -53,7 +62,7 @@ def _create_server(client, project_id, headers, *, name: str = "Ubuntu VPS"):
         status="active",
         parent_id=public_ip["id"],
         metadata={
-            "hostname": "vps-01",
+            "hostname": hostname,
             "os": "Ubuntu 24.04",
             "connection_type": "agent",
         },
@@ -90,26 +99,63 @@ def _ingest_payload(**overrides):
     return payload
 
 
-def test_enroll_ingest_and_overview(client, db) -> None:
+def _enroll(client, project_id, asset_id, headers):
+    response = client.post(
+        f"/api/v1/projects/{project_id}/assets/{asset_id}/monitoring/enroll",
+        headers=headers,
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["data"]
+
+
+def _register(client, enrollment_token: str):
+    response = client.post(
+        "/api/v1/monitoring/register",
+        json={"enrollment_token": enrollment_token, "hostname": "vps-01", "agent_version": "1.0.0"},
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["data"]
+
+
+def test_enroll_register_and_overview(client, db) -> None:
     ctx = bootstrap_org_context(db, client, email="mon-owner@example.com")
     project_id = ctx["project"]["id"]
     headers = ctx["org_headers"]
     server = _create_server(client, project_id, headers)
 
-    enroll = client.post(
-        f"/api/v1/projects/{project_id}/assets/{server['id']}/monitoring/enroll",
-        headers=headers,
+    enrollment = _enroll(client, project_id, server["id"], headers)
+    token = enrollment["enrollment_token"]
+    assert token.startswith("sbe_")
+    assert "SANDBOX_ENROLLMENT_TOKEN=" in enrollment["install_command"]
+    assert "install.sh" in enrollment["install_command"]
+    assert enrollment["python_command"].startswith("SANDBOX_API_URL=")
+
+    script = client.get("/api/v1/monitoring/install.sh")
+    assert script.status_code == 200
+    assert "SANDBOX_ENROLLMENT_TOKEN" in script.text
+
+    blocked = client.post(
+        "/api/v1/monitoring/ingest",
+        json=_ingest_payload(),
+        headers={"Authorization": f"Bearer {token}"},
     )
-    assert enroll.status_code == 201, enroll.text
-    enrollment = enroll.json()["data"]
-    token = enrollment["token"]
-    assert token.startswith("sba_")
-    assert "SANDBOX_AGENT_TOKEN=" in enrollment["install_command"]
+    assert blocked.status_code == 401
+
+    registered = _register(client, token)
+    credential = registered["credential"]
+    assert credential.startswith("sba_")
+    assert registered["asset_id"] == server["id"]
+
+    reused = client.post(
+        "/api/v1/monitoring/register",
+        json={"enrollment_token": token, "hostname": "vps-01"},
+    )
+    assert reused.status_code == 401
 
     ingest = client.post(
         "/api/v1/monitoring/ingest",
         json=_ingest_payload(),
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {credential}"},
     )
     assert ingest.status_code == 200, ingest.text
     assert ingest.json()["data"]["accepted"] is True
@@ -136,15 +182,69 @@ def test_enroll_ingest_and_overview(client, db) -> None:
     assert summary["servers"][0]["asset_id"] == server["id"]
 
 
+def test_each_server_has_its_own_credential(client, db) -> None:
+    ctx = bootstrap_org_context(db, client, email="mon-multi@example.com")
+    project_id = ctx["project"]["id"]
+    headers = ctx["org_headers"]
+    server_a = _create_server(client, project_id, headers, name="Server A")
+    server_b = _create_server(
+        client,
+        project_id,
+        headers,
+        name="Server B",
+        hostname="vps-02",
+        address="203.0.113.11",
+        domain="other.test",
+    )
+
+    cred_a = _register(client, _enroll(client, project_id, server_a["id"], headers)["enrollment_token"])[
+        "credential"
+    ]
+    cred_b = _register(client, _enroll(client, project_id, server_b["id"], headers)["enrollment_token"])[
+        "credential"
+    ]
+    assert cred_a != cred_b
+
+    ok_a = client.post(
+        "/api/v1/monitoring/ingest",
+        json=_ingest_payload(),
+        headers={"Authorization": f"Bearer {cred_a}"},
+    )
+    ok_b = client.post(
+        "/api/v1/monitoring/ingest",
+        json=_ingest_payload(hostname="vps-02"),
+        headers={"Authorization": f"Bearer {cred_b}"},
+    )
+    assert ok_a.status_code == 200
+    assert ok_b.status_code == 200
+
+    client.post(
+        f"/api/v1/projects/{project_id}/assets/{server_a['id']}/monitoring/revoke",
+        headers=headers,
+    )
+    revoked_a = client.post(
+        "/api/v1/monitoring/ingest",
+        json=_ingest_payload(),
+        headers={"Authorization": f"Bearer {cred_a}"},
+    )
+    still_b = client.post(
+        "/api/v1/monitoring/ingest",
+        json=_ingest_payload(hostname="vps-02"),
+        headers={"Authorization": f"Bearer {cred_b}"},
+    )
+    assert revoked_a.status_code == 401
+    assert still_b.status_code == 200
+
+
 def test_ingest_opens_and_resolves_alerts(client, db) -> None:
     ctx = bootstrap_org_context(db, client, email="mon-alerts@example.com")
     project_id = ctx["project"]["id"]
     headers = ctx["org_headers"]
     server = _create_server(client, project_id, headers)
-    token = client.post(
-        f"/api/v1/projects/{project_id}/assets/{server['id']}/monitoring/enroll",
-        headers=headers,
-    ).json()["data"]["token"]
+    credential = _register(
+        client,
+        _enroll(client, project_id, server["id"], headers)["enrollment_token"],
+    )["credential"]
 
     hot = _ingest_payload()
     hot["metrics"]["cpu_percent"] = 95.0
@@ -158,7 +258,7 @@ def test_ingest_opens_and_resolves_alerts(client, db) -> None:
     first = client.post(
         "/api/v1/monitoring/ingest",
         json=hot,
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {credential}"},
     )
     assert first.status_code == 200
     assert first.json()["data"]["alerts_open"] >= 3
@@ -175,7 +275,7 @@ def test_ingest_opens_and_resolves_alerts(client, db) -> None:
     cool = client.post(
         "/api/v1/monitoring/ingest",
         json=_ingest_payload(),
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {credential}"},
     )
     assert cool.status_code == 200
     assert cool.json()["data"]["alerts_open"] == 0
@@ -262,10 +362,10 @@ def test_revoke_rejects_old_token(client, db) -> None:
     project_id = ctx["project"]["id"]
     headers = ctx["org_headers"]
     server = _create_server(client, project_id, headers)
-    token = client.post(
-        f"/api/v1/projects/{project_id}/assets/{server['id']}/monitoring/enroll",
-        headers=headers,
-    ).json()["data"]["token"]
+    credential = _register(
+        client,
+        _enroll(client, project_id, server["id"], headers)["enrollment_token"],
+    )["credential"]
 
     revoke = client.post(
         f"/api/v1/projects/{project_id}/assets/{server['id']}/monitoring/revoke",
@@ -276,7 +376,7 @@ def test_revoke_rejects_old_token(client, db) -> None:
     ingest = client.post(
         "/api/v1/monitoring/ingest",
         json=_ingest_payload(),
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {credential}"},
     )
     assert ingest.status_code == 401
 

@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -11,8 +11,20 @@ def get_agent_by_asset(db: Session, *, asset_id: uuid.UUID) -> MonitoringAgent |
     return db.query(MonitoringAgent).filter(MonitoringAgent.asset_id == asset_id).first()
 
 
-def get_agent_by_token_hash(db: Session, *, token_hash: str) -> MonitoringAgent | None:
-    return db.query(MonitoringAgent).filter(MonitoringAgent.token_hash == token_hash).first()
+def get_agent_by_credential_hash(db: Session, *, credential_hash: str) -> MonitoringAgent | None:
+    return (
+        db.query(MonitoringAgent)
+        .filter(MonitoringAgent.credential_hash == credential_hash)
+        .first()
+    )
+
+
+def get_agent_by_enrollment_hash(db: Session, *, enrollment_token_hash: str) -> MonitoringAgent | None:
+    return (
+        db.query(MonitoringAgent)
+        .filter(MonitoringAgent.enrollment_token_hash == enrollment_token_hash)
+        .first()
+    )
 
 
 def get_agent_by_id(db: Session, *, agent_id: uuid.UUID) -> MonitoringAgent | None:
@@ -37,14 +49,16 @@ def create_agent(
     organization_id: uuid.UUID,
     project_id: uuid.UUID,
     asset_id: uuid.UUID,
-    token_hash: str,
+    enrollment_token_hash: str,
+    enrollment_expires_at: datetime,
     created_by: uuid.UUID | None,
 ) -> MonitoringAgent:
     agent = MonitoringAgent(
         organization_id=organization_id,
         project_id=project_id,
         asset_id=asset_id,
-        token_hash=token_hash,
+        enrollment_token_hash=enrollment_token_hash,
+        enrollment_expires_at=enrollment_expires_at,
         status=AgentStatus.PENDING,
         created_by=created_by,
         enrolled_at=datetime.now(UTC),

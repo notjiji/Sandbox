@@ -93,12 +93,27 @@ class AgentIngestResponse(BaseSchema):
     next_interval_seconds: int = 60
 
 
+class AgentRegisterRequest(AgentPayloadSchema):
+    enrollment_token: str = Field(min_length=8, max_length=255)
+    hostname: str | None = Field(default=None, max_length=255)
+    agent_version: str | None = Field(default=None, max_length=32)
+
+
+class AgentRegisterResponse(BaseSchema):
+    agent_id: str
+    asset_id: str
+    credential: str
+    next_interval_seconds: int = 60
+
+
 class EnrollmentResponse(BaseSchema):
     agent_id: str
     asset_id: str
-    token: str
+    enrollment_token: str
+    expires_at: datetime
     status: AgentStatus
     install_command: str
+    python_command: str
     api_url: str
 
 

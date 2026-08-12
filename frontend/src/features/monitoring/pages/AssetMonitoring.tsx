@@ -67,7 +67,7 @@ export default function AssetMonitoring() {
     try {
       const result = await monitoringApi.enroll(projectId, assetId);
       setEnrollment(result);
-      toast.success("Agent enrolled. Copy the token now — it is shown only once.");
+      toast.success("Install command ready. The enrollment token expires soon and can be used once.");
       await queryClient.invalidateQueries({ queryKey: monitoringKeys.all });
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Unable to enroll agent.");
@@ -80,7 +80,7 @@ export default function AssetMonitoring() {
     if (!projectId || !assetId) return;
     const ok = await confirm({
       title: "Revoke monitoring agent?",
-      description: "The current token will stop working immediately. You can enroll again later.",
+      description: "This server's agent credential will stop working immediately. Other servers are unaffected.",
       confirmLabel: "Revoke",
       destructive: true,
     });
@@ -164,7 +164,7 @@ export default function AssetMonitoring() {
             {canManageMonitoring && (
               <div className="flex flex-wrap gap-2">
                 <button type="button" className="btn-primary" onClick={() => void enroll()} disabled={busy}>
-                  {overview?.agent ? "Rotate token" : "Enroll agent"}
+                  {overview?.agent ? "New install command" : "Install agent"}
                 </button>
                 {overview?.agent && overview.agent.status !== "revoked" && (
                   <button
@@ -182,29 +182,35 @@ export default function AssetMonitoring() {
 
           {enrollment && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-5">
-              <p className="text-sm font-medium text-amber-100">Save this token now. It will not be shown again.</p>
+              <p className="text-sm font-medium text-amber-100">
+                Run this on the server. The enrollment token expires
+                {enrollment.expires_at
+                  ? ` at ${new Date(enrollment.expires_at).toLocaleString()}`
+                  : " shortly"}{" "}
+                and can be used once. The agent then stores its own credential — it is never shown here.
+              </p>
               <div className="mt-3 flex flex-col gap-2">
                 <code className="break-all rounded bg-void-100/80 px-3 py-2 text-xs text-brand-100">
-                  {enrollment.token}
-                </code>
-                <code className="break-all rounded bg-void-100/80 px-3 py-2 text-xs text-brand-100">
                   {enrollment.install_command}
+                </code>
+                <code className="break-all rounded bg-void-100/80 px-3 py-2 text-xs text-brand-400">
+                  {enrollment.python_command}
                 </code>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded-lg border border-brand-700/50 px-3 py-1.5 text-xs text-brand-200"
-                  onClick={() => void copy(enrollment.token, "Token")}
+                  onClick={() => void copy(enrollment.install_command, "Install command")}
                 >
-                  <Copy size={14} /> Copy token
+                  <Copy size={14} /> Copy install command
                 </button>
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded-lg border border-brand-700/50 px-3 py-1.5 text-xs text-brand-200"
-                  onClick={() => void copy(enrollment.install_command, "Install command")}
+                  onClick={() => void copy(enrollment.python_command, "Python command")}
                 >
-                  <Copy size={14} /> Copy install command
+                  <Copy size={14} /> Copy Python command
                 </button>
               </div>
             </div>
@@ -218,7 +224,7 @@ export default function AssetMonitoring() {
               action={
                 canManageMonitoring ? (
                   <button type="button" className="btn-primary" onClick={() => void enroll()} disabled={busy}>
-                    Enroll agent
+                    Install agent
                   </button>
                 ) : undefined
               }

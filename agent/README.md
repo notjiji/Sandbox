@@ -1,54 +1,61 @@
 # Sandbox monitoring agent
 
-Outbound HTTPS agent that reports host health and a basic security posture. The platform never SSHs into customer servers.
+Lightweight outbound HTTPS agent. The platform never SSHs into customer servers.
+
+Each server has its own credential. The install command only contains a **short-lived enrollment token** (`sbe_…`). On first start the agent exchanges that token for a permanent per-server credential (`sba_…`) stored locally, and the enrollment token is invalidated.
+
+```
+security-agent/
+├── agent/
+│   ├── main.py
+│   ├── config.py
+│   ├── collectors/     # cpu, memory, disk, uptime, processes, docker, system
+│   ├── security/       # firewall, ssh, fail2ban, updates
+│   └── client/api.py
+├── requirements.txt
+├── Dockerfile
+└── README.md
+```
 
 ## Install
+
+From the dashboard **Install agent** action:
+
+```bash
+curl -fsSL http://localhost:8000/api/v1/monitoring/install.sh | \
+  sudo env SANDBOX_API_URL=http://localhost:8000/api/v1 SANDBOX_ENROLLMENT_TOKEN=sbe_... bash
+```
+
+Or, after copying this directory to the host:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+export SANDBOX_API_URL=https://your-platform.example/api/v1
+export SANDBOX_ENROLLMENT_TOKEN=sbe_...
+python -m agent
 ```
 
-## Run
+The enrollment token expires in 15 minutes and can be used **once**. After registration, the credential is written to `$SANDBOX_AGENT_HOME/credential` (default `~/.sandbox-agent/credential`).
 
-Use the token shown once when you enroll a server in the dashboard:
+## Docker
 
 ```bash
-export SANDBOX_API_URL=https://your-platform.example/api/v1
-export SANDBOX_AGENT_TOKEN=sba_...
-python -m sandbox_agent
+docker build -t sandbox-agent .
+docker run --rm \
+  -e SANDBOX_API_URL=https://your-platform.example/api/v1 \
+  -e SANDBOX_ENROLLMENT_TOKEN=sbe_... \
+  sandbox-agent
 ```
 
-Optional:
+## Environment
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `SANDBOX_AGENT_INTERVAL` | `60` | Seconds between heartbeats |
-| `SANDBOX_AGENT_TIMEOUT` | `15` | HTTP timeout |
-
-The agent authenticates with `Authorization: Bearer <token>` only. Do not send a user JWT or `X-Organization-ID`.
-
-## What it reports
-
-CPU, RAM, disk, uptime, top processes, Docker, firewall, SSH config, Fail2Ban, available updates, and system info. Linux-only checks are skipped when the tools are missing (including on Windows for local development).
-
-## systemd (optional)
-
-```ini
-[Unit]
-Description=Sandbox monitoring agent
-After=network-online.target
-
-[Service]
-Type=simple
-Environment=SANDBOX_API_URL=https://your-platform.example/api/v1
-Environment=SANDBOX_AGENT_TOKEN=sba_...
-WorkingDirectory=/opt/sandbox-agent
-ExecStart=/opt/sandbox-agent/.venv/bin/python -m sandbox_agent
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-```
+| Variable | Purpose |
+|----------|---------|
+| `SANDBOX_API_URL` | API origin including `/api/v1` |
+| `SANDBOX_ENROLLMENT_TOKEN` | One-time install token (`sbe_…`) |
+| `SANDBOX_AGENT_CREDENTIAL` | Optional override of the stored `sba_…` credential |
+| `SANDBOX_AGENT_HOME` | State directory (credential file) |
+| `SANDBOX_AGENT_INTERVAL` | Heartbeat seconds (default 60) |
+| `SANDBOX_AGENT_TIMEOUT` | HTTP timeout (default 15) |

@@ -1,30 +1,45 @@
 # Monitoring agent
 
-The agent lives in `agent/` and only makes outbound HTTPS calls.
+Modular Python service in `agent/`. Collectors and security checks are separate plugins. The agent only makes outbound HTTPS calls.
 
-## Install on the server
+## Install
+
+Dashboard **Install agent** prints:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-export SANDBOX_API_URL=https://your-platform.example/api/v1
-export SANDBOX_AGENT_TOKEN=sba_...
-python -m sandbox_agent
+curl -fsSL https://your-platform.example/api/v1/monitoring/install.sh | \
+  sudo env SANDBOX_API_URL=https://your-platform.example/api/v1 SANDBOX_ENROLLMENT_TOKEN=sbe_... bash
 ```
 
-The dashboard **Enroll agent** action prints this command with a one-time token.
+That command contains a **short-lived enrollment token**, not the permanent credential.
 
-## Behavior
+On first start the agent:
 
-- Collects CPU, RAM, disk, uptime, processes (via `psutil`).
-- On Linux, reads `/etc/ssh/sshd_config` and probes ufw/firewalld, Fail2Ban, Docker, and apt security updates when those tools exist.
-- Missing checks are omitted (`null`) instead of failing the heartbeat.
-- Posts to `/monitoring/ingest` every 60 seconds (or `next_interval_seconds` from the API).
-- Backs off on transport errors; exits cleanly on SIGINT/SIGTERM.
+1. `POST /monitoring/register` with the enrollment token
+2. Receives a per-server credential (`sba_…`)
+3. Stores it in `~/.sandbox-agent/credential` (mode 0600)
+4. Heartbeats with `Authorization: Bearer sba_…`
+
+The enrollment token is then invalid.
+
+## Layout
+
+```
+agent/
+├── agent/
+│   ├── main.py
+│   ├── config.py
+│   ├── collectors/   # cpu, memory, disk, uptime, processes, docker, system
+│   ├── security/     # firewall, ssh, fail2ban, updates
+│   └── client/api.py
+├── requirements.txt
+├── Dockerfile
+└── README.md
+```
 
 ## What not to do
 
-- Do not open inbound SSH from the Sandbox backend.
-- Do not put the agent token in source control or screenshots after the enroll modal is dismissed.
-- Do not send a user access token to the ingest endpoint.
+- Do not SSH from the Sandbox backend into customer servers.
+- Do not put a permanent `sba_…` credential in the install command or chat logs.
+- Do not share one credential across servers. Revoke is per server.
+- Do not send a user JWT to register or ingest.

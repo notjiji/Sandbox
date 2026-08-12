@@ -93,7 +93,8 @@ Source: `backend/app/audit/events.py` and feature-specific `*/events.py` files.
 
 | Event | Description |
 |-------|-------------|
-| `monitoring.enroll` | Agent enrolled or token rotated |
+| `monitoring.enroll` | Short-lived install/enrollment token issued |
+| `monitoring.register` | Agent exchanged enrollment token for a per-server credential |
 | `monitoring.revoke` | Agent token revoked |
 | `monitoring.alert_opened` | New monitoring alert opened (not every refresh) |
 

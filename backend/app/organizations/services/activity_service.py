@@ -168,7 +168,9 @@ def _build_message(record: AuditLog, actor_name: str) -> str:
         return f"{actor_name} reviewed a finding"
 
     if action == "monitoring.enroll":
-        return f"{actor_name} enrolled a monitoring agent"
+        return f"{actor_name} generated a monitoring agent install command"
+    if action == "monitoring.register":
+        return "Monitoring agent registered"
     if action == "monitoring.revoke":
         return f"{actor_name} revoked a monitoring agent"
     if action == "monitoring.alert_opened":

@@ -3,60 +3,58 @@
 ```
 Linux / Docker host
         │
-        │ local collection (psutil, sshd_config, ufw, fail2ban, docker)
+        │ collectors + security modules
         ▼
- Monitoring Agent  ── HTTPS POST /api/v1/monitoring/ingest ──►  Monitoring API
-        │                                                         │
-        │ Bearer sba_… token                                      ├── Metrics Service
-        │ (hash stored, plaintext shown once)                     ├── Security Checks
-                                                                  ├── Alert Engine
-                                                                  └── Database
-                                                                         │
-                                                                         ▼
-                                                                      Dashboard
+ Monitoring Agent
+        │
+        │ 1. POST /monitoring/register   (short-lived sbe_… enrollment token)
+        │ 2. receives per-server sba_… credential; enrollment token invalidated
+        │ 3. POST /monitoring/ingest     (Bearer sba_…)
+        ▼
+ Monitoring API ── metrics, security checks, alert engine, database ──► Dashboard
 ```
 
-The platform **does not SSH** into servers. The customer installs a small agent that pushes snapshots on a timer (default 60 seconds).
+The platform **does not SSH** into servers. Each server has its own credential. Revoking Server A does not affect Server B.
+
+## Registration
+
+```
+User → Add server → Install agent
+  → short-lived enrollment token (sbe_…)
+  → curl …/install.sh | sudo bash
+  → agent registers
+  → permanent per-server credential (sba_…) stored on the host
+  → enrollment token invalidated
+  → server shows ONLINE
+```
+
+Enrollment tokens expire in 15 minutes and are single-use. They cannot ingest metrics.
 
 ## Components
 
 | Component | Role |
 |-----------|------|
-| `MonitoringAgent` | One enrolled agent per asset. Token hash, status, last seen. |
-| `MonitoringSnapshot` | Time-series metrics plus JSON payload (processes, security checks). |
-| `MonitoringAlert` | Deduped by `(asset_id, alert_code)`. Auto-resolved when the condition clears. |
-| Alert engine | Thresholds and posture checks evaluated on every ingest. |
-| Dashboard | Asset monitoring page and org-wide server health panel. |
+| `MonitoringAgent` | One identity per asset. Enrollment hash, credential hash, status. |
+| `MonitoringSnapshot` | Time-series metrics plus JSON payload. |
+| `MonitoringAlert` | Deduped by `(asset_id, alert_code)`. |
+| Collectors | CPU, memory, disk, uptime, processes, Docker, system. |
+| Security modules | Firewall, SSH, Fail2Ban, updates. |
 
 ## Status
 
 | Status | Meaning |
 |--------|---------|
-| `pending` | Enrolled, waiting for the first heartbeat |
-| `online` | Heartbeat within the last 10 minutes |
-| `offline` | Last seen more than 10 minutes ago (computed lazily) |
-| `revoked` | Token destroyed; ingest returns 401 |
-
-## Alert codes (V1)
-
-| Code | Trigger |
-|------|---------|
-| `CPU_HIGH` | CPU ≥ 90% |
-| `RAM_HIGH` | RAM ≥ 90% |
-| `DISK_HIGH` | Disk ≥ 90% |
-| `DISK_CRITICAL` | Disk ≥ 95% |
-| `FIREWALL_INACTIVE` | Firewall reported disabled |
-| `SSH_ROOT_LOGIN` | `PermitRootLogin` enabled |
-| `SSH_PASSWORD_AUTH` | Password authentication enabled |
-| `FAIL2BAN_INACTIVE` | Fail2Ban not running |
-| `UPDATES_AVAILABLE` | Security updates > 0 |
+| `pending` | Install command issued; waiting for register |
+| `online` | Registered; heartbeat within 10 minutes |
+| `offline` | Last seen more than 10 minutes ago |
+| `revoked` | This server's credential destroyed |
 
 ## Code map
 
 | Layer | Path |
 |-------|------|
 | Models | `backend/app/monitoring/models.py` |
-| Ingest | `backend/app/monitoring/agent_router.py` |
+| Agent API | `backend/app/monitoring/agent_router.py` |
 | Enrollment | `backend/app/monitoring/router.py` |
-| Agent | `agent/sandbox_agent/` |
+| Agent | `agent/agent/` |
 | UI | `frontend/src/features/monitoring/` |

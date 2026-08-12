@@ -65,7 +65,7 @@ Requires `dashboard:view` — **includes viewers**. Scan execution buttons are h
 | Action | Allowed roles |
 |--------|---------------|
 | View metrics / alerts | All roles (`monitoring:read`) |
-| Enroll / rotate / revoke agent | owner, admin, security_analyst (`monitoring:manage`) |
+| Install / revoke agent | owner, admin, security_analyst (`monitoring:manage`) |
 
 ### Scans
 

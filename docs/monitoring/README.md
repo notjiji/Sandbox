@@ -21,14 +21,14 @@ Phase 10 connects authorized Linux (and Docker host) servers through an **outbou
 ## Quick start
 
 1. Open a **server**, **Windows server**, or **Docker host** asset.
-2. Go to **Monitoring** and click **Enroll agent**.
-3. Copy the one-time token and install command.
-4. Run the agent on the host. It heartbeats to `POST /api/v1/monitoring/ingest`.
+2. Go to **Monitoring** and click **Install agent**.
+3. Run the generated `curl … \| bash` command on the server (enrollment token expires in 15 minutes, one use).
+4. The agent registers, stores its own credential, and the server shows **Online**.
 5. Metrics and alerts appear on the asset page and the organization dashboard **Server health** panel.
 
 ## Security
 
-- Agent tokens are opaque (`sba_…`), stored as SHA-256 hashes, and shown **once**.
-- Ingest uses `Authorization: Bearer <agent token>` only — no user JWT and no `X-Organization-ID`.
-- Rotate by enrolling again. Revoke immediately invalidates the current token.
+- Enrollment uses a short-lived `sbe_…` token (15 minutes, single-use). The permanent `sba_…` credential is issued only to that server and never shown in the UI.
+- Each server has its own credential. Revoking one host does not affect others.
+- Ingest uses `Authorization: Bearer <per-server credential>` — no user JWT and no `X-Organization-ID`.
 - An agent is treated as offline if no heartbeat arrives for 10 minutes.
