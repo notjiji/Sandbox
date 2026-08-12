@@ -7,6 +7,7 @@ const SCAN_RUN_ROLES: OrganizationRole[] = ["owner", "admin", "security_analyst"
 const REPORT_GENERATE_ROLES: OrganizationRole[] = ["owner", "admin", "security_analyst", "manager"];
 const REPORT_DELETE_ROLES: OrganizationRole[] = ["owner", "admin", "security_analyst"];
 const MANAGE_ROLES: OrganizationRole[] = ["owner", "admin"];
+const MONITORING_MANAGE_ROLES: OrganizationRole[] = ["owner", "admin", "security_analyst"];
 
 export function useOrganizationRole() {
   const [role, setRole] = useState<OrganizationRole | null>(null);
@@ -42,5 +43,6 @@ export function useOrganizationRole() {
     canGenerateReport: role != null && REPORT_GENERATE_ROLES.includes(role),
     canDeleteReport: role != null && REPORT_DELETE_ROLES.includes(role),
     canManage: role != null && MANAGE_ROLES.includes(role),
+    canManageMonitoring: role != null && MONITORING_MANAGE_ROLES.includes(role),
   };
 }

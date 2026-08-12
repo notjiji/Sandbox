@@ -50,6 +50,7 @@ The UI mirrors backend roles via `useOrganizationRole()`:
 - `canGenerateReport` — owner, admin, security_analyst, manager
 - `canDeleteReport` — owner, admin, security_analyst
 - `canManage` — owner, admin
+- `canManageMonitoring` — owner, admin, security_analyst
 
 Never rely on UI alone; the API always re-checks permissions.
 

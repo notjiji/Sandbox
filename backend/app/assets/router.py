@@ -53,6 +53,7 @@ from app.scans.asset_router import router as asset_scans_router
 from app.scans.schedule_router import router as asset_scan_schedules_router
 from app.findings.asset_router import router as asset_findings_router
 from app.reports.asset_router import router as asset_reports_router
+from app.monitoring.router import router as asset_monitoring_router
 
 router = APIRouter()
 
@@ -172,6 +173,11 @@ router.include_router(
 )
 router.include_router(asset_findings_router, prefix="/{asset_id}/findings", tags=["findings"])
 router.include_router(asset_reports_router, prefix="/{asset_id}/reports", tags=["reports"])
+router.include_router(
+    asset_monitoring_router,
+    prefix="/{asset_id}/monitoring",
+    tags=["monitoring"],
+)
 
 
 @router.post("", status_code=201)

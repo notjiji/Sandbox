@@ -25,11 +25,17 @@ from app.organizations.services.activity_service import get_organization_activit
 from app.organizations.services.overview_service import get_organization_overview
 from app.reports.org_router import router as org_reports_router
 from app.risk.organization_router import router as org_risk_router
+from app.monitoring.org_router import router as org_monitoring_router
 
 router = APIRouter()
 router.include_router(org_risk_router, prefix="/risk", tags=["organization-risk"])
 router.include_router(dashboard_router, prefix="/current/dashboard", tags=["dashboard"])
 router.include_router(org_reports_router, prefix="/current/reports", tags=["organization-reports"])
+router.include_router(
+    org_monitoring_router,
+    prefix="/current/monitoring",
+    tags=["organization-monitoring"],
+)
 
 
 @router.get("/me")

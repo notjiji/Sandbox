@@ -89,6 +89,14 @@ Source: `backend/app/audit/events.py` and feature-specific `*/events.py` files.
 |-------|-------------|
 | `ai.chat` | AI assistant message exchanged |
 
+## Monitoring
+
+| Event | Description |
+|-------|-------------|
+| `monitoring.enroll` | Agent enrolled or token rotated |
+| `monitoring.revoke` | Agent token revoked |
+| `monitoring.alert_opened` | New monitoring alert opened (not every refresh) |
+
 ## Feature-specific aliases
 
 Some modules re-export or extend `AuditAction`:
@@ -97,5 +105,6 @@ Some modules re-export or extend `AuditAction`:
 - `backend/app/scans/events.py` — `ScanAuditAction`
 - `backend/app/findings/events.py` — `FindingAuditAction`
 - `backend/app/assets/events.py` — `AssetAuditAction`
+- `backend/app/monitoring/events.py` — `MonitoringAuditAction`
 
 Use the canonical string values above in queries and dashboards.

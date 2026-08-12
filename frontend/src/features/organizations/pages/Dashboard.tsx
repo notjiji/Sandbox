@@ -12,6 +12,7 @@ import AssetOverviewChart from "../components/dashboard/AssetOverviewChart";
 import CriticalFindingsList from "../components/dashboard/CriticalFindingsList";
 import TopRiskyAssets from "../components/dashboard/TopRiskyAssets";
 import UpcomingScansPanel from "../components/dashboard/UpcomingScansPanel";
+import ServerHealthPanel from "@/features/monitoring/components/ServerHealthPanel";
 import { SectionPanel } from "../components/dashboard/StatCard";
 import {
   useDashboardActivity,
@@ -192,6 +193,10 @@ export default function Dashboard() {
             )}
           </SectionPanel>
         </div>
+
+        <SectionPanel title="Server health">
+          <ServerHealthPanel />
+        </SectionPanel>
 
         <SectionPanel
           title="Recent Activity"

@@ -18,6 +18,7 @@ Technical documentation for the Sandbox security assessment platform.
 | [Audit](./audit/README.md) | Audit log and event catalog |
 | [Background jobs](./jobs/README.md) | Celery workers and scheduled tasks |
 | [Scans](./scans/README.md) | Scan lifecycle and schedules (see also [scan-engine.md](./scan-engine.md)) |
+| [Monitoring](./monitoring/README.md) | Server agent, metrics, security posture, alerts |
 
 ## Existing deep-dive docs
 

@@ -66,6 +66,7 @@ def _import_models() -> None:
     import app.scans.schedule_models  # noqa: F401
     import app.assets.saved_filter_models  # noqa: F401
     import app.users.models  # noqa: F401
+    import app.monitoring.models  # noqa: F401
 
 
 _import_models()

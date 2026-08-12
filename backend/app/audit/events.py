@@ -44,3 +44,6 @@ class AuditAction:
     REPORT_DOWNLOAD = "report.download"
     REPORT_DELETE = "report.delete"
     AI_CHAT = "ai.chat"
+    MONITORING_ENROLL = "monitoring.enroll"
+    MONITORING_REVOKE = "monitoring.revoke"
+    MONITORING_ALERT_OPENED = "monitoring.alert_opened"

@@ -49,6 +49,8 @@ def _category_for_action(action: str) -> str:
         return "projects"
     if action.startswith("org.risk"):
         return "security"
+    if action.startswith("monitoring."):
+        return "security"
     if action.startswith("org."):
         return "organization"
     return "system"
@@ -77,6 +79,10 @@ def _build_href(record: AuditLog) -> str | None:
         return "/organization/members"
     if resource_type == "organization":
         return "/organization/settings"
+    if resource_type in {"monitoring_agent", "monitoring_alert"} and project_id:
+        asset_id = details.get("asset_id")
+        if asset_id:
+            return f"/projects/{project_id}/assets/{asset_id}/monitoring"
     return None
 
 
@@ -160,6 +166,14 @@ def _build_message(record: AuditLog, actor_name: str) -> str:
         return f"{actor_name} updated a finding"
     if action == "finding.review":
         return f"{actor_name} reviewed a finding"
+
+    if action == "monitoring.enroll":
+        return f"{actor_name} enrolled a monitoring agent"
+    if action == "monitoring.revoke":
+        return f"{actor_name} revoked a monitoring agent"
+    if action == "monitoring.alert_opened":
+        code = details.get("alert_code", "alert")
+        return f"Monitoring alert opened: {code}"
 
     label = action.split(".")[-1].replace("_", " ")
     resource = record.resource_type or "item"

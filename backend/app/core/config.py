@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     ACCOUNT_LOCKOUT_DURATION_SECONDS: int = 900
 
     FRONTEND_URL: str = "http://localhost"
+    PUBLIC_API_URL: str = "http://localhost:8000/api/v1"
 
     SCAN_RUN_INLINE: bool | None = None
     REPORT_RUN_INLINE: bool | None = None

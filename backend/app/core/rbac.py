@@ -19,8 +19,8 @@ ROLE_PERMISSIONS: dict[OrganizationRole, frozenset[Permission]] = {
 ROLE_DESCRIPTIONS: dict[OrganizationRole, str] = {
     OrganizationRole.OWNER: "Full control of the organization, billing, member management, and deletion",
     OrganizationRole.ADMIN: "Manage assets, scans, reports, and users (except ownership)",
-    OrganizationRole.SECURITY_ANALYST: "Create assets, run scans, review findings, and generate reports",
-    OrganizationRole.MANAGER: "View dashboards, findings, and reports",
+    OrganizationRole.SECURITY_ANALYST: "Create assets, run scans, review findings, generate reports, and manage monitoring agents",
+    OrganizationRole.MANAGER: "View dashboards, findings, reports, and server monitoring",
     OrganizationRole.VIEWER: "Read-only access",
 }
 

@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  Activity,
   Bug,
   FileText,
   Globe,
@@ -60,6 +61,12 @@ export default function ProjectNav({ projectName, assetName, active }: ProjectNa
       label: "Scans",
       icon: Radar,
       path: `/projects/${projectId}/assets/${assetId}/scans`,
+    },
+    {
+      key: "monitoring",
+      label: "Monitoring",
+      icon: Activity,
+      path: `/projects/${projectId}/assets/${assetId}/monitoring`,
     },
     { key: "assets", label: "All assets", icon: Globe, path: `/projects/${projectId}/assets` },
   ];

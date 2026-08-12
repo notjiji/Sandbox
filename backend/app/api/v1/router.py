@@ -6,6 +6,7 @@ from app.organizations.router import router as organizations_router
 from app.projects.router import router as projects_router
 from app.users.router import router as users_router
 from app.ai.router import router as ai_router
+from app.monitoring.agent_router import router as monitoring_agent_router
 
 router = APIRouter()
 
@@ -15,3 +16,4 @@ router.include_router(organizations_router, prefix="/organizations", tags=["orga
 router.include_router(ai_router, prefix="/organizations/ai", tags=["ai"])
 router.include_router(members_router, prefix="/organizations", tags=["members"])
 router.include_router(projects_router, prefix="/projects", tags=["projects"])
+router.include_router(monitoring_agent_router, prefix="/monitoring", tags=["monitoring-agent"])

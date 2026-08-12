@@ -22,6 +22,8 @@ Source of truth: `backend/app/core/permissions.py`
 | `report:read/generate/delete` | Report library |
 | `dashboard:view` | Security Intelligence dashboard |
 | `ai:use` | AI Assistant |
+| `monitoring:read` | View server monitoring metrics and alerts |
+| `monitoring:manage` | Enroll and revoke monitoring agents |
 
 ## Role → permission summary
 
@@ -39,6 +41,8 @@ Source of truth: `backend/app/core/permissions.py`
 | dashboard:view | ✓ | ✓ | ✓ | ✓ | ✓ |
 | report:read | ✓ | ✓ | ✓ | ✓ | ✓ |
 | ai:use | ✓ | ✓ | ✓ | ✓ | — |
+| monitoring:read | ✓ | ✓ | ✓ | ✓ | ✓ |
+| monitoring:manage | ✓ | ✓ | ✓ | — | — |
 
 Owner and admin inherit all permissions except admin lacks `org:delete`, `org:billing`, and `member:transfer_ownership`.
 
@@ -55,6 +59,13 @@ Owner and admin inherit all permissions except admin lacks `org:delete`, `org:bi
 ### Dashboard
 
 Requires `dashboard:view` — **includes viewers**. Scan execution buttons are hidden client-side for roles without `scan:run`.
+
+### Monitoring
+
+| Action | Allowed roles |
+|--------|---------------|
+| View metrics / alerts | All roles (`monitoring:read`) |
+| Enroll / rotate / revoke agent | owner, admin, security_analyst (`monitoring:manage`) |
 
 ### Scans
 
