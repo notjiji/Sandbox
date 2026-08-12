@@ -10,16 +10,34 @@ export interface ProcessInfo {
   user?: string | null;
 }
 
+export interface DiskFilesystem {
+  filesystem: string;
+  total_gb?: number | null;
+  used_gb?: number | null;
+  available_gb?: number | null;
+  usage_percent?: number | null;
+}
+
 export interface MetricsPayload {
+  cpu_usage?: number | null;
   cpu_percent?: number | null;
+  load_1m?: number | null;
+  load_avg?: number[] | null;
+  cores?: number | null;
+  total_mb?: number | null;
+  used_mb?: number | null;
+  available_mb?: number | null;
+  usage_percent?: number | null;
   ram_percent?: number | null;
   ram_used_mb?: number | null;
   ram_total_mb?: number | null;
+  disks?: DiskFilesystem[];
   disk_percent?: number | null;
   disk_used_gb?: number | null;
   disk_total_gb?: number | null;
   uptime_seconds?: number | null;
-  load_avg?: number[] | null;
+  boot_time?: string | null;
+  last_reboot_at?: string | null;
   process_count?: number | null;
   processes?: ProcessInfo[];
 }

@@ -20,16 +20,34 @@ class ProcessInfo(AgentPayloadSchema):
     user: str | None = None
 
 
+class DiskFilesystem(AgentPayloadSchema):
+    filesystem: str
+    total_gb: float | None = Field(default=None, ge=0)
+    used_gb: float | None = Field(default=None, ge=0)
+    available_gb: float | None = Field(default=None, ge=0)
+    usage_percent: float | None = Field(default=None, ge=0, le=100)
+
+
 class MetricsPayload(AgentPayloadSchema):
+    cpu_usage: float | None = Field(default=None, ge=0, le=100)
     cpu_percent: float | None = Field(default=None, ge=0, le=100)
+    load_1m: float | None = Field(default=None, ge=0)
+    load_avg: list[float] | None = None
+    cores: int | None = Field(default=None, ge=1)
+    total_mb: float | None = Field(default=None, ge=0)
+    used_mb: float | None = Field(default=None, ge=0)
+    available_mb: float | None = Field(default=None, ge=0)
+    usage_percent: float | None = Field(default=None, ge=0, le=100)
     ram_percent: float | None = Field(default=None, ge=0, le=100)
     ram_used_mb: float | None = Field(default=None, ge=0)
     ram_total_mb: float | None = Field(default=None, ge=0)
+    disks: list[DiskFilesystem] = Field(default_factory=list)
     disk_percent: float | None = Field(default=None, ge=0, le=100)
     disk_used_gb: float | None = Field(default=None, ge=0)
     disk_total_gb: float | None = Field(default=None, ge=0)
     uptime_seconds: int | None = Field(default=None, ge=0)
-    load_avg: list[float] | None = None
+    boot_time: datetime | None = None
+    last_reboot_at: datetime | None = None
     process_count: int | None = Field(default=None, ge=0)
     processes: list[ProcessInfo] = Field(default_factory=list)
 

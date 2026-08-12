@@ -74,15 +74,33 @@ def _ingest_payload(**overrides):
         "hostname": "vps-01",
         "agent_version": "1.0.0",
         "metrics": {
+            "cpu_usage": 12.0,
             "cpu_percent": 12.0,
+            "load_1m": 0.2,
+            "load_avg": [0.2, 0.3, 0.1],
+            "cores": 4,
+            "total_mb": 4096,
+            "used_mb": 1600,
+            "available_mb": 2496,
+            "usage_percent": 40.0,
             "ram_percent": 40.0,
             "ram_used_mb": 1600,
             "ram_total_mb": 4096,
+            "disks": [
+                {
+                    "filesystem": "/",
+                    "total_gb": 40.0,
+                    "used_gb": 22.0,
+                    "available_gb": 18.0,
+                    "usage_percent": 55.0,
+                }
+            ],
             "disk_percent": 55.0,
             "disk_used_gb": 22.0,
             "disk_total_gb": 40.0,
             "uptime_seconds": 3600,
-            "load_avg": [0.2, 0.3, 0.1],
+            "boot_time": "2026-08-12T10:00:00+00:00",
+            "last_reboot_at": "2026-08-12T10:00:00+00:00",
             "process_count": 2,
             "processes": [{"pid": 1, "name": "systemd", "rss_mb": 12.0}],
         },
@@ -169,7 +187,11 @@ def test_enroll_register_and_overview(client, db) -> None:
     assert overview.status_code == 200, overview.text
     data = overview.json()["data"]
     assert data["agent"]["status"] == "online"
-    assert data["metrics"]["cpu_percent"] == 12.0
+    assert data["metrics"]["cpu_usage"] == 12.0
+    assert data["metrics"]["cores"] == 4
+    assert data["metrics"]["load_1m"] == 0.2
+    assert data["metrics"]["available_mb"] == 2496
+    assert len(data["metrics"]["disks"]) == 1
     assert data["security"]["firewall"]["enabled"] is True
     assert data["latest"]["disk_percent"] == 55.0
     assert len(data["history"]) >= 1
@@ -247,7 +269,11 @@ def test_ingest_opens_and_resolves_alerts(client, db) -> None:
     )["credential"]
 
     hot = _ingest_payload()
+    hot["metrics"]["cpu_usage"] = 95.0
     hot["metrics"]["cpu_percent"] = 95.0
+    hot["metrics"]["disks"] = [
+        {"filesystem": "/", "usage_percent": 97.0, "total_gb": 40, "used_gb": 39, "available_gb": 1}
+    ]
     hot["metrics"]["disk_percent"] = 97.0
     hot["security"]["firewall"] = {"enabled": False, "backend": "ufw"}
     hot["security"]["ssh"] = {
@@ -269,7 +295,7 @@ def test_ingest_opens_and_resolves_alerts(client, db) -> None:
     ).json()["data"]
     open_codes = {alert["alert_code"] for alert in overview["alerts"] if alert["status"] == "open"}
     assert "CPU_HIGH" in open_codes
-    assert "DISK_CRITICAL" in open_codes
+    assert "DISK_CRITICAL__root" in open_codes or "DISK_CRITICAL__" in str(open_codes)
     assert "FIREWALL_INACTIVE" in open_codes
 
     cool = client.post(

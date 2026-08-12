@@ -37,6 +37,87 @@ agent/
 └── README.md
 ```
 
+## What it collects
+
+Each heartbeat sends a `metrics` object. Collectors live in `agent/agent/collectors/`.
+
+### CPU
+
+```json
+{
+  "cpu_usage": 73.4,
+  "load_1m": 2.14,
+  "load_avg": [2.14, 1.88, 1.52],
+  "cores": 4
+}
+```
+
+`cpu_percent` is also sent for backward compatibility (same value as `cpu_usage`).
+
+### Memory
+
+```json
+{
+  "total_mb": 8192,
+  "used_mb": 5412,
+  "available_mb": 2780,
+  "usage_percent": 66.1
+}
+```
+
+### Disk (per filesystem)
+
+```json
+{
+  "disks": [
+    {
+      "filesystem": "/",
+      "total_gb": 100.0,
+      "used_gb": 72.0,
+      "available_gb": 28.0,
+      "usage_percent": 72.0
+    },
+    {
+      "filesystem": "/var",
+      "total_gb": 50.0,
+      "used_gb": 42.0,
+      "available_gb": 8.0,
+      "usage_percent": 84.0
+    }
+  ],
+  "disk_percent": 72.0
+}
+```
+
+The alert engine evaluates **each mount** independently:
+
+| Usage | Severity | Alert code example |
+|-------|----------|--------------------|
+| ≥ 80% | Warning (medium) | `DISK_WARN__var` |
+| ≥ 90% | High (high) | `DISK_HIGH__root` |
+| ≥ 95% | Critical (critical) | `DISK_CRITICAL__data` |
+
+Thresholds are fixed for now; per-org configuration is planned.
+
+### Uptime
+
+```json
+{
+  "boot_time": "2026-07-26T10:12:00+00:00",
+  "uptime_seconds": 1480320,
+  "last_reboot_at": "2026-07-26T10:12:00+00:00"
+}
+```
+
+The dashboard renders uptime as e.g. `17 days 04h 32m`.
+
+### Also collected
+
+- **Processes** — top CPU consumers, count
+- **Docker** — installed/running, container count
+- **System** — hostname, OS, kernel, architecture
+- **Security** — firewall, SSH settings, Fail2Ban, pending updates
+
 ## What not to do
 
 - Do not SSH from the Sandbox backend into customer servers.

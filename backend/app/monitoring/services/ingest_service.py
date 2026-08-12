@@ -27,7 +27,13 @@ def ingest_agent_payload(
         collected_at = collected_at.replace(tzinfo=UTC)
 
     metrics = body.metrics
-    load_avg_1 = body.metrics.load_avg[0] if body.metrics.load_avg else None
+    cpu_percent = metrics.cpu_usage if metrics.cpu_usage is not None else metrics.cpu_percent
+    ram_percent = metrics.usage_percent if metrics.usage_percent is not None else metrics.ram_percent
+    ram_used_mb = metrics.used_mb if metrics.used_mb is not None else metrics.ram_used_mb
+    ram_total_mb = metrics.total_mb if metrics.total_mb is not None else metrics.ram_total_mb
+    load_avg_1 = metrics.load_1m
+    if load_avg_1 is None and metrics.load_avg:
+        load_avg_1 = metrics.load_avg[0]
     payload = {
         "metrics": metrics.model_dump(mode="json"),
         "security": body.security.model_dump(mode="json"),
@@ -40,10 +46,10 @@ def ingest_agent_payload(
         agent_id=agent.id,
         asset_id=agent.asset_id,
         collected_at=collected_at,
-        cpu_percent=metrics.cpu_percent,
-        ram_percent=metrics.ram_percent,
-        ram_used_mb=metrics.ram_used_mb,
-        ram_total_mb=metrics.ram_total_mb,
+        cpu_percent=cpu_percent,
+        ram_percent=ram_percent,
+        ram_used_mb=ram_used_mb,
+        ram_total_mb=ram_total_mb,
         disk_percent=metrics.disk_percent,
         disk_used_gb=metrics.disk_used_gb,
         disk_total_gb=metrics.disk_total_gb,

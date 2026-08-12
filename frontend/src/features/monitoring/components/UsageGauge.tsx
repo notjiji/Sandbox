@@ -10,7 +10,8 @@ interface UsageGaugeProps {
 const toneFill = {
   default: "bg-emerald-500/80",
   warning: "bg-amber-500/80",
-  danger: "bg-rose-500/80",
+  danger: "bg-orange-500/80",
+  critical: "bg-rose-500/80",
 };
 
 export default function UsageGauge({ label, value, detail }: UsageGaugeProps) {

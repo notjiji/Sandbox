@@ -21,10 +21,14 @@ import { monitoringKeys } from "../query-keys";
 import {
   MONITORABLE_ASSET_TYPES,
   agentStatusLabel,
+  formatDateTime,
   formatPercent,
-  formatUptime,
+  formatUptimeDetailed,
+  metricCpuPercent,
+  metricRamPercent,
 } from "../utils";
 import UsageGauge from "../components/UsageGauge";
+import DiskUsagePanel from "../components/DiskUsagePanel";
 import MetricsHistoryChart from "../components/MetricsHistoryChart";
 import SecurityChecksPanel from "../components/SecurityChecksPanel";
 import MonitoringAlertsList from "../components/MonitoringAlertsList";
@@ -156,8 +160,8 @@ export default function AssetMonitoring() {
               <h2 className="text-xl font-semibold text-brand-50">{asset?.name ?? "Server"}</h2>
               <p className="mt-1 text-sm text-brand-400">
                 {overview?.agent?.hostname || overview?.security?.system?.hostname || "No heartbeat yet"}
-                {overview?.latest?.uptime_seconds != null
-                  ? ` · up ${formatUptime(overview.latest.uptime_seconds)}`
+                {overview?.metrics?.uptime_seconds != null
+                  ? ` · up ${formatUptimeDetailed(overview.metrics.uptime_seconds)}`
                   : ""}
               </p>
             </div>
@@ -234,24 +238,31 @@ export default function AssetMonitoring() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <UsageGauge
                   label="CPU"
-                  value={overview?.metrics?.cpu_percent}
+                  value={metricCpuPercent(overview?.metrics)}
+                  detail={[
+                    overview?.metrics?.load_1m != null
+                      ? `load ${overview.metrics.load_1m.toFixed(2)}`
+                      : overview?.metrics?.load_avg?.length
+                        ? `load ${overview.metrics.load_avg.map((n) => n.toFixed(2)).join(", ")}`
+                        : null,
+                    overview?.metrics?.cores != null ? `${overview.metrics.cores} cores` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || undefined}
+                />
+                <UsageGauge
+                  label="Memory"
+                  value={metricRamPercent(overview?.metrics)}
                   detail={
-                    overview?.metrics?.load_avg?.length
-                      ? `load ${overview.metrics.load_avg.map((n) => n.toFixed(2)).join(", ")}`
-                      : undefined
+                    overview?.metrics?.used_mb != null && overview?.metrics?.total_mb != null
+                      ? `${overview.metrics.used_mb.toFixed(0)} / ${overview.metrics.total_mb.toFixed(0)} MB · ${(overview.metrics.available_mb ?? 0).toFixed(0)} MB free`
+                      : overview?.metrics?.ram_used_mb != null && overview?.metrics?.ram_total_mb != null
+                        ? `${overview.metrics.ram_used_mb.toFixed(0)} / ${overview.metrics.ram_total_mb.toFixed(0)} MB`
+                        : undefined
                   }
                 />
                 <UsageGauge
-                  label="RAM"
-                  value={overview?.metrics?.ram_percent}
-                  detail={
-                    overview?.metrics?.ram_used_mb != null && overview?.metrics?.ram_total_mb != null
-                      ? `${overview.metrics.ram_used_mb.toFixed(0)} / ${overview.metrics.ram_total_mb.toFixed(0)} MB`
-                      : undefined
-                  }
-                />
-                <UsageGauge
-                  label="Disk"
+                  label="Root disk"
                   value={overview?.metrics?.disk_percent}
                   detail={
                     overview?.metrics?.disk_used_gb != null && overview?.metrics?.disk_total_gb != null
@@ -259,6 +270,36 @@ export default function AssetMonitoring() {
                       : undefined
                   }
                 />
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <SectionPanel title="Filesystem usage">
+                  <DiskUsagePanel disks={overview?.metrics?.disks} />
+                </SectionPanel>
+                <SectionPanel title="Server uptime">
+                  <dl className="space-y-3 text-sm">
+                    <div className="flex justify-between gap-4 border-b border-brand-800/40 pb-3">
+                      <dt className="text-brand-500">Uptime</dt>
+                      <dd className="text-right text-brand-100">
+                        {formatUptimeDetailed(overview?.metrics?.uptime_seconds)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4 border-b border-brand-800/40 pb-3">
+                      <dt className="text-brand-500">Last reboot</dt>
+                      <dd className="text-right text-brand-100">
+                        {formatDateTime(
+                          overview?.metrics?.last_reboot_at ?? overview?.metrics?.boot_time,
+                        )}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-brand-500">Boot time</dt>
+                      <dd className="text-right text-brand-100">
+                        {formatDateTime(overview?.metrics?.boot_time)}
+                      </dd>
+                    </div>
+                  </dl>
+                </SectionPanel>
               </div>
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -301,7 +342,8 @@ export default function AssetMonitoring() {
                       </table>
                       {overview?.metrics?.process_count != null && (
                         <p className="mt-3 text-xs text-brand-600">
-                          {overview.metrics.process_count} processes · CPU {formatPercent(overview.metrics.cpu_percent)}
+                          {overview.metrics.process_count} processes · CPU{" "}
+                          {formatPercent(metricCpuPercent(overview.metrics))}
                         </p>
                       )}
                     </div>

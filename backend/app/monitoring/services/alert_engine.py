@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from app.monitoring.enums import AlertSeverity
-from app.monitoring.schemas import AgentIngestRequest
+from app.monitoring.schemas import AgentIngestRequest, MetricsPayload
+
+CPU_HIGH = 90.0
+RAM_HIGH = 90.0
+DISK_WARN = 80.0
+DISK_HIGH = 90.0
+DISK_CRITICAL = 95.0
 
 
 @dataclass(frozen=True)
@@ -17,10 +24,55 @@ class AlertCandidate:
     evidence: str | None = None
 
 
-CPU_HIGH = 90.0
-RAM_HIGH = 90.0
-DISK_HIGH = 90.0
-DISK_CRITICAL = 95.0
+def _cpu_percent(metrics: MetricsPayload) -> float | None:
+    return metrics.cpu_usage if metrics.cpu_usage is not None else metrics.cpu_percent
+
+
+def _ram_percent(metrics: MetricsPayload) -> float | None:
+    return metrics.usage_percent if metrics.usage_percent is not None else metrics.ram_percent
+
+
+def _disk_slug(filesystem: str) -> str:
+    slug = filesystem.strip("/\\").replace("/", "_").replace("\\", "_") or "root"
+    return re.sub(r"[^a-zA-Z0-9_]", "_", slug)
+
+
+def _disk_alert(level: str, filesystem: str) -> str:
+    return f"DISK_{level}__{_disk_slug(filesystem)}"
+
+
+def _disk_candidates(filesystem: str, usage_percent: float) -> list[AlertCandidate]:
+    if usage_percent >= DISK_CRITICAL:
+        return [
+            AlertCandidate(
+                code=_disk_alert("CRITICAL", filesystem),
+                title=f"Disk critically low on {filesystem}",
+                message=f"{filesystem} is {usage_percent:.0f}% full.",
+                severity=AlertSeverity.CRITICAL,
+                evidence=f"filesystem={filesystem}, usage_percent={usage_percent}",
+            )
+        ]
+    if usage_percent >= DISK_HIGH:
+        return [
+            AlertCandidate(
+                code=_disk_alert("HIGH", filesystem),
+                title=f"Disk space low on {filesystem}",
+                message=f"{filesystem} is {usage_percent:.0f}% full.",
+                severity=AlertSeverity.HIGH,
+                evidence=f"filesystem={filesystem}, usage_percent={usage_percent}",
+            )
+        ]
+    if usage_percent >= DISK_WARN:
+        return [
+            AlertCandidate(
+                code=_disk_alert("WARN", filesystem),
+                title=f"Disk usage warning on {filesystem}",
+                message=f"{filesystem} is {usage_percent:.0f}% full.",
+                severity=AlertSeverity.MEDIUM,
+                evidence=f"filesystem={filesystem}, usage_percent={usage_percent}",
+            )
+        ]
+    return []
 
 
 def evaluate_ingest(payload: AgentIngestRequest) -> list[AlertCandidate]:
@@ -28,49 +80,38 @@ def evaluate_ingest(payload: AgentIngestRequest) -> list[AlertCandidate]:
     metrics = payload.metrics
     security = payload.security
 
-    if metrics.cpu_percent is not None and metrics.cpu_percent >= CPU_HIGH:
+    cpu = _cpu_percent(metrics)
+    if cpu is not None and cpu >= CPU_HIGH:
+        cores = f", cores={metrics.cores}" if metrics.cores else ""
+        load = f", load_1m={metrics.load_1m}" if metrics.load_1m is not None else ""
         candidates.append(
             AlertCandidate(
                 code="CPU_HIGH",
                 title="High CPU usage",
-                message=f"CPU usage is {metrics.cpu_percent:.0f}%.",
+                message=f"CPU usage is {cpu:.0f}%.",
                 severity=AlertSeverity.HIGH,
-                evidence=f"cpu_percent={metrics.cpu_percent}",
+                evidence=f"cpu_usage={cpu}{load}{cores}",
             )
         )
 
-    if metrics.ram_percent is not None and metrics.ram_percent >= RAM_HIGH:
+    ram = _ram_percent(metrics)
+    if ram is not None and ram >= RAM_HIGH:
         candidates.append(
             AlertCandidate(
                 code="RAM_HIGH",
                 title="High memory usage",
-                message=f"RAM usage is {metrics.ram_percent:.0f}%.",
+                message=f"Memory usage is {ram:.0f}%.",
                 severity=AlertSeverity.HIGH,
-                evidence=f"ram_percent={metrics.ram_percent}",
+                evidence=f"usage_percent={ram}",
             )
         )
 
-    if metrics.disk_percent is not None:
-        if metrics.disk_percent >= DISK_CRITICAL:
-            candidates.append(
-                AlertCandidate(
-                    code="DISK_CRITICAL",
-                    title="Disk space critically low",
-                    message=f"Disk usage is {metrics.disk_percent:.0f}%.",
-                    severity=AlertSeverity.CRITICAL,
-                    evidence=f"disk_percent={metrics.disk_percent}",
-                )
-            )
-        elif metrics.disk_percent >= DISK_HIGH:
-            candidates.append(
-                AlertCandidate(
-                    code="DISK_HIGH",
-                    title="Disk space running low",
-                    message=f"Disk usage is {metrics.disk_percent:.0f}%.",
-                    severity=AlertSeverity.HIGH,
-                    evidence=f"disk_percent={metrics.disk_percent}",
-                )
-            )
+    if metrics.disks:
+        for disk in metrics.disks:
+            if disk.usage_percent is not None:
+                candidates.extend(_disk_candidates(disk.filesystem, disk.usage_percent))
+    elif metrics.disk_percent is not None:
+        candidates.extend(_disk_candidates("/", metrics.disk_percent))
 
     firewall = security.firewall
     if firewall and firewall.enabled is False:

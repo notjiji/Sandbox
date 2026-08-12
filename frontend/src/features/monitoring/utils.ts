@@ -12,15 +12,37 @@ export function formatUptime(seconds?: number | null): string {
   return `${minutes}m`;
 }
 
+export function formatUptimeDetailed(seconds?: number | null): string {
+  if (seconds == null || seconds < 0) return "—";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) {
+    return `${days} day${days === 1 ? "" : "s"} ${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+  }
+  return `${minutes}m`;
+}
+
 export function formatPercent(value?: number | null): string {
   if (value == null) return "—";
   return `${value.toFixed(0)}%`;
 }
 
-export function usageTone(value?: number | null): "default" | "warning" | "danger" {
+export function formatDateTime(value?: string | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString();
+}
+
+export function usageTone(value?: number | null): "default" | "warning" | "danger" | "critical" {
   if (value == null) return "default";
+  if (value >= 95) return "critical";
   if (value >= 90) return "danger";
-  if (value >= 75) return "warning";
+  if (value >= 80) return "warning";
   return "default";
 }
 
@@ -57,4 +79,18 @@ export function severityClass(severity: AlertSeverity): string {
 export function checkLabel(value?: boolean | null, yes = "Yes", no = "No"): string {
   if (value == null) return "Unknown";
   return value ? yes : no;
+}
+
+export function metricCpuPercent(metrics?: {
+  cpu_usage?: number | null;
+  cpu_percent?: number | null;
+} | null): number | null | undefined {
+  return metrics?.cpu_usage ?? metrics?.cpu_percent;
+}
+
+export function metricRamPercent(metrics?: {
+  usage_percent?: number | null;
+  ram_percent?: number | null;
+} | null): number | null | undefined {
+  return metrics?.usage_percent ?? metrics?.ram_percent;
 }
