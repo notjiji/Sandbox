@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from sqlalchemy import String, case, cast, func, or_
 from sqlalchemy.orm import Session, joinedload
 
+from app.findings.constants import FINDING_SOURCE_MONITORING, FINDING_SOURCE_SCAN, MONITORING_PLUGIN
 from app.findings.enums import FindingSeverity, FindingStatus
 from app.findings.models import Finding
 from app.findings.schemas import FindingListQuery
@@ -157,10 +158,11 @@ def create_finding(
     db: Session,
     *,
     project_id: uuid.UUID,
-    scan_id: uuid.UUID,
+    scan_id: uuid.UUID | None,
     asset_id: uuid.UUID,
     title: str,
     plugin: str | None = None,
+    source: str = FINDING_SOURCE_SCAN,
     finding_code: str | None = None,
     check_status: str | None = None,
     risk_score: float = 0.0,
@@ -184,6 +186,7 @@ def create_finding(
         project_id=project_id,
         scan_id=scan_id,
         asset_id=asset_id,
+        source=source,
         plugin=plugin,
         finding_code=finding_code,
         check_status=check_status,
@@ -208,6 +211,82 @@ def create_finding(
     db.add(finding)
     db.flush()
     return finding
+
+
+def get_monitoring_finding(
+    db: Session,
+    *,
+    asset_id: uuid.UUID,
+    finding_code: str,
+) -> Finding | None:
+    return (
+        db.query(Finding)
+        .filter(
+            Finding.asset_id == asset_id,
+            Finding.finding_code == finding_code,
+            Finding.source == FINDING_SOURCE_MONITORING,
+        )
+        .first()
+    )
+
+
+def upsert_monitoring_finding(
+    db: Session,
+    *,
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    finding_code: str,
+    title: str,
+    description: str | None,
+    severity: FindingSeverity,
+    risk_score: float,
+    evidence: str | None,
+    recommendation: str | None,
+    recommendation_id: str | None,
+    category: str | None,
+    detected_at: datetime,
+) -> tuple[Finding, bool]:
+    """Create or refresh a monitoring finding. Returns (finding, state_changed)."""
+    existing = get_monitoring_finding(db, asset_id=asset_id, finding_code=finding_code)
+    if existing is None:
+        finding = create_finding(
+            db,
+            project_id=project_id,
+            scan_id=None,
+            asset_id=asset_id,
+            source=FINDING_SOURCE_MONITORING,
+            plugin=MONITORING_PLUGIN,
+            finding_code=finding_code,
+            check_status="failed",
+            title=title,
+            description=description,
+            severity=severity,
+            risk_score=risk_score,
+            status=FindingStatus.OPEN,
+            evidence=evidence,
+            recommendation=recommendation,
+            recommendation_id=recommendation_id,
+            category=category,
+            detected_at=detected_at,
+        )
+        return finding, True
+
+    was_resolved = existing.status == FindingStatus.RESOLVED
+    existing.title = title
+    existing.description = description
+    existing.severity = severity
+    existing.risk_score = risk_score
+    existing.evidence = evidence
+    existing.recommendation = recommendation
+    existing.recommendation_id = recommendation_id
+    existing.category = category
+    if was_resolved:
+        existing.status = FindingStatus.OPEN
+        existing.resolved_at = None
+        existing.detected_at = detected_at
+    db.add(existing)
+    db.flush()
+    return existing, was_resolved
 
 
 def list_findings_for_project(db: Session, *, project_id: uuid.UUID) -> list[Finding]:

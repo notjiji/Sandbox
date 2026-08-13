@@ -11,6 +11,7 @@ export interface FindingSummary {
   project_id: string;
   asset_id: string;
   scan_id?: string | null;
+  source?: string;
   finding_code?: string | null;
   title: string;
   description?: string | null;

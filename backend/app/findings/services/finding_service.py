@@ -22,8 +22,9 @@ def to_finding_summary(finding: Finding) -> FindingSummary:
     return FindingSummary(
         id=str(finding.id),
         project_id=str(finding.project_id),
-        scan_id=str(finding.scan_id),
+        scan_id=str(finding.scan_id) if finding.scan_id else None,
         asset_id=str(finding.asset_id),
+        source=finding.source,
         plugin=finding.plugin,
         finding_code=finding.finding_code,
         check_status=finding.check_status,

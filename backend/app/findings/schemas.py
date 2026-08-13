@@ -9,8 +9,9 @@ from app.shared.schemas.base import BaseSchema
 class FindingSummary(BaseSchema):
     id: str
     project_id: str
-    scan_id: str
+    scan_id: str | None = None
     asset_id: str
+    source: str = "scan"
     plugin: str | None = None
     finding_code: str | None = None
     check_status: str | None = None

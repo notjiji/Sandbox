@@ -122,6 +122,22 @@ def ingest_agent_payload(
             alert.resolved_at = now
             db.add(alert)
 
+    from app.findings.services.monitoring_finding_sync import sync_monitoring_findings
+    from app.core.risk_engine.engine import risk_engine
+
+    risk_dirty = sync_monitoring_findings(
+        db,
+        project_id=agent.project_id,
+        asset_id=agent.asset_id,
+        candidates=candidates,
+        active_codes=active_codes,
+        now=now,
+    )
+    if risk_dirty:
+        risk_engine.calculate_asset_risk(db, asset_id=agent.asset_id, store=True)
+        risk_engine.calculate_project_risk(db, project_id=agent.project_id, store=True)
+        risk_engine.calculate_organization_risk(db, organization_id=agent.organization_id, store=True)
+
     db.flush()
     remaining = count_open_alerts_for_assets(db, asset_ids=[agent.asset_id]).get(agent.asset_id, 0)
     return AgentIngestResponse(

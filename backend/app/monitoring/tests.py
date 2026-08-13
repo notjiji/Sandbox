@@ -88,6 +88,9 @@ def test_alert_engine_security_updates_medium() -> None:
 
 
 def test_alert_engine_non_security_updates_low() -> None:
+    from app.findings.constants import FINDING_SOURCE_MONITORING, MONITORING_PLUGIN
+    from app.findings.enums import FindingStatus
+    from app.findings.services.monitoring_finding_sync import sync_monitoring_findings
     from app.monitoring.schemas import UpdatesCheck
 
     payload = AgentIngestRequest(
@@ -97,6 +100,32 @@ def test_alert_engine_non_security_updates_low() -> None:
     assert "UPDATES_AVAILABLE" in codes
     assert codes["UPDATES_AVAILABLE"].severity == AlertSeverity.LOW
     assert "SECURITY_UPDATES_PENDING" not in codes
+
+
+def test_sync_monitoring_finding_shape() -> None:
+    from app.findings.services.monitoring_finding_sync import (
+        _category_for_code,
+        _description_from_message,
+        _extract_recommendation,
+    )
+    from app.monitoring.services.alert_engine import AlertCandidate
+
+    candidate = AlertCandidate(
+        code="SSH_PASSWORD_AUTH",
+        title="SSH Password Authentication Enabled",
+        message=(
+            "Current: PasswordAuthentication yes\n\n"
+            "Recommendation: Disable password authentication and use key-based authentication."
+        ),
+        severity=AlertSeverity.MEDIUM,
+        evidence="PasswordAuthentication=yes",
+    )
+
+    assert _category_for_code("SSH_PASSWORD_AUTH") == "server_security"
+    assert _extract_recommendation(candidate.message) == (
+        "Disable password authentication and use key-based authentication."
+    )
+    assert _description_from_message(candidate.message) == "Current: PasswordAuthentication yes"
 
 
 def test_normalize_metrics_uses_shared_shape() -> None:

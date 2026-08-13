@@ -6,6 +6,9 @@ import uuid
 
 import pytest
 
+from app.findings.constants import FINDING_SOURCE_MONITORING
+from app.findings.enums import FindingStatus
+from app.findings.models import Finding
 from app.monitoring.enums import AlertStatus
 from app.monitoring.metric_types import CPU_USAGE, DISK_USAGE, LOAD_AVERAGE, MEMORY_USAGE, UPTIME
 from app.monitoring.models import MonitoringAlert, MonitoringMetric
@@ -373,6 +376,24 @@ def test_ingest_opens_and_resolves_alerts(client, db) -> None:
     assert "DISK_CRITICAL__root" in open_codes or "DISK_CRITICAL__" in str(open_codes)
     assert "FIREWALL_INACTIVE" in open_codes
 
+    monitoring_findings = (
+        db.query(Finding)
+        .filter(
+            Finding.asset_id == uuid.UUID(server["id"]),
+            Finding.source == FINDING_SOURCE_MONITORING,
+            Finding.status == FindingStatus.OPEN,
+        )
+        .all()
+    )
+    finding_codes = {item.finding_code for item in monitoring_findings}
+    assert "CPU_HIGH" in finding_codes
+    assert "FIREWALL_INACTIVE" in finding_codes
+    ssh_finding = next(item for item in monitoring_findings if item.finding_code == "SSH_PASSWORD_AUTH")
+    assert ssh_finding.category == "server_security"
+    assert ssh_finding.plugin == "monitoring"
+    assert ssh_finding.scan_id is None
+    assert ssh_finding.evidence is not None
+
     cool = client.post(
         "/api/v1/monitoring/ingest",
         json=_ingest_payload(),
@@ -389,6 +410,16 @@ def test_ingest_opens_and_resolves_alerts(client, db) -> None:
         .count()
     )
     assert remaining_open == 0
+    remaining_monitoring = (
+        db.query(Finding)
+        .filter(
+            Finding.asset_id == uuid.UUID(server["id"]),
+            Finding.source == FINDING_SOURCE_MONITORING,
+            Finding.status == FindingStatus.OPEN,
+        )
+        .count()
+    )
+    assert remaining_monitoring == 0
 
 
 def test_viewer_can_read_but_cannot_enroll(client, db) -> None:

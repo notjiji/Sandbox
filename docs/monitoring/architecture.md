@@ -68,6 +68,28 @@ Built-in `metric_type` values:
 
 Add types such as `memory_used` or `process_count` without a schema change. `labels` distinguishes dimensions (mounts) without extra tables.
 
+## Security findings (Phase 6 integration)
+
+Monitoring conditions are synced into the shared **`findings`** table so scanner and agent data feed one risk engine:
+
+```
+Internet Scanner ──► findings ──► Risk Engine ◄── findings ◄── Server Monitoring
+```
+
+Each monitoring alert upserts a finding:
+
+| Field | Example |
+|-------|---------|
+| `source` | `monitoring` |
+| `plugin` | `monitoring` |
+| `category` | `server_security` |
+| `finding_code` | `SSH_PASSWORD_AUTH` |
+| `severity` | `medium` |
+| `evidence` | `PasswordAuthentication=yes` |
+| `recommendation` | Disable password authentication… |
+
+`scan_id` is null for monitoring findings. Risk recalculates only when a finding opens or resolves (not every heartbeat). `monitoring_alerts` remains for the asset monitoring UI during transition; findings are the source of truth for risk.
+
 ## Status
 
 | Status | Meaning |

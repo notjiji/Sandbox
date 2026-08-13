@@ -5,6 +5,7 @@ from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.findings.constants import FINDING_SOURCE_SCAN
 from app.findings.enums import FindingSeverity, FindingStatus
 from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -18,16 +19,22 @@ class Finding(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         index=True,
     )
-    scan_id: Mapped[uuid.UUID] = mapped_column(
+    scan_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("scans.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     asset_id: Mapped[uuid.UUID] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("assets.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    source: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=FINDING_SOURCE_SCAN,
         index=True,
     )
     plugin: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -60,5 +67,5 @@ class Finding(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     project: Mapped["Project"] = relationship("Project", back_populates="findings")
-    scan: Mapped["Scan"] = relationship("Scan", back_populates="findings")
+    scan: Mapped["Scan | None"] = relationship("Scan", back_populates="findings")
     asset: Mapped["Asset"] = relationship("Asset", back_populates="findings")

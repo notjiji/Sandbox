@@ -378,6 +378,18 @@ class RiskEngine:
             calculated_at=datetime.now(UTC),
         )
 
+    def recalculate_after_monitoring(
+        self,
+        db: Session,
+        *,
+        project_id: uuid.UUID,
+        asset_id: uuid.UUID,
+        organization_id: uuid.UUID,
+    ) -> None:
+        self.calculate_asset_risk(db, asset_id=asset_id, store=True)
+        self.calculate_project_risk(db, project_id=project_id, store=True)
+        self.calculate_organization_risk(db, organization_id=organization_id, store=True)
+
     def recalculate_after_scan(
         self,
         db: Session,

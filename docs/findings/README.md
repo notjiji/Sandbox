@@ -21,10 +21,34 @@ Plugin ScanResult
 | `severity` | `critical`, `high`, `medium`, `low`, `info` |
 | `risk_score` | Numeric score used in aggregation |
 | `status` | `open`, `acknowledged`, `resolved`, … |
-| `plugin` | Source scanner plugin |
+| `plugin` | Source scanner plugin or `monitoring` for agent findings |
+| `source` | `scan` (default) or `monitoring` |
+| `category` | Grouping such as `server_security`, `server_capacity` |
 | `evidence` | Reproducible proof |
 | `recommendation` | Remediation guidance |
-| `scan_id` / `asset_id` / `project_id` | Scope linkage |
+| `scan_id` / `asset_id` / `project_id` | Scope linkage (`scan_id` null for monitoring) |
+
+## Monitoring as a finding source
+
+Server monitoring alerts are synced into the same `findings` table:
+
+```
+Agent heartbeat → alert_engine → monitoring_alerts + findings (source=monitoring) → risk engine
+```
+
+Example monitoring finding:
+
+| Field | Value |
+|-------|-------|
+| `source` | `monitoring` |
+| `plugin` | `monitoring` |
+| `category` | `server_security` |
+| `finding_code` | `SSH_PASSWORD_AUTH` |
+| `title` | SSH Password Authentication Enabled |
+| `evidence` | `PasswordAuthentication=yes` |
+| `recommendation` | Disable password authentication… |
+
+Scanner and monitoring findings both contribute to asset, project, and organization risk scores.
 
 Model: `backend/app/findings/models.py`
 
