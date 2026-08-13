@@ -365,7 +365,7 @@ def test_ingest_opens_and_resolves_alerts(client, db) -> None:
         headers={"Authorization": f"Bearer {credential}"},
     )
     assert first.status_code == 200
-    assert first.json()["data"]["alerts_open"] >= 3
+    assert first.json()["data"]["alerts_open"] >= 2
 
     overview = client.get(
         f"/api/v1/projects/{project_id}/assets/{server['id']}/monitoring",
@@ -374,7 +374,8 @@ def test_ingest_opens_and_resolves_alerts(client, db) -> None:
     open_codes = {alert["alert_code"] for alert in overview["alerts"] if alert["status"] == "open"}
     assert "CPU_HIGH" in open_codes
     assert "DISK_CRITICAL__root" in open_codes or "DISK_CRITICAL__" in str(open_codes)
-    assert "FIREWALL_INACTIVE" in open_codes
+    assert "FIREWALL_INACTIVE" not in open_codes
+    assert "SSH_PASSWORD_AUTH" not in open_codes
 
     monitoring_findings = (
         db.query(Finding)
@@ -386,7 +387,7 @@ def test_ingest_opens_and_resolves_alerts(client, db) -> None:
         .all()
     )
     finding_codes = {item.finding_code for item in monitoring_findings}
-    assert "CPU_HIGH" in finding_codes
+    assert "CPU_HIGH" not in finding_codes
     assert "FIREWALL_INACTIVE" in finding_codes
     ssh_finding = next(item for item in monitoring_findings if item.finding_code == "SSH_PASSWORD_AUTH")
     assert ssh_finding.category == "server_security"
@@ -420,6 +421,41 @@ def test_ingest_opens_and_resolves_alerts(client, db) -> None:
         .count()
     )
     assert remaining_monitoring == 0
+
+
+def test_stale_heartbeat_opens_server_offline_alert(client, db) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.monitoring.enums import AGENT_OFFLINE_SECONDS
+    from app.monitoring.models import MonitoringAgent
+
+    ctx = bootstrap_org_context(db, client, email="mon-offline@example.com")
+    project_id = ctx["project"]["id"]
+    headers = ctx["org_headers"]
+    server = _create_server(client, project_id, headers)
+    credential = _register(
+        client,
+        _enroll(client, project_id, server["id"], headers)["enrollment_token"],
+    )["credential"]
+    ingest = client.post(
+        "/api/v1/monitoring/ingest",
+        json=_ingest_payload(),
+        headers={"Authorization": f"Bearer {credential}"},
+    )
+    assert ingest.status_code == 200
+
+    agent = db.query(MonitoringAgent).filter(MonitoringAgent.asset_id == uuid.UUID(server["id"])).one()
+    agent.last_seen_at = datetime.now(UTC) - timedelta(seconds=AGENT_OFFLINE_SECONDS + 30)
+    db.add(agent)
+    db.flush()
+
+    overview = client.get(
+        f"/api/v1/projects/{project_id}/assets/{server['id']}/monitoring",
+        headers=headers,
+    ).json()["data"]
+    open_codes = {alert["alert_code"] for alert in overview["alerts"] if alert["status"] == "open"}
+    assert "SERVER_OFFLINE" in open_codes
+    assert overview["agent"]["status"] == "offline"
 
 
 def test_viewer_can_read_but_cannot_enroll(client, db) -> None:

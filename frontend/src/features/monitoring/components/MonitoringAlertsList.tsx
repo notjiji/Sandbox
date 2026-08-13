@@ -7,7 +7,11 @@ interface MonitoringAlertsListProps {
 
 export default function MonitoringAlertsList({ alerts }: MonitoringAlertsListProps) {
   if (alerts.length === 0) {
-    return <p className="text-sm text-brand-600">No monitoring alerts yet.</p>;
+    return (
+      <p className="text-sm text-brand-600">
+        No operational alerts. Security conditions appear as findings, not alerts.
+      </p>
+    );
   }
 
   return (

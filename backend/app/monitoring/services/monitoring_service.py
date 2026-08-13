@@ -26,6 +26,7 @@ from app.monitoring.repositories.alert_repository import (
     count_open_alerts_for_organization,
     list_alerts_for_asset,
 )
+from app.monitoring.services.alert_service import reconcile_offline_agent, reconcile_offline_agents
 from app.monitoring.repositories.metric_repository import (
     fold_metric,
     get_latest_metrics_for_assets,
@@ -120,6 +121,10 @@ def get_asset_monitoring(
     if agent is None:
         return MonitoringOverview()
 
+    if reconcile_offline_agent(db, agent=agent):
+        db.commit()
+        db.refresh(agent)
+
     window = min(max(hours, 1), MAX_HISTORY_HOURS)
     since = datetime.now(UTC) - timedelta(hours=window)
     latest = get_latest_snapshot(db, asset_id=asset.id)
@@ -163,6 +168,10 @@ def get_organization_monitoring(
     membership: OrganizationMember,
 ) -> OrgMonitoringOverview:
     agents = list_agents_for_organization(db, organization_id=membership.organization_id)
+    if reconcile_offline_agents(db, agents):
+        db.commit()
+        for agent in agents:
+            db.refresh(agent)
     asset_ids = [agent.asset_id for agent in agents]
     latest_by_asset = get_latest_metrics_for_assets(db, asset_ids=asset_ids)
     open_by_asset = count_open_alerts_for_assets(db, asset_ids=asset_ids)

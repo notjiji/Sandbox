@@ -23,17 +23,20 @@ Plugin ScanResult
 | `status` | `open`, `acknowledged`, `resolved`, … |
 | `plugin` | Source scanner plugin or `monitoring` for agent findings |
 | `source` | `scan` (default) or `monitoring` |
-| `category` | Grouping such as `server_security`, `server_capacity` |
+| `category` | Grouping such as `server_security` |
 | `evidence` | Reproducible proof |
 | `recommendation` | Remediation guidance |
 | `scan_id` / `asset_id` / `project_id` | Scope linkage (`scan_id` null for monitoring) |
 
 ## Monitoring as a finding source
 
-Server monitoring alerts are synced into the same `findings` table:
+Security conditions from the agent become findings. Operational events stay as alerts.
 
 ```
-Agent heartbeat → alert_engine → monitoring_alerts + findings (source=monitoring) → risk engine
+Agent heartbeat
+  → alert_engine     → monitoring_alerts   (CPU, disk, offline)
+  → finding_engine   → findings            (SSH, firewall, security updates)
+                     → risk engine
 ```
 
 Example monitoring finding:

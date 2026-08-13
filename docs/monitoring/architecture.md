@@ -68,18 +68,20 @@ Built-in `metric_type` values:
 
 Add types such as `memory_used` or `process_count` without a schema change. `labels` distinguishes dimensions (mounts) without extra tables.
 
-## Security findings (Phase 6 integration)
+## Security findings vs alerts
 
-Monitoring conditions are synced into the shared **`findings`** table so scanner and agent data feed one risk engine:
+**Alert** — something is happening now (CPU, disk, server offline). Stored in `monitoring_alerts`.
+
+**Finding** — a security condition exists (insecure SSH, pending security updates). Stored in the shared `findings` table (`source=monitoring`) and scored by the risk engine.
 
 ```
 Internet Scanner ──► findings ──► Risk Engine ◄── findings ◄── Server Monitoring
+                                              ▲
+                                              └── alerts stay operational
 ```
 
-Each monitoring alert upserts a finding:
-
-| Field | Example |
-|-------|---------|
+| Field | Example finding |
+|-------|-----------------|
 | `source` | `monitoring` |
 | `plugin` | `monitoring` |
 | `category` | `server_security` |
@@ -88,7 +90,7 @@ Each monitoring alert upserts a finding:
 | `evidence` | `PasswordAuthentication=yes` |
 | `recommendation` | Disable password authentication… |
 
-`scan_id` is null for monitoring findings. Risk recalculates only when a finding opens or resolves (not every heartbeat). `monitoring_alerts` remains for the asset monitoring UI during transition; findings are the source of truth for risk.
+`scan_id` is null for monitoring findings. Risk recalculates only when a finding opens or resolves (not every heartbeat).
 
 ## Status
 

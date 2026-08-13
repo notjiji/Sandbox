@@ -1,11 +1,17 @@
-"""Threshold and security-check evaluation. Facts come from the agent payload."""
+"""Operational alert engine — something is happening now.
+
+Security conditions are evaluated separately as findings.
+"""
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
 
-from app.monitoring.enums import AlertSeverity
+from app.monitoring.enums import AGENT_OFFLINE_SECONDS, AgentStatus, AlertSeverity
+from app.monitoring.models import MonitoringAgent
+from app.monitoring.repositories.agent_repository import effective_status
 from app.monitoring.schemas import AgentIngestRequest, MetricsPayload
 
 CPU_HIGH = 90.0
@@ -13,6 +19,8 @@ RAM_HIGH = 90.0
 DISK_WARN = 80.0
 DISK_HIGH = 90.0
 DISK_CRITICAL = 95.0
+
+SERVER_OFFLINE = "SERVER_OFFLINE"
 
 
 @dataclass(frozen=True)
@@ -75,10 +83,10 @@ def _disk_candidates(filesystem: str, usage_percent: float) -> list[AlertCandida
     return []
 
 
-def evaluate_ingest(payload: AgentIngestRequest) -> list[AlertCandidate]:
+def evaluate_alerts(payload: AgentIngestRequest) -> list[AlertCandidate]:
+    """Operational conditions: CPU, memory, disk, reboot. Not security findings."""
     candidates: list[AlertCandidate] = []
     metrics = payload.metrics
-    security = payload.security
 
     cpu = _cpu_percent(metrics)
     if cpu is not None and cpu >= CPU_HIGH:
@@ -88,7 +96,7 @@ def evaluate_ingest(payload: AgentIngestRequest) -> list[AlertCandidate]:
             AlertCandidate(
                 code="CPU_HIGH",
                 title="High CPU usage",
-                message=f"CPU usage is {cpu:.0f}%.",
+                message=f"Server CPU exceeded {cpu:.0f}%.",
                 severity=AlertSeverity.HIGH,
                 evidence=f"cpu_usage={cpu}{load}{cores}",
             )
@@ -100,7 +108,7 @@ def evaluate_ingest(payload: AgentIngestRequest) -> list[AlertCandidate]:
             AlertCandidate(
                 code="RAM_HIGH",
                 title="High memory usage",
-                message=f"Memory usage is {ram:.0f}%.",
+                message=f"Server memory exceeded {ram:.0f}%.",
                 severity=AlertSeverity.HIGH,
                 evidence=f"usage_percent={ram}",
             )
@@ -113,158 +121,37 @@ def evaluate_ingest(payload: AgentIngestRequest) -> list[AlertCandidate]:
     elif metrics.disk_percent is not None:
         candidates.extend(_disk_candidates("/", metrics.disk_percent))
 
-    firewall = security.firewall
-    if firewall and firewall.enabled is False:
+    updates = payload.security.updates
+    if updates and updates.reboot_required is True:
         candidates.append(
             AlertCandidate(
-                code="FIREWALL_INACTIVE",
-                title="Firewall is not active",
-                message="Host firewall reported as disabled.",
-                severity=AlertSeverity.HIGH,
-                evidence=f"backend={firewall.backend or 'unknown'}",
+                code="REBOOT_REQUIRED",
+                title="System reboot required",
+                message="Kernel or library updates require a reboot to take effect.",
+                severity=AlertSeverity.LOW,
+                evidence="reboot_required=true",
             )
         )
 
-    ssh = security.ssh
-    if ssh:
-        if ssh.permit_root_login is True:
-            current = ssh.permit_root_login_raw or "yes"
-            candidates.append(
-                AlertCandidate(
-                    code="SSH_ROOT_LOGIN",
-                    title="SSH Root Login Enabled",
-                    message=(
-                        f"Current: PermitRootLogin {current}\n\n"
-                        "Recommendation: Set PermitRootLogin no (or prohibit-password) "
-                        "and administer the host via a non-root user with key-based auth."
-                    ),
-                    severity=AlertSeverity.HIGH,
-                    evidence=f"PermitRootLogin={current}",
-                )
-            )
-        if ssh.password_authentication is True:
-            current = ssh.password_authentication_raw or "yes"
-            candidates.append(
-                AlertCandidate(
-                    code="SSH_PASSWORD_AUTH",
-                    title="SSH Password Authentication Enabled",
-                    message=(
-                        f"Current: PasswordAuthentication {current}\n\n"
-                        "Recommendation: Disable password authentication and use "
-                        "key-based authentication."
-                    ),
-                    severity=AlertSeverity.MEDIUM,
-                    evidence=f"PasswordAuthentication={current}",
-                )
-            )
-        if ssh.pubkey_authentication is False:
-            current = ssh.pubkey_authentication_raw or "no"
-            candidates.append(
-                AlertCandidate(
-                    code="SSH_PUBKEY_DISABLED",
-                    title="SSH Public Key Authentication Disabled",
-                    message=(
-                        f"Current: PubkeyAuthentication {current}\n\n"
-                        "Recommendation: Enable PubkeyAuthentication yes so hosts can use "
-                        "key-based login instead of passwords."
-                    ),
-                    severity=AlertSeverity.HIGH,
-                    evidence=f"PubkeyAuthentication={current}",
-                )
-            )
-        if ssh.protocol and "1" in str(ssh.protocol).split(","):
-            candidates.append(
-                AlertCandidate(
-                    code="SSH_PROTOCOL_LEGACY",
-                    title="SSH Protocol 1 Enabled",
-                    message=(
-                        f"Current: Protocol {ssh.protocol}\n\n"
-                        "Recommendation: Use Protocol 2 only. SSH protocol 1 is obsolete and insecure."
-                    ),
-                    severity=AlertSeverity.CRITICAL,
-                    evidence=f"Protocol={ssh.protocol}",
-                )
-            )
-
-    fail2ban = security.fail2ban
-    if fail2ban:
-        installed = fail2ban.installed
-        running = fail2ban.running if fail2ban.running is not None else fail2ban.enabled
-        if installed is False:
-            candidates.append(
-                AlertCandidate(
-                    code="FAIL2BAN_NOT_INSTALLED",
-                    title="Fail2Ban is not installed",
-                    message=(
-                        "Current: Fail2Ban not installed\n\n"
-                        "Recommendation: Install and enable Fail2Ban to limit brute-force "
-                        "authentication attempts."
-                    ),
-                    severity=AlertSeverity.MEDIUM,
-                    evidence="fail2ban.installed=false",
-                )
-            )
-        elif running is False:
-            candidates.append(
-                AlertCandidate(
-                    code="FAIL2BAN_INACTIVE",
-                    title="Fail2Ban is not running",
-                    message=(
-                        "Current: Fail2Ban installed but inactive\n\n"
-                        "Recommendation: Start and enable the fail2ban service so jails can ban "
-                        "abusive IPs."
-                    ),
-                    severity=AlertSeverity.MEDIUM,
-                    evidence="fail2ban.running=false",
-                )
-            )
-
-    updates = security.updates
-    if updates:
-        security_count = updates.security or 0
-        available_count = updates.available or 0
-        if security_count > 0:
-            candidates.append(
-                AlertCandidate(
-                    code="SECURITY_UPDATES_PENDING",
-                    title=f"{security_count} security update{'s' if security_count != 1 else ''} pending",
-                    message=(
-                        f"Current: {security_count} security update(s), "
-                        f"{available_count} total available"
-                        f"{f' ({updates.manager})' if updates.manager else ''}\n\n"
-                        "Recommendation: Apply security updates promptly to reduce exposure "
-                        "from known vulnerabilities."
-                    ),
-                    severity=AlertSeverity.MEDIUM,
-                    evidence=f"security={security_count}, available={available_count}",
-                )
-            )
-        elif available_count > 0:
-            candidates.append(
-                AlertCandidate(
-                    code="UPDATES_AVAILABLE",
-                    title=f"{available_count} system update{'s' if available_count != 1 else ''} available",
-                    message=(
-                        f"Current: {available_count} update(s) available"
-                        f"{f' ({updates.manager})' if updates.manager else ''}\n\n"
-                        "Recommendation: Review and apply pending system updates on a regular cadence."
-                    ),
-                    severity=AlertSeverity.LOW,
-                    evidence=f"available={available_count}, security=0",
-                )
-            )
-        if updates.reboot_required is True:
-            candidates.append(
-                AlertCandidate(
-                    code="REBOOT_REQUIRED",
-                    title="System reboot required",
-                    message=(
-                        "Current: reboot-required flag is set\n\n"
-                        "Recommendation: Schedule a reboot so kernel/library updates take effect."
-                    ),
-                    severity=AlertSeverity.LOW,
-                    evidence="reboot_required=true",
-                )
-            )
-
     return candidates
+
+
+def server_offline_alert(agent: MonitoringAgent) -> AlertCandidate:
+    hostname = agent.hostname or "server"
+    return AlertCandidate(
+        code=SERVER_OFFLINE,
+        title="Server offline",
+        message=f"{hostname} has not sent a heartbeat in {AGENT_OFFLINE_SECONDS // 60} minutes.",
+        severity=AlertSeverity.HIGH,
+        evidence=f"last_seen_at={agent.last_seen_at.isoformat() if agent.last_seen_at else 'never'}",
+    )
+
+
+def should_alert_offline(agent: MonitoringAgent, *, now: datetime | None = None) -> bool:
+    if agent.status in {AgentStatus.REVOKED, AgentStatus.PENDING}:
+        return False
+    return effective_status(agent, now=now) == AgentStatus.OFFLINE
+
+
+# Backward-compatible name used by older tests; operational alerts only.
+evaluate_ingest = evaluate_alerts

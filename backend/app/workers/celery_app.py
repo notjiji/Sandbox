@@ -11,7 +11,7 @@ celery_app = Celery(
     "sandbox",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.jobs.example", "app.jobs.scans", "app.jobs.reports"],
+    include=["app.jobs.example", "app.jobs.scans", "app.jobs.reports", "app.jobs.monitoring"],
 )
 
 celery_app.conf.update(
@@ -30,6 +30,10 @@ celery_app.conf.update(
         "check-scan-schedules": {
             "task": "app.jobs.scans.check_due_schedules",
             "schedule": crontab(minute="*"),
+        },
+        "reconcile-offline-agents": {
+            "task": "app.jobs.monitoring.reconcile_offline_agents",
+            "schedule": crontab(minute="*/2"),
         },
     },
 )

@@ -2,18 +2,17 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from app.audit.service import record_audit_event
-from app.monitoring.enums import AgentStatus, AlertStatus
-from app.monitoring.events import MonitoringAuditAction
-from app.monitoring.models import MonitoringAgent, MonitoringAlert
-from app.monitoring.repositories.alert_repository import (
-    count_open_alerts_for_assets,
-    get_alert_by_code,
-)
+from app.core.risk_engine.engine import risk_engine
+from app.findings.services.monitoring_finding_sync import sync_monitoring_findings
+from app.monitoring.enums import AgentStatus
+from app.monitoring.models import MonitoringAgent
+from app.monitoring.repositories.alert_repository import count_open_alerts_for_assets
 from app.monitoring.repositories.metric_repository import insert_metrics, prune_metrics
 from app.monitoring.repositories.snapshot_repository import create_snapshot, prune_snapshots
 from app.monitoring.schemas import AgentIngestRequest, AgentIngestResponse
-from app.monitoring.services.alert_engine import evaluate_ingest
+from app.monitoring.services.alert_engine import evaluate_alerts
+from app.monitoring.services.alert_service import upsert_alerts
+from app.monitoring.services.finding_engine import evaluate_findings
 from app.monitoring.services.metric_normalizer import normalize_metrics
 
 
@@ -61,82 +60,24 @@ def ingest_agent_payload(
         agent.agent_version = body.agent_version
     db.add(agent)
 
-    candidates = evaluate_ingest(body)
-    active_codes = {candidate.code for candidate in candidates}
-    for candidate in candidates:
-        existing = get_alert_by_code(db, asset_id=agent.asset_id, alert_code=candidate.code)
-        if existing is None:
-            db.add(
-                MonitoringAlert(
-                    organization_id=agent.organization_id,
-                    project_id=agent.project_id,
-                    asset_id=agent.asset_id,
-                    agent_id=agent.id,
-                    alert_code=candidate.code,
-                    title=candidate.title,
-                    message=candidate.message,
-                    evidence=candidate.evidence,
-                    severity=candidate.severity,
-                    status=AlertStatus.OPEN,
-                    first_seen_at=now,
-                    last_seen_at=now,
-                )
-            )
-            record_audit_event(
-                db,
-                action=MonitoringAuditAction.ALERT_OPENED,
-                user_id=None,
-                organization_id=agent.organization_id,
-                resource_type="monitoring_alert",
-                resource_id=agent.asset_id,
-                details={
-                    "asset_id": str(agent.asset_id),
-                    "project_id": str(agent.project_id),
-                    "alert_code": candidate.code,
-                    "severity": candidate.severity.value,
-                },
-            )
-        else:
-            existing.title = candidate.title
-            existing.message = candidate.message
-            existing.evidence = candidate.evidence
-            existing.severity = candidate.severity
-            existing.last_seen_at = now
-            if existing.status == AlertStatus.RESOLVED:
-                existing.status = AlertStatus.OPEN
-                existing.resolved_at = None
-                existing.first_seen_at = now
-            db.add(existing)
+    alerts = evaluate_alerts(body)
+    upsert_alerts(db, agent=agent, candidates=alerts, now=now)
 
-    open_alerts = (
-        db.query(MonitoringAlert)
-        .filter(
-            MonitoringAlert.asset_id == agent.asset_id,
-            MonitoringAlert.status == AlertStatus.OPEN,
-        )
-        .all()
-    )
-    for alert in open_alerts:
-        if alert.alert_code not in active_codes:
-            alert.status = AlertStatus.RESOLVED
-            alert.resolved_at = now
-            db.add(alert)
-
-    from app.findings.services.monitoring_finding_sync import sync_monitoring_findings
-    from app.core.risk_engine.engine import risk_engine
-
+    findings = evaluate_findings(body)
     risk_dirty = sync_monitoring_findings(
         db,
         project_id=agent.project_id,
         asset_id=agent.asset_id,
-        candidates=candidates,
-        active_codes=active_codes,
+        candidates=findings,
         now=now,
     )
     if risk_dirty:
-        risk_engine.calculate_asset_risk(db, asset_id=agent.asset_id, store=True)
-        risk_engine.calculate_project_risk(db, project_id=agent.project_id, store=True)
-        risk_engine.calculate_organization_risk(db, organization_id=agent.organization_id, store=True)
+        risk_engine.recalculate_after_monitoring(
+            db,
+            project_id=agent.project_id,
+            asset_id=agent.asset_id,
+            organization_id=agent.organization_id,
+        )
 
     db.flush()
     remaining = count_open_alerts_for_assets(db, asset_ids=[agent.asset_id]).get(agent.asset_id, 0)
