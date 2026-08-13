@@ -46,6 +46,8 @@ export interface MetricsPayload {
   process_count?: number | null;
   processes?: ProcessInfo[];
   services?: ServiceInfo[];
+  network_rx_bytes_sec?: number | null;
+  network_tx_bytes_sec?: number | null;
 }
 
 export interface FirewallCheck {
@@ -136,8 +138,27 @@ export interface SnapshotSummary {
   cpu_percent?: number | null;
   ram_percent?: number | null;
   disk_percent?: number | null;
+  load_1m?: number | null;
+  network_rx_bytes_sec?: number | null;
+  network_tx_bytes_sec?: number | null;
   uptime_seconds?: number | null;
   process_count?: number | null;
+}
+
+export interface MetricSample {
+  collected_at: string;
+  value: number;
+}
+
+export interface MetricSeries {
+  metric_type: string;
+  unit: string;
+  points: MetricSample[];
+}
+
+export interface MetricsHistoryResponse {
+  hours: number;
+  series: MetricSeries[];
 }
 
 export interface AlertSummary {

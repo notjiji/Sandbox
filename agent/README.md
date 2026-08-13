@@ -9,11 +9,12 @@ security-agent/
 ├── agent/
 │   ├── main.py
 │   ├── config.py
-│   ├── collectors/     # cpu, memory, disk, uptime, processes, services, docker, system
-│   ├── security/       # firewall, ssh, fail2ban, updates
+│   ├── collectors/     # cpu, memory, disk, network, uptime, processes, services, docker, system
+│   ├── security/       # firewall, ssh, fail2ban, updates (read-only)
 │   └── client/api.py
 ├── requirements.txt
 ├── Dockerfile
+├── SECURITY.md
 └── README.md
 ```
 
@@ -59,3 +60,7 @@ docker run --rm \
 | `SANDBOX_AGENT_HOME` | State directory (credential file) |
 | `SANDBOX_AGENT_INTERVAL` | Heartbeat seconds (default 30) |
 | `SANDBOX_AGENT_TIMEOUT` | HTTP timeout (default 15) |
+
+## Security
+
+The agent is outbound HTTPS only and **read-only**. It does not take commands from the dashboard, change firewall/SSH, install software, or open a remote shell. See [SECURITY.md](./SECURITY.md).

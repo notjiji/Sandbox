@@ -34,7 +34,7 @@ import {
 } from "../utils";
 import UsageGauge from "../components/UsageGauge";
 import DiskUsagePanel from "../components/DiskUsagePanel";
-import MetricsHistoryChart from "../components/MetricsHistoryChart";
+import { MetricsHistoryGrid } from "../components/MetricsHistoryChart";
 import SecurityChecksPanel from "../components/SecurityChecksPanel";
 import ServicesPanel from "../components/ServicesPanel";
 import DockerPanel from "../components/DockerPanel";
@@ -143,16 +143,13 @@ function OverviewTab({ overview }: { overview?: MonitoringOverview | null }) {
 function MetricsTab({ overview }: { overview?: MonitoringOverview | null }) {
   return (
     <div className="space-y-6">
+      <MetricsHistoryGrid points={overview?.history ?? []} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SectionPanel title="24h history">
-          <MetricsHistoryChart points={overview?.history ?? []} />
-        </SectionPanel>
         <SectionPanel title="Filesystem usage">
           <DiskUsagePanel disks={overview?.metrics?.disks} />
         </SectionPanel>
-      </div>
-      <SectionPanel title="Server uptime">
-        <dl className="space-y-3 text-sm">
+        <SectionPanel title="Server uptime">
+          <dl className="space-y-3 text-sm">
           <div className="flex justify-between gap-4 border-b border-brand-800/40 pb-3">
             <dt className="text-brand-500">Uptime</dt>
             <dd className="text-right text-brand-100">
@@ -169,8 +166,9 @@ function MetricsTab({ overview }: { overview?: MonitoringOverview | null }) {
             <dt className="text-brand-500">Boot time</dt>
             <dd className="text-right text-brand-100">{formatDateTime(overview?.metrics?.boot_time)}</dd>
           </div>
-        </dl>
-      </SectionPanel>
+          </dl>
+        </SectionPanel>
+      </div>
     </div>
   );
 }

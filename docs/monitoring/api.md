@@ -9,10 +9,25 @@ Base: `/api/v1/projects/{projectId}/assets/{assetId}/monitoring`
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
 | `GET` | `/` | `monitoring:read` | Latest metrics, security checks, alerts, history |
+| `GET` | `/metrics` | `monitoring:read` | Time-series for CPU, RAM, disk, load, network (`?hours=24`) |
 | `POST` | `/enroll` | `monitoring:manage` | Issue a short-lived enrollment token and install command |
 | `POST` | `/revoke` | `monitoring:manage` | Destroy this server's credential only |
 
 `GET ?hours=24` (1–168).
+
+The asset **is** the server. Conceptual routes map as:
+
+| Concept | This API |
+|---------|----------|
+| `POST/GET /servers` | Asset create/list (`type=server`) |
+| `GET /servers/{id}` | Asset + `GET .../monitoring` |
+| `POST /servers/{id}/agent/enrollment` | `POST .../monitoring/enroll` |
+| `POST /agents/register` | `POST /api/v1/monitoring/register` |
+| `POST /agents/heartbeat` + metrics | `POST /api/v1/monitoring/ingest` (one call) |
+| `GET /servers/{id}/metrics` | `GET .../monitoring/metrics` |
+| `GET /servers/{id}/services` | Overview `metrics.services` |
+| `GET /servers/{id}/security` | Overview `security` |
+| `GET /servers/{id}/alerts` | Overview `alerts` |
 
 Enrollment response:
 
@@ -29,7 +44,7 @@ Re-enrolling issues a **new enrollment token**. The existing per-server credenti
 |--------|------|------|-------------|
 | `GET` | `/api/v1/monitoring/install.sh` | none | Bootstrap script |
 | `POST` | `/api/v1/monitoring/register` | enrollment token in body | Exchange `sbe_…` for `sba_…` credential |
-| `POST` | `/api/v1/monitoring/ingest` | `Authorization: Bearer sba_…` | Heartbeat |
+| `POST` | `/api/v1/monitoring/ingest` | `Authorization: Bearer sba_…` | Heartbeat + metrics |
 
 Register body:
 

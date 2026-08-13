@@ -11,8 +11,12 @@ from app.monitoring.metric_types import (
     CPU_USAGE,
     DISK_USAGE,
     HISTORY_METRIC_TYPES,
+    LOAD_AVERAGE,
     MEMORY_USAGE,
+    NETWORK_RX,
+    NETWORK_TX,
     PROCESS_COUNT,
+    ROOT_FILESYSTEMS,
     UPTIME,
 )
 from app.monitoring.models import MonitoringAgent, MonitoringAlert, MonitoringMetric
@@ -39,6 +43,9 @@ from app.monitoring.repositories.snapshot_repository import (
 from app.monitoring.schemas import (
     AgentSummary,
     AlertSummary,
+    MetricsHistoryResponse,
+    MetricSample,
+    MetricSeries,
     MetricsPayload,
     MonitoringOverview,
     OrgMonitoringOverview,
@@ -50,7 +57,7 @@ from app.monitoring.services.security_summary import summarize_security_payload
 from app.projects.validators import require_org_asset
 
 _LATEST_METRIC_TYPES = HISTORY_METRIC_TYPES + (UPTIME, PROCESS_COUNT)
-_ORG_METRIC_TYPES = HISTORY_METRIC_TYPES + (UPTIME,)
+_ORG_METRIC_TYPES = (CPU_USAGE, MEMORY_USAGE, DISK_USAGE, UPTIME)
 
 
 def _agent_summary(agent: MonitoringAgent, *, asset_name: str | None = None) -> AgentSummary:
@@ -86,6 +93,9 @@ def _snapshot_summary(
         cpu_percent=_metric_value(by_type, CPU_USAGE),
         ram_percent=_metric_value(by_type, MEMORY_USAGE),
         disk_percent=_metric_value(by_type, DISK_USAGE),
+        load_1m=_metric_value(by_type, LOAD_AVERAGE),
+        network_rx_bytes_sec=_metric_value(by_type, NETWORK_RX),
+        network_tx_bytes_sec=_metric_value(by_type, NETWORK_TX),
         uptime_seconds=_metric_int(by_type, UPTIME),
         process_count=_metric_int(by_type, PROCESS_COUNT),
     )
@@ -166,6 +176,43 @@ def get_asset_monitoring(
         alerts=[_alert_summary(alert) for alert in alerts],
         history=_history_summaries(history_rows),
     )
+
+
+def get_asset_metric_history(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    hours: int = DEFAULT_HISTORY_HOURS,
+) -> MetricsHistoryResponse:
+    asset = require_org_asset(db, membership, project_id=project_id, asset_id=asset_id)
+    window = min(max(hours, 1), MAX_HISTORY_HOURS)
+    since = datetime.now(UTC) - timedelta(hours=window)
+    rows = list_metrics_since(
+        db,
+        asset_id=asset.id,
+        since=since,
+        metric_types=HISTORY_METRIC_TYPES,
+    )
+    grouped: dict[str, list[MetricSample]] = defaultdict(list)
+    units: dict[str, str] = {}
+    for row in rows:
+        if row.metric_type == DISK_USAGE:
+            filesystem = (row.labels or {}).get("filesystem")
+            if filesystem and filesystem not in ROOT_FILESYSTEMS:
+                continue
+        grouped[row.metric_type].append(
+            MetricSample(collected_at=row.collected_at, value=row.value)
+        )
+        units[row.metric_type] = row.unit
+
+    series = [
+        MetricSeries(metric_type=metric_type, unit=units.get(metric_type, ""), points=grouped[metric_type])
+        for metric_type in HISTORY_METRIC_TYPES
+        if metric_type in grouped
+    ]
+    return MetricsHistoryResponse(hours=window, series=series)
 
 
 def get_organization_monitoring(

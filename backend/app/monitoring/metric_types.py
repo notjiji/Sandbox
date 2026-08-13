@@ -11,6 +11,8 @@ DISK_USED = "disk_used"
 DISK_TOTAL = "disk_total"
 DISK_AVAILABLE = "disk_available"
 LOAD_AVERAGE = "load_average"
+NETWORK_RX = "network_rx"
+NETWORK_TX = "network_tx"
 UPTIME = "uptime"
 PROCESS_COUNT = "process_count"
 
@@ -20,7 +22,15 @@ UNIT_MB = "mb"
 UNIT_GB = "gb"
 UNIT_COUNT = "count"
 UNIT_RATIO = "ratio"
+UNIT_BYTES_SEC = "bytes_sec"
 
-HISTORY_METRIC_TYPES = (CPU_USAGE, MEMORY_USAGE, DISK_USAGE)
+HISTORY_METRIC_TYPES = (
+    CPU_USAGE,
+    MEMORY_USAGE,
+    DISK_USAGE,
+    LOAD_AVERAGE,
+    NETWORK_RX,
+    NETWORK_TX,
+)
 
 ROOT_FILESYSTEMS = frozenset({"/", "C:\\", "C:/"})

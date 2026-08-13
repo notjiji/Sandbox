@@ -38,8 +38,45 @@ Enrollment tokens expire in 15 minutes and are single-use. They cannot ingest me
 | `MonitoringMetric` | Normalized time-series: `metric_type`, `value`, `unit`, `collected_at`. New collectors add a type, not a column. |
 | `MonitoringSnapshot` | Heartbeat document (JSON payload for services, security, processes). |
 | `MonitoringAlert` | Deduped by `(asset_id, alert_code)`. |
-| Collectors | CPU, memory, disk, uptime, processes, Docker, system. |
-| Security modules | Firewall, SSH, Fail2Ban, updates. |
+| Collectors | CPU, memory, disk, network, uptime, processes, Docker, system. |
+| Security modules | Firewall, SSH, Fail2Ban, updates (read-only). |
+
+## Data model
+
+The server **is** an `Asset` (`server` / `windows_server` / `docker_host`). There is no parallel `servers` table.
+
+```
+Organization
+    │
+    ▼
+Project
+    │
+    ▼
+Asset (server)
+    │
+    ├── monitoring_agents          -- enrollment + per-server credential
+    ├── monitoring_metrics         -- time-series (CPU, RAM, disk, load, network)
+    ├── monitoring_snapshots       -- latest services, containers, security payload
+    └── monitoring_alerts          -- operational (CPU, disk, offline)
+             │
+             ▼
+         findings (source=monitoring)
+             │
+             ▼
+         Risk Engine
+```
+
+| Conceptual table | Implementation |
+|------------------|----------------|
+| Servers | `assets` (monitorable types) |
+| ServerAgents | `monitoring_agents` |
+| ServerMetrics | `monitoring_metrics` |
+| ServerServices | latest `monitoring_snapshots.payload.metrics.services` |
+| ServerContainers | latest snapshot `security.docker` |
+| ServerSecurityChecks | latest snapshot `security.*` + `findings` |
+| ServerAlerts | `monitoring_alerts` |
+
+Services, containers, and security checks are **current state** (snapshot). Numeric history lives in `monitoring_metrics` so new collectors add a `metric_type`, not a table.
 
 ## Normalized metrics
 
@@ -64,7 +101,10 @@ Built-in `metric_type` values:
 | `memory_usage` | percent | |
 | `disk_usage` | percent | one row per filesystem via `labels` |
 | `load_average` | ratio | 1-minute load |
+| `network_rx` / `network_tx` | bytes_sec | throughput since previous heartbeat |
 | `uptime` | seconds | |
+
+History charts (CPU, RAM, disk, network, load) read these series. `GET .../monitoring/metrics?hours=24` returns points for graphing.
 
 Add types such as `memory_used` or `process_count` without a schema change. `labels` distinguishes dimensions (mounts) without extra tables.
 

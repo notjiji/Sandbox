@@ -15,7 +15,7 @@ Phase 10 connects authorized Linux (and Docker host) servers through an **outbou
 - Running processes
 - Docker, firewall, SSH, Fail2Ban, and available updates
 - Basic system information
-- Historical metrics (last 24 hours by default)
+- Historical metrics (CPU, RAM, disk, network, load over 24 hours)
 - Security-related **findings** (weak SSH, inactive firewall, pending security updates)
 - Operational **alerts** (high CPU/disk, server offline)
 

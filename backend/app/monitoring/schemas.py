@@ -58,6 +58,8 @@ class MetricsPayload(AgentPayloadSchema):
     process_count: int | None = Field(default=None, ge=0)
     processes: list[ProcessInfo] = Field(default_factory=list)
     services: list[ServiceInfo] = Field(default_factory=list)
+    network_rx_bytes_sec: float | None = Field(default=None, ge=0)
+    network_tx_bytes_sec: float | None = Field(default=None, ge=0)
 
 
 class FirewallCheck(AgentPayloadSchema):
@@ -187,8 +189,27 @@ class SnapshotSummary(BaseSchema):
     cpu_percent: float | None = None
     ram_percent: float | None = None
     disk_percent: float | None = None
+    load_1m: float | None = None
+    network_rx_bytes_sec: float | None = None
+    network_tx_bytes_sec: float | None = None
     uptime_seconds: int | None = None
     process_count: int | None = None
+
+
+class MetricSample(BaseSchema):
+    collected_at: datetime
+    value: float
+
+
+class MetricSeries(BaseSchema):
+    metric_type: str
+    unit: str
+    points: list[MetricSample] = Field(default_factory=list)
+
+
+class MetricsHistoryResponse(BaseSchema):
+    hours: int
+    series: list[MetricSeries] = Field(default_factory=list)
 
 
 class AlertSummary(BaseSchema):

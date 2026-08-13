@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 def run(command: list[str], *, timeout: float = 3.0) -> str | None:
+    """Run a read-only inspection command. Never used to change host state."""
     try:
         completed = subprocess.run(
             command,

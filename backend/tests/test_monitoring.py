@@ -10,7 +10,7 @@ from app.findings.constants import FINDING_SOURCE_MONITORING
 from app.findings.enums import FindingStatus
 from app.findings.models import Finding
 from app.monitoring.enums import AgentStatus, AlertStatus
-from app.monitoring.metric_types import CPU_USAGE, DISK_USAGE, LOAD_AVERAGE, MEMORY_USAGE, UPTIME
+from app.monitoring.metric_types import CPU_USAGE, DISK_USAGE, LOAD_AVERAGE, MEMORY_USAGE, NETWORK_RX, NETWORK_TX, UPTIME
 from app.monitoring.models import MonitoringAlert, MonitoringMetric
 from tests.support import bootstrap_org_context, create_website_asset, invite_and_accept_member
 
@@ -106,6 +106,8 @@ def _ingest_payload(**overrides):
             "boot_time": "2026-08-12T10:00:00+00:00",
             "last_reboot_at": "2026-08-12T10:00:00+00:00",
             "process_count": 2,
+            "network_rx_bytes_sec": 12800.0,
+            "network_tx_bytes_sec": 3200.0,
             "processes": [{"pid": 1, "name": "systemd", "rss_mb": 12.0}],
             "services": [
                 {"name": "nginx", "status": "RUNNING"},
@@ -260,7 +262,18 @@ def test_enroll_register_and_overview(client, db) -> None:
     assert data["latest"]["disk_percent"] == 55.0
     assert data["latest"]["cpu_percent"] == 12.0
     assert data["latest"]["ram_percent"] == 40.0
+    assert data["latest"]["load_1m"] == 0.2
+    assert data["latest"]["network_rx_bytes_sec"] == 12800.0
+    assert data["history"][0]["load_1m"] == 0.2
     assert len(data["history"]) >= 1
+
+    series = client.get(
+        f"/api/v1/projects/{project_id}/assets/{server['id']}/monitoring/metrics",
+        headers=headers,
+    )
+    assert series.status_code == 200, series.text
+    types = {item["metric_type"] for item in series.json()["data"]["series"]}
+    assert {"cpu_usage", "memory_usage", "disk_usage", "load_average", "network_rx", "network_tx"} <= types
 
     stored = {
         row.metric_type: row
@@ -273,6 +286,8 @@ def test_enroll_register_and_overview(client, db) -> None:
     assert stored[LOAD_AVERAGE].value == 0.2
     assert stored[UPTIME].unit == "seconds"
     assert stored[DISK_USAGE].value == 55.0
+    assert stored[NETWORK_RX].value == 12800.0
+    assert stored[NETWORK_TX].unit == "bytes_sec"
 
     org = client.get("/api/v1/organizations/current/monitoring/overview", headers=headers)
     assert org.status_code == 200, org.text

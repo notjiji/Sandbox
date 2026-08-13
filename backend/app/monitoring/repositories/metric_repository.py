@@ -58,7 +58,7 @@ def list_metrics_since(
     asset_id: uuid.UUID,
     since: datetime,
     metric_types: tuple[str, ...] = HISTORY_METRIC_TYPES,
-    limit: int = 4000,
+    limit: int = 30000,
 ) -> list[MonitoringMetric]:
     return (
         db.query(MonitoringMetric)

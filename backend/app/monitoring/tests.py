@@ -176,7 +176,7 @@ def test_offline_alert_when_heartbeat_stale() -> None:
 
 
 def test_normalize_metrics_uses_shared_shape() -> None:
-    from app.monitoring.metric_types import CPU_USAGE, DISK_USAGE, LOAD_AVERAGE, MEMORY_USAGE, UPTIME
+    from app.monitoring.metric_types import CPU_USAGE, DISK_USAGE, LOAD_AVERAGE, MEMORY_USAGE, NETWORK_RX, NETWORK_TX, UPTIME
     from app.monitoring.services.metric_normalizer import normalize_metrics
 
     points = normalize_metrics(
@@ -193,6 +193,8 @@ def test_normalize_metrics_uses_shared_shape() -> None:
                 DiskFilesystem(filesystem="/var", usage_percent=84.0, used_gb=42.0, total_gb=50.0, available_gb=8.0),
             ],
             uptime_seconds=1480320,
+            network_rx_bytes_sec=20480.0,
+            network_tx_bytes_sec=1024.0,
         )
     )
     by_type = {(item.metric_type, (item.labels or {}).get("filesystem")): item for item in points}
@@ -203,6 +205,8 @@ def test_normalize_metrics_uses_shared_shape() -> None:
     assert by_type[(UPTIME, None)].unit == "seconds"
     assert by_type[(DISK_USAGE, "/")].value == 72.0
     assert by_type[(DISK_USAGE, "/var")].value == 84.0
+    assert by_type[(NETWORK_RX, None)].value == 20480.0
+    assert by_type[(NETWORK_TX, None)].unit == "bytes_sec"
 
 
 def test_summarize_security_ok_and_warn() -> None:

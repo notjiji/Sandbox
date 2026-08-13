@@ -11,7 +11,7 @@ from app.core.responses import success_response
 from app.members.models import OrganizationMember
 from app.monitoring.enums import DEFAULT_HISTORY_HOURS, MAX_HISTORY_HOURS
 from app.monitoring.services.enrollment_service import enroll_agent, revoke_agent
-from app.monitoring.services.monitoring_service import get_asset_monitoring
+from app.monitoring.services.monitoring_service import get_asset_metric_history, get_asset_monitoring
 
 router = APIRouter()
 
@@ -28,6 +28,20 @@ def get_monitoring(
         db, membership, project_id=project_id, asset_id=asset_id, hours=hours
     )
     return success_response(data=overview.model_dump(mode="json"))
+
+
+@router.get("/metrics")
+def get_monitoring_metrics(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    hours: int = Query(default=DEFAULT_HISTORY_HOURS, ge=1, le=MAX_HISTORY_HOURS),
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(Permission.MONITORING_READ)),
+) -> JSONResponse:
+    history = get_asset_metric_history(
+        db, membership, project_id=project_id, asset_id=asset_id, hours=hours
+    )
+    return success_response(data=history.model_dump(mode="json"))
 
 
 @router.post("/enroll", status_code=201)

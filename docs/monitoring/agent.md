@@ -43,8 +43,6 @@ Each heartbeat sends a `metrics` object. Collectors live in `agent/agent/collect
 
 ### CPU
 
-### CPU
-
 ```json
 {
   "cpu_usage": 73.4,
@@ -100,6 +98,19 @@ The alert engine evaluates **each mount** independently:
 | ≥ 95% | Critical (critical) | `DISK_CRITICAL__data` |
 
 Thresholds are fixed for now; per-org configuration is planned.
+
+### Network
+
+Read-only interface counters via `psutil`. The agent stores the previous sample locally and sends **bytes per second** (receive and transmit). No sockets are opened.
+
+```json
+{
+  "network_rx_bytes_sec": 12800.0,
+  "network_tx_bytes_sec": 3200.0
+}
+```
+
+The first heartbeat has no rate (no previous sample). Charts plot receive and transmit over 24 hours.
 
 ### Uptime
 
@@ -227,3 +238,4 @@ Risk finding example:
 - Do not put a permanent `sba_…` credential in the install command or chat logs.
 - Do not share one credential across servers. Revoke is per server.
 - Do not send a user JWT to register or ingest.
+- Do not give the agent a command channel, remote shell, or write access to firewall/SSH/packages. See [../../agent/SECURITY.md](../../agent/SECURITY.md).
