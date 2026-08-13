@@ -118,8 +118,25 @@ def _ingest_payload(**overrides):
                 "default_incoming": "DENY",
                 "default_outgoing": "ALLOW",
             },
-            "ssh": {"permit_root_login": False, "password_authentication": False, "port": 22},
-            "fail2ban": {"enabled": True, "jails": ["sshd"]},
+            "ssh": {
+                "permit_root_login": False,
+                "permit_root_login_raw": "prohibit-password",
+                "password_authentication": False,
+                "password_authentication_raw": "no",
+                "pubkey_authentication": True,
+                "pubkey_authentication_raw": "yes",
+                "port": 22,
+                "protocol": "2",
+                "config_source": "sshd -T",
+            },
+            "fail2ban": {
+                "installed": True,
+                "enabled": True,
+                "running": True,
+                "jails": ["sshd", "nginx-http-auth", "recidive"],
+                "jail_count": 3,
+                "banned_ips": 12,
+            },
             "docker": {
                 "installed": True,
                 "running": True,
@@ -224,6 +241,10 @@ def test_enroll_register_and_overview(client, db) -> None:
     assert data["security"]["docker"]["containers_running"] == 10
     assert data["security"]["docker"]["containers_stopped"] == 2
     assert data["security"]["docker"]["images"] == 15
+    assert data["security"]["ssh"]["pubkey_authentication"] is True
+    assert data["security"]["ssh"]["port"] == 22
+    assert data["security"]["fail2ban"]["jail_count"] == 3
+    assert data["security"]["fail2ban"]["banned_ips"] == 12
     assert data["latest"]["disk_percent"] == 55.0
     assert len(data["history"]) >= 1
 

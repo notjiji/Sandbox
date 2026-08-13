@@ -128,37 +128,96 @@ def evaluate_ingest(payload: AgentIngestRequest) -> list[AlertCandidate]:
     ssh = security.ssh
     if ssh:
         if ssh.permit_root_login is True:
+            current = ssh.permit_root_login_raw or "yes"
             candidates.append(
                 AlertCandidate(
                     code="SSH_ROOT_LOGIN",
-                    title="SSH root login is enabled",
-                    message="PermitRootLogin is enabled on this host.",
+                    title="SSH Root Login Enabled",
+                    message=(
+                        f"Current: PermitRootLogin {current}\n\n"
+                        "Recommendation: Set PermitRootLogin no (or prohibit-password) "
+                        "and administer the host via a non-root user with key-based auth."
+                    ),
                     severity=AlertSeverity.HIGH,
-                    evidence="PermitRootLogin=yes",
+                    evidence=f"PermitRootLogin={current}",
                 )
             )
         if ssh.password_authentication is True:
+            current = ssh.password_authentication_raw or "yes"
             candidates.append(
                 AlertCandidate(
                     code="SSH_PASSWORD_AUTH",
-                    title="SSH password authentication is enabled",
-                    message="PasswordAuthentication is enabled; prefer key-based auth.",
+                    title="SSH Password Authentication Enabled",
+                    message=(
+                        f"Current: PasswordAuthentication {current}\n\n"
+                        "Recommendation: Disable password authentication and use "
+                        "key-based authentication."
+                    ),
                     severity=AlertSeverity.MEDIUM,
-                    evidence="PasswordAuthentication=yes",
+                    evidence=f"PasswordAuthentication={current}",
+                )
+            )
+        if ssh.pubkey_authentication is False:
+            current = ssh.pubkey_authentication_raw or "no"
+            candidates.append(
+                AlertCandidate(
+                    code="SSH_PUBKEY_DISABLED",
+                    title="SSH Public Key Authentication Disabled",
+                    message=(
+                        f"Current: PubkeyAuthentication {current}\n\n"
+                        "Recommendation: Enable PubkeyAuthentication yes so hosts can use "
+                        "key-based login instead of passwords."
+                    ),
+                    severity=AlertSeverity.HIGH,
+                    evidence=f"PubkeyAuthentication={current}",
+                )
+            )
+        if ssh.protocol and "1" in str(ssh.protocol).split(","):
+            candidates.append(
+                AlertCandidate(
+                    code="SSH_PROTOCOL_LEGACY",
+                    title="SSH Protocol 1 Enabled",
+                    message=(
+                        f"Current: Protocol {ssh.protocol}\n\n"
+                        "Recommendation: Use Protocol 2 only. SSH protocol 1 is obsolete and insecure."
+                    ),
+                    severity=AlertSeverity.CRITICAL,
+                    evidence=f"Protocol={ssh.protocol}",
                 )
             )
 
     fail2ban = security.fail2ban
-    if fail2ban and fail2ban.enabled is False:
-        candidates.append(
-            AlertCandidate(
-                code="FAIL2BAN_INACTIVE",
-                title="Fail2Ban is not running",
-                message="Intrusion prevention (Fail2Ban) is inactive.",
-                severity=AlertSeverity.MEDIUM,
-                evidence="fail2ban.enabled=false",
+    if fail2ban:
+        installed = fail2ban.installed
+        running = fail2ban.running if fail2ban.running is not None else fail2ban.enabled
+        if installed is False:
+            candidates.append(
+                AlertCandidate(
+                    code="FAIL2BAN_NOT_INSTALLED",
+                    title="Fail2Ban is not installed",
+                    message=(
+                        "Current: Fail2Ban not installed\n\n"
+                        "Recommendation: Install and enable Fail2Ban to limit brute-force "
+                        "authentication attempts."
+                    ),
+                    severity=AlertSeverity.MEDIUM,
+                    evidence="fail2ban.installed=false",
+                )
             )
-        )
+        elif running is False:
+            candidates.append(
+                AlertCandidate(
+                    code="FAIL2BAN_INACTIVE",
+                    title="Fail2Ban is not running",
+                    message=(
+                        "Current: Fail2Ban installed but inactive\n\n"
+                        "Recommendation: Start and enable the fail2ban service so jails can ban "
+                        "abusive IPs."
+                    ),
+                    severity=AlertSeverity.MEDIUM,
+                    evidence="fail2ban.running=false",
+                )
+            )
 
     updates = security.updates
     if updates and (updates.security or 0) > 0:

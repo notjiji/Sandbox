@@ -13,7 +13,16 @@ def test_alert_engine_cpu_and_ssh() -> None:
     payload = AgentIngestRequest(
         metrics=MetricsPayload(cpu_usage=91, cores=4, load_1m=2.1, ram_percent=10, disk_percent=10),
         security=SecurityPayload(
-            ssh=SshCheck(permit_root_login=True, password_authentication=True),
+            ssh=SshCheck(
+                permit_root_login=True,
+                permit_root_login_raw="yes",
+                password_authentication=True,
+                password_authentication_raw="yes",
+                pubkey_authentication=False,
+                pubkey_authentication_raw="no",
+                port=22,
+                protocol="2",
+            ),
         ),
     )
     codes = {item.code: item for item in evaluate_ingest(payload)}
@@ -22,7 +31,21 @@ def test_alert_engine_cpu_and_ssh() -> None:
     assert "cores=4" in (codes["CPU_HIGH"].evidence or "")
     assert "SSH_ROOT_LOGIN" in codes
     assert "SSH_PASSWORD_AUTH" in codes
+    assert codes["SSH_PASSWORD_AUTH"].severity == AlertSeverity.MEDIUM
+    assert "Recommendation:" in codes["SSH_PASSWORD_AUTH"].message
+    assert "SSH_PUBKEY_DISABLED" in codes
     assert "RAM_HIGH" not in codes
+
+
+def test_alert_engine_fail2ban_not_installed() -> None:
+    from app.monitoring.schemas import Fail2BanCheck
+
+    payload = AgentIngestRequest(
+        security=SecurityPayload(fail2ban=Fail2BanCheck(installed=False, enabled=False, running=False)),
+    )
+    codes = {item.code: item for item in evaluate_ingest(payload)}
+    assert "FAIL2BAN_NOT_INSTALLED" in codes
+    assert "FAIL2BAN_INACTIVE" not in codes
 
 
 def test_alert_engine_disk_thresholds_per_filesystem() -> None:

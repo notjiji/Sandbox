@@ -69,13 +69,23 @@ class FirewallCheck(AgentPayloadSchema):
 
 class SshCheck(AgentPayloadSchema):
     permit_root_login: bool | None = None
+    permit_root_login_raw: str | None = None
     password_authentication: bool | None = None
+    password_authentication_raw: str | None = None
+    pubkey_authentication: bool | None = None
+    pubkey_authentication_raw: str | None = None
     port: int | None = None
+    protocol: str | None = None
+    config_source: str | None = None
 
 
 class Fail2BanCheck(AgentPayloadSchema):
+    installed: bool | None = None
     enabled: bool | None = None
+    running: bool | None = None
     jails: list[str] = Field(default_factory=list)
+    jail_count: int | None = Field(default=None, ge=0)
+    banned_ips: int | None = Field(default=None, ge=0)
 
 
 class DockerContainerInfo(AgentPayloadSchema):

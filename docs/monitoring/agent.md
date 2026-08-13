@@ -159,11 +159,47 @@ Detects UFW → firewalld → nftables → iptables. Never modifies rules.
 }
 ```
 
+### SSH security (read-only)
+
+Prefers effective config from `sshd -T`, otherwise parses `sshd_config` (+ includes). Never changes settings.
+
+```json
+{
+  "permit_root_login": false,
+  "permit_root_login_raw": "prohibit-password",
+  "password_authentication": true,
+  "password_authentication_raw": "yes",
+  "pubkey_authentication": true,
+  "pubkey_authentication_raw": "yes",
+  "port": 22,
+  "protocol": "2",
+  "config_source": "sshd -T"
+}
+```
+
+Example alert:
+
+- **SSH Password Authentication Enabled** (MEDIUM)
+- Current: `PasswordAuthentication yes`
+- Recommendation: disable passwords; use key-based auth
+
+### Fail2Ban
+
+```json
+{
+  "installed": true,
+  "running": true,
+  "jails": ["sshd", "nginx-http-auth", "recidive"],
+  "jail_count": 3,
+  "banned_ips": 12
+}
+```
+
 ### Also collected
 
 - **Processes** — top CPU consumers, count
 - **System** — hostname, OS, kernel, architecture
-- **Security** — SSH settings, Fail2Ban, pending updates
+- **Security** — pending updates
 
 ## What not to do
 

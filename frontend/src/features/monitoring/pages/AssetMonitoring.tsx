@@ -35,6 +35,8 @@ import MonitoringAlertsList from "../components/MonitoringAlertsList";
 import ServicesPanel from "../components/ServicesPanel";
 import DockerPanel from "../components/DockerPanel";
 import FirewallPanel from "../components/FirewallPanel";
+import SshPanel from "../components/SshPanel";
+import Fail2BanPanel from "../components/Fail2BanPanel";
 import { cn } from "@/shared/lib/utils";
 
 function statusClass(status?: string): string {
@@ -320,6 +322,15 @@ export default function AssetMonitoring() {
                 </SectionPanel>
                 <SectionPanel title="Docker">
                   <DockerPanel docker={overview?.security?.docker} />
+                </SectionPanel>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <SectionPanel title="SSH security">
+                  <SshPanel ssh={overview?.security?.ssh} />
+                </SectionPanel>
+                <SectionPanel title="Fail2Ban">
+                  <Fail2BanPanel fail2ban={overview?.security?.fail2ban} />
                 </SectionPanel>
               </div>
 

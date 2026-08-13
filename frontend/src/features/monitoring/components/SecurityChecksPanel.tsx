@@ -30,35 +30,50 @@ export default function SecurityChecksPanel({ security }: SecurityChecksPanelPro
         checkLabel(firewall.enabled, "ENABLED", "DISABLED"),
         firewall.backend ? firewall.backend.toUpperCase() : null,
         firewall.default_incoming ? `in ${firewall.default_incoming}` : null,
-        firewall.default_outgoing ? `out ${firewall.default_outgoing}` : null,
       ]
         .filter(Boolean)
         .join(" · ")
+    : "Not reported";
+
+  const sshSummary = ssh
+    ? [
+        ssh.port != null ? `port ${ssh.port}` : null,
+        ssh.password_authentication === true
+          ? "password on"
+          : ssh.password_authentication === false
+            ? "password off"
+            : null,
+        ssh.permit_root_login === true ? "root on" : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "Reported"
+    : "Not reported";
+
+  const f2bRunning = fail2ban?.running ?? fail2ban?.enabled;
+  const fail2banSummary = fail2ban
+    ? fail2ban.installed === false
+      ? "Not installed"
+      : [
+          checkLabel(f2bRunning, "ACTIVE", "INACTIVE"),
+          `${fail2ban.jail_count ?? fail2ban.jails?.length ?? 0} jail(s)`,
+          fail2ban.banned_ips != null ? `${fail2ban.banned_ips} banned` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
     : "Not reported";
 
   return (
     <div>
       <Row label="Firewall" value={firewallSummary} warn={firewall?.enabled === false} />
       <Row
-        label="SSH root login"
-        value={ssh ? checkLabel(ssh.permit_root_login, "Enabled", "Disabled") : "Not reported"}
-        warn={ssh?.permit_root_login === true}
-      />
-      <Row
-        label="SSH password auth"
-        value={ssh ? checkLabel(ssh.password_authentication, "Enabled", "Disabled") : "Not reported"}
-        warn={ssh?.password_authentication === true}
+        label="SSH"
+        value={sshSummary}
+        warn={ssh?.permit_root_login === true || ssh?.password_authentication === true}
       />
       <Row
         label="Fail2Ban"
-        value={
-          fail2ban
-            ? `${checkLabel(fail2ban.enabled, "Running", "Inactive")}${
-                fail2ban.jails?.length ? ` · ${fail2ban.jails.length} jail(s)` : ""
-              }`
-            : "Not reported"
-        }
-        warn={fail2ban?.enabled === false}
+        value={fail2banSummary}
+        warn={fail2ban?.installed === false || f2bRunning === false}
       />
       <Row
         label="Updates"

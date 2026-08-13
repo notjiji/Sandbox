@@ -57,13 +57,23 @@ export interface FirewallCheck {
 
 export interface SshCheck {
   permit_root_login?: boolean | null;
+  permit_root_login_raw?: string | null;
   password_authentication?: boolean | null;
+  password_authentication_raw?: string | null;
+  pubkey_authentication?: boolean | null;
+  pubkey_authentication_raw?: string | null;
   port?: number | null;
+  protocol?: string | null;
+  config_source?: string | null;
 }
 
 export interface Fail2BanCheck {
+  installed?: boolean | null;
   enabled?: boolean | null;
+  running?: boolean | null;
   jails?: string[];
+  jail_count?: number | null;
+  banned_ips?: number | null;
 }
 
 export interface DockerContainerInfo {
