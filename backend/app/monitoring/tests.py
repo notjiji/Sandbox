@@ -137,6 +137,26 @@ def test_sync_monitoring_finding_shape() -> None:
     assert _description_from_message(candidate.message) == "Current: PasswordAuthentication yes"
 
 
+def test_effective_status_liveness_windows() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.monitoring.enums import AgentStatus
+    from app.monitoring.models import MonitoringAgent
+    from app.monitoring.repositories.agent_repository import effective_status
+
+    now = datetime.now(UTC)
+    online = MonitoringAgent(status=AgentStatus.ONLINE, last_seen_at=now - timedelta(seconds=12))
+    delayed = MonitoringAgent(status=AgentStatus.ONLINE, last_seen_at=now - timedelta(seconds=61))
+    offline = MonitoringAgent(status=AgentStatus.ONLINE, last_seen_at=now - timedelta(seconds=301))
+
+    assert effective_status(online, now=now) == AgentStatus.ONLINE
+    assert effective_status(delayed, now=now) == AgentStatus.DELAYED
+    assert effective_status(offline, now=now) == AgentStatus.OFFLINE
+    assert should_alert_offline(online, now=now) is False
+    assert should_alert_offline(delayed, now=now) is False
+    assert should_alert_offline(offline, now=now) is True
+
+
 def test_offline_alert_when_heartbeat_stale() -> None:
     from datetime import UTC, datetime, timedelta
 
@@ -152,6 +172,7 @@ def test_offline_alert_when_heartbeat_stale() -> None:
     alert = server_offline_alert(agent)
     assert alert.code == "SERVER_OFFLINE"
     assert alert.severity == AlertSeverity.HIGH
+    assert "5 minutes" in alert.message
 
 
 def test_normalize_metrics_uses_shared_shape() -> None:
@@ -182,3 +203,36 @@ def test_normalize_metrics_uses_shared_shape() -> None:
     assert by_type[(UPTIME, None)].unit == "seconds"
     assert by_type[(DISK_USAGE, "/")].value == 72.0
     assert by_type[(DISK_USAGE, "/var")].value == 84.0
+
+
+def test_summarize_security_ok_and_warn() -> None:
+    from app.monitoring.schemas import Fail2BanCheck, FirewallCheck, SshCheck, UpdatesCheck
+    from app.monitoring.services.security_summary import summarize_security
+
+    healthy = summarize_security(
+        SecurityPayload(
+            firewall=FirewallCheck(enabled=True),
+            ssh=SshCheck(permit_root_login=False, password_authentication=False, pubkey_authentication=True),
+            fail2ban=Fail2BanCheck(installed=True, running=True),
+            updates=UpdatesCheck(available=2, security=0),
+        )
+    )
+    assert healthy.ssh.status == "ok"
+    assert healthy.firewall.status == "ok"
+    assert healthy.fail2ban.status == "ok"
+    assert healthy.updates.status == "ok"
+    assert healthy.docker.status == "unknown"
+
+    warned = summarize_security(
+        SecurityPayload(
+            firewall=FirewallCheck(enabled=False),
+            ssh=SshCheck(permit_root_login=True, password_authentication=True),
+            fail2ban=Fail2BanCheck(installed=False, running=False),
+            updates=UpdatesCheck(available=12, security=4),
+        )
+    )
+    assert warned.ssh.status == "warn"
+    assert warned.firewall.status == "warn"
+    assert warned.fail2ban.status == "warn"
+    assert warned.updates.status == "warn"
+    assert warned.updates.detail == "4"

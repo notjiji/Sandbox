@@ -57,5 +57,5 @@ docker run --rm \
 | `SANDBOX_ENROLLMENT_TOKEN` | One-time install token (`sbe_…`) |
 | `SANDBOX_AGENT_CREDENTIAL` | Optional override of the stored `sba_…` credential |
 | `SANDBOX_AGENT_HOME` | State directory (credential file) |
-| `SANDBOX_AGENT_INTERVAL` | Heartbeat seconds (default 60) |
+| `SANDBOX_AGENT_INTERVAL` | Heartbeat seconds (default 30) |
 | `SANDBOX_AGENT_TIMEOUT` | HTTP timeout (default 15) |

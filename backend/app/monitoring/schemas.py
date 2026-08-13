@@ -143,7 +143,7 @@ class AgentIngestResponse(BaseSchema):
     accepted: bool = True
     agent_status: AgentStatus
     alerts_open: int = 0
-    next_interval_seconds: int = 60
+    next_interval_seconds: int = 30
 
 
 class AgentRegisterRequest(AgentPayloadSchema):
@@ -156,7 +156,7 @@ class AgentRegisterResponse(BaseSchema):
     agent_id: str
     asset_id: str
     credential: str
-    next_interval_seconds: int = 60
+    next_interval_seconds: int = 30
 
 
 class EnrollmentResponse(BaseSchema):
@@ -213,6 +213,19 @@ class MonitoringOverview(BaseSchema):
     history: list[SnapshotSummary] = Field(default_factory=list)
 
 
+class OrgServerSecurityCheck(BaseSchema):
+    status: str = "unknown"
+    detail: str | None = None
+
+
+class OrgServerSecuritySummary(BaseSchema):
+    ssh: OrgServerSecurityCheck = Field(default_factory=OrgServerSecurityCheck)
+    firewall: OrgServerSecurityCheck = Field(default_factory=OrgServerSecurityCheck)
+    fail2ban: OrgServerSecurityCheck = Field(default_factory=OrgServerSecurityCheck)
+    updates: OrgServerSecurityCheck = Field(default_factory=OrgServerSecurityCheck)
+    docker: OrgServerSecurityCheck = Field(default_factory=OrgServerSecurityCheck)
+
+
 class OrgMonitoringServer(BaseSchema):
     asset_id: str
     asset_name: str
@@ -222,12 +235,15 @@ class OrgMonitoringServer(BaseSchema):
     cpu_percent: float | None = None
     ram_percent: float | None = None
     disk_percent: float | None = None
+    uptime_seconds: int | None = None
     open_alerts: int = 0
     last_seen_at: datetime | None = None
+    security: OrgServerSecuritySummary = Field(default_factory=OrgServerSecuritySummary)
 
 
 class OrgMonitoringOverview(BaseSchema):
     agents_online: int = 0
+    agents_delayed: int = 0
     agents_offline: int = 0
     agents_pending: int = 0
     open_alerts: int = 0

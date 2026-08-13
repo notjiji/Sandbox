@@ -94,11 +94,20 @@ Internet Scanner ──► findings ──► Risk Engine ◄── findings ◄
 
 ## Status
 
+The agent heartbeats every **30 seconds**. Liveness is computed from `last_seen_at` on read (`delayed` is not stored). `SERVER_OFFLINE` opens only at the offline threshold.
+
+| Age since last heartbeat | Status | Alert |
+|--------------------------|--------|-------|
+| < 1 minute | `online` | none |
+| 1–5 minutes | `delayed` | none |
+| ≥ 5 minutes | `offline` | `SERVER_OFFLINE` |
+
 | Status | Meaning |
 |--------|---------|
 | `pending` | Install command issued; waiting for register |
-| `online` | Registered; heartbeat within 10 minutes |
-| `offline` | Last seen more than 10 minutes ago |
+| `online` | Registered; last heartbeat within 1 minute |
+| `delayed` | Heartbeat missed; last seen 1–5 minutes ago |
+| `offline` | Last seen more than 5 minutes ago |
 | `revoked` | This server's credential destroyed |
 
 ## Code map
@@ -110,3 +119,4 @@ Internet Scanner ──► findings ──► Risk Engine ◄── findings ◄
 | Enrollment | `backend/app/monitoring/router.py` |
 | Agent | `agent/agent/` |
 | UI | `frontend/src/features/monitoring/` |
+| Dashboard servers | `frontend/src/features/monitoring/components/ServerHealthPanel.tsx` |

@@ -32,6 +32,7 @@ File: `backend/app/workers/celery_app.py`
 - `app.jobs.example` — heartbeat
 - `app.jobs.scans` — scan execution + schedule checker
 - `app.jobs.reports` — PDF report generation
+- `app.jobs.monitoring` — stale agent liveness / `SERVER_OFFLINE`
 
 ## Tasks
 
@@ -60,11 +61,20 @@ Report inline mode: `REPORT_RUN_INLINE=true` in development.
 
 Confirms worker connectivity.
 
+### Monitoring
+
+| Task | Schedule |
+|------|----------|
+| `app.jobs.monitoring.reconcile_offline_agents` | Every minute |
+
+Marks agents offline after 5 minutes without a heartbeat and opens `SERVER_OFFLINE`. Delayed (1–5 minutes) is computed on read and does not persist.
+
 ## Celery Beat
 
 Scheduled tasks defined in `celery_app.conf.beat_schedule`:
 
 - **`check-scan-schedules`** — evaluates cron schedules, creates/queues due scans
+- **`reconcile-offline-agents`** — expires stale monitoring agents
 
 Beat runs as a separate Docker service (`celery-beat` in docker-compose).
 

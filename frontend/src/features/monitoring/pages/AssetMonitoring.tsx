@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Activity, Copy, Server } from "lucide-react";
 import DashboardShell from "@/features/organizations/components/DashboardShell";
@@ -14,41 +14,171 @@ import { assetsApi } from "@/features/assets/api";
 import { projectsApi } from "@/features/projects/api";
 import ProjectNav from "@/features/projects/components/ProjectNav";
 import { useQuery } from "@tanstack/react-query";
-import type { EnrollmentResponse } from "@/shared/types/monitoring";
+import type { EnrollmentResponse, MonitoringOverview } from "@/shared/types/monitoring";
 import { monitoringApi } from "../api";
 import { useAssetMonitoring } from "../hooks";
 import { monitoringKeys } from "../query-keys";
 import {
   MONITORABLE_ASSET_TYPES,
+  agentStatusBadgeClass,
+  agentStatusDotClass,
   agentStatusLabel,
   formatDateTime,
   formatPercent,
+  formatUptimeCompact,
   formatUptimeDetailed,
+  heartbeatCaption,
   metricCpuPercent,
   metricRamPercent,
+  summarizeSecurity,
 } from "../utils";
 import UsageGauge from "../components/UsageGauge";
 import DiskUsagePanel from "../components/DiskUsagePanel";
 import MetricsHistoryChart from "../components/MetricsHistoryChart";
 import SecurityChecksPanel from "../components/SecurityChecksPanel";
-import MonitoringAlertsList from "../components/MonitoringAlertsList";
 import ServicesPanel from "../components/ServicesPanel";
 import DockerPanel from "../components/DockerPanel";
 import FirewallPanel from "../components/FirewallPanel";
 import SshPanel from "../components/SshPanel";
 import Fail2BanPanel from "../components/Fail2BanPanel";
 import UpdatesPanel from "../components/UpdatesPanel";
+import SecuritySummaryList from "../components/SecuritySummaryList";
+import ServerMonitoringTabs, { parseServerTab } from "../components/ServerMonitoringTabs";
+import ServerFindingsPanel from "../components/ServerFindingsPanel";
+import ServerActivityPanel from "../components/ServerActivityPanel";
 import { cn } from "@/shared/lib/utils";
 
-function statusClass(status?: string): string {
-  if (status === "online") return "border-emerald-500/40 bg-emerald-950/30 text-emerald-200";
-  if (status === "pending") return "border-amber-500/40 bg-amber-950/20 text-amber-200";
-  if (status === "offline") return "border-rose-500/40 bg-rose-950/20 text-rose-200";
-  return "border-brand-700/40 bg-brand-950/20 text-brand-300";
+function ProcessesPanel({ overview }: { overview?: MonitoringOverview | null }) {
+  const processes = overview?.metrics?.processes ?? [];
+  if (processes.length === 0) {
+    return <p className="text-sm text-brand-600">Process list will appear after the first heartbeat.</p>;
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <thead className="text-xs uppercase tracking-wider text-brand-500">
+          <tr>
+            <th className="pb-2">Process</th>
+            <th className="pb-2">User</th>
+            <th className="pb-2 text-right">RSS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {processes.map((proc) => (
+            <tr key={`${proc.pid}-${proc.name}`} className="border-t border-brand-800/40">
+              <td className="py-2 text-brand-100">{proc.name || "—"}</td>
+              <td className="py-2 text-brand-400">{proc.user || "—"}</td>
+              <td className="py-2 text-right tabular-nums text-brand-300">
+                {proc.rss_mb != null ? `${proc.rss_mb.toFixed(0)} MB` : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {overview?.metrics?.process_count != null && (
+        <p className="mt-3 text-xs text-brand-600">
+          {overview.metrics.process_count} processes · CPU {formatPercent(metricCpuPercent(overview.metrics))}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function OverviewTab({ overview }: { overview?: MonitoringOverview | null }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <UsageGauge
+          label="CPU"
+          value={metricCpuPercent(overview?.metrics)}
+          detail={[
+            overview?.metrics?.load_1m != null
+              ? `load ${overview.metrics.load_1m.toFixed(2)}`
+              : overview?.metrics?.load_avg?.length
+                ? `load ${overview.metrics.load_avg.map((n) => n.toFixed(2)).join(", ")}`
+                : null,
+            overview?.metrics?.cores != null ? `${overview.metrics.cores} cores` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined}
+        />
+        <UsageGauge
+          label="Memory"
+          value={metricRamPercent(overview?.metrics)}
+          detail={
+            overview?.metrics?.used_mb != null && overview?.metrics?.total_mb != null
+              ? `${overview.metrics.used_mb.toFixed(0)} / ${overview.metrics.total_mb.toFixed(0)} MB · ${(overview.metrics.available_mb ?? 0).toFixed(0)} MB free`
+              : overview?.metrics?.ram_used_mb != null && overview?.metrics?.ram_total_mb != null
+                ? `${overview.metrics.ram_used_mb.toFixed(0)} / ${overview.metrics.ram_total_mb.toFixed(0)} MB`
+                : undefined
+          }
+        />
+        <UsageGauge
+          label="Root disk"
+          value={overview?.metrics?.disk_percent}
+          detail={
+            overview?.metrics?.disk_used_gb != null && overview?.metrics?.disk_total_gb != null
+              ? `${overview.metrics.disk_used_gb.toFixed(1)} / ${overview.metrics.disk_total_gb.toFixed(1)} GB`
+              : undefined
+          }
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <SectionPanel title="Uptime">
+          <p className="text-2xl font-semibold tabular-nums text-brand-50">
+            {formatUptimeCompact(overview?.metrics?.uptime_seconds)}
+          </p>
+          <p className="mt-2 text-sm text-brand-500">
+            Last reboot {formatDateTime(overview?.metrics?.last_reboot_at ?? overview?.metrics?.boot_time)}
+          </p>
+        </SectionPanel>
+        <SectionPanel title="Security">
+          <SecuritySummaryList security={summarizeSecurity(overview?.security)} />
+        </SectionPanel>
+      </div>
+    </div>
+  );
+}
+
+function MetricsTab({ overview }: { overview?: MonitoringOverview | null }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <SectionPanel title="24h history">
+          <MetricsHistoryChart points={overview?.history ?? []} />
+        </SectionPanel>
+        <SectionPanel title="Filesystem usage">
+          <DiskUsagePanel disks={overview?.metrics?.disks} />
+        </SectionPanel>
+      </div>
+      <SectionPanel title="Server uptime">
+        <dl className="space-y-3 text-sm">
+          <div className="flex justify-between gap-4 border-b border-brand-800/40 pb-3">
+            <dt className="text-brand-500">Uptime</dt>
+            <dd className="text-right text-brand-100">
+              {formatUptimeDetailed(overview?.metrics?.uptime_seconds)}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4 border-b border-brand-800/40 pb-3">
+            <dt className="text-brand-500">Last reboot</dt>
+            <dd className="text-right text-brand-100">
+              {formatDateTime(overview?.metrics?.last_reboot_at ?? overview?.metrics?.boot_time)}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-brand-500">Boot time</dt>
+            <dd className="text-right text-brand-100">{formatDateTime(overview?.metrics?.boot_time)}</dd>
+          </div>
+        </dl>
+      </SectionPanel>
+    </div>
+  );
 }
 
 export default function AssetMonitoring() {
   const { projectId, assetId } = useParams<{ projectId: string; assetId: string }>();
+  const [searchParams] = useSearchParams();
+  const tab = parseServerTab(searchParams.get("tab"));
   const queryClient = useQueryClient();
   const { canManageMonitoring } = useOrganizationRole();
   const { confirm } = useConfirm();
@@ -153,10 +283,11 @@ export default function AssetMonitoring() {
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <span
                   className={cn(
-                    "rounded-full border px-3 py-1 text-xs uppercase tracking-wider",
-                    statusClass(overview?.agent?.status),
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs tracking-wide",
+                    agentStatusBadgeClass(overview?.agent?.status),
                   )}
                 >
+                  <span className={cn("h-2 w-2 rounded-full", agentStatusDotClass(overview?.agent?.status))} />
                   {overview?.agent ? agentStatusLabel(overview.agent.status) : "Not enrolled"}
                 </span>
                 {overview?.agent?.agent_version && (
@@ -170,6 +301,11 @@ export default function AssetMonitoring() {
                   ? ` · up ${formatUptimeDetailed(overview.metrics.uptime_seconds)}`
                   : ""}
               </p>
+              {overview?.agent && (
+                <p className="mt-2 text-sm text-brand-500">
+                  {heartbeatCaption(overview.agent.status, overview.agent.last_seen_at)}
+                </p>
+              )}
             </div>
             {canManageMonitoring && (
               <div className="flex flex-wrap gap-2">
@@ -241,148 +377,66 @@ export default function AssetMonitoring() {
             />
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <UsageGauge
-                  label="CPU"
-                  value={metricCpuPercent(overview?.metrics)}
-                  detail={[
-                    overview?.metrics?.load_1m != null
-                      ? `load ${overview.metrics.load_1m.toFixed(2)}`
-                      : overview?.metrics?.load_avg?.length
-                        ? `load ${overview.metrics.load_avg.map((n) => n.toFixed(2)).join(", ")}`
-                        : null,
-                    overview?.metrics?.cores != null ? `${overview.metrics.cores} cores` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || undefined}
-                />
-                <UsageGauge
-                  label="Memory"
-                  value={metricRamPercent(overview?.metrics)}
-                  detail={
-                    overview?.metrics?.used_mb != null && overview?.metrics?.total_mb != null
-                      ? `${overview.metrics.used_mb.toFixed(0)} / ${overview.metrics.total_mb.toFixed(0)} MB · ${(overview.metrics.available_mb ?? 0).toFixed(0)} MB free`
-                      : overview?.metrics?.ram_used_mb != null && overview?.metrics?.ram_total_mb != null
-                        ? `${overview.metrics.ram_used_mb.toFixed(0)} / ${overview.metrics.ram_total_mb.toFixed(0)} MB`
-                        : undefined
-                  }
-                />
-                <UsageGauge
-                  label="Root disk"
-                  value={overview?.metrics?.disk_percent}
-                  detail={
-                    overview?.metrics?.disk_used_gb != null && overview?.metrics?.disk_total_gb != null
-                      ? `${overview.metrics.disk_used_gb.toFixed(1)} / ${overview.metrics.disk_total_gb.toFixed(1)} GB`
-                      : undefined
-                  }
-                />
-              </div>
+              <ServerMonitoringTabs active={tab} />
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <SectionPanel title="Filesystem usage">
-                  <DiskUsagePanel disks={overview?.metrics?.disks} />
-                </SectionPanel>
-                <SectionPanel title="Server uptime">
-                  <dl className="space-y-3 text-sm">
-                    <div className="flex justify-between gap-4 border-b border-brand-800/40 pb-3">
-                      <dt className="text-brand-500">Uptime</dt>
-                      <dd className="text-right text-brand-100">
-                        {formatUptimeDetailed(overview?.metrics?.uptime_seconds)}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-4 border-b border-brand-800/40 pb-3">
-                      <dt className="text-brand-500">Last reboot</dt>
-                      <dd className="text-right text-brand-100">
-                        {formatDateTime(
-                          overview?.metrics?.last_reboot_at ?? overview?.metrics?.boot_time,
-                        )}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-brand-500">Boot time</dt>
-                      <dd className="text-right text-brand-100">
-                        {formatDateTime(overview?.metrics?.boot_time)}
-                      </dd>
-                    </div>
-                  </dl>
-                </SectionPanel>
-              </div>
+              {tab === "overview" && <OverviewTab overview={overview} />}
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <SectionPanel title="24h history">
-                  <MetricsHistoryChart points={overview?.history ?? []} />
-                </SectionPanel>
-                <SectionPanel title="Security checks">
-                  <SecurityChecksPanel security={overview?.security} />
-                </SectionPanel>
-              </div>
+              {tab === "metrics" && <MetricsTab overview={overview} />}
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <SectionPanel title="Firewall">
-                  <FirewallPanel firewall={overview?.security?.firewall} />
-                </SectionPanel>
+              {tab === "services" && (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <SectionPanel title="Running services">
+                    <ServicesPanel services={overview?.metrics?.services} />
+                  </SectionPanel>
+                  <SectionPanel title="Processes">
+                    <ProcessesPanel overview={overview} />
+                  </SectionPanel>
+                </div>
+              )}
+
+              {tab === "docker" && (
                 <SectionPanel title="Docker">
                   <DockerPanel docker={overview?.security?.docker} />
                 </SectionPanel>
-              </div>
+              )}
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <SectionPanel title="SSH security">
-                  <SshPanel ssh={overview?.security?.ssh} />
-                </SectionPanel>
-                <SectionPanel title="Fail2Ban">
-                  <Fail2BanPanel fail2ban={overview?.security?.fail2ban} />
-                </SectionPanel>
-              </div>
+              {tab === "security" && (
+                <div className="space-y-6">
+                  <SectionPanel title="Security checks">
+                    <SecurityChecksPanel security={overview?.security} />
+                  </SectionPanel>
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <SectionPanel title="Firewall">
+                      <FirewallPanel firewall={overview?.security?.firewall} />
+                    </SectionPanel>
+                    <SectionPanel title="SSH security">
+                      <SshPanel ssh={overview?.security?.ssh} />
+                    </SectionPanel>
+                    <SectionPanel title="Fail2Ban">
+                      <Fail2BanPanel fail2ban={overview?.security?.fail2ban} />
+                    </SectionPanel>
+                    <SectionPanel title="System updates">
+                      <UpdatesPanel updates={overview?.security?.updates} />
+                    </SectionPanel>
+                  </div>
+                </div>
+              )}
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <SectionPanel title="System updates">
-                  <UpdatesPanel updates={overview?.security?.updates} />
+              {tab === "findings" && (
+                <SectionPanel title="Findings">
+                  <ServerFindingsPanel projectId={projectId} assetId={assetId} />
                 </SectionPanel>
-                <SectionPanel title="Running services">
-                  <ServicesPanel services={overview?.metrics?.services} />
-                </SectionPanel>
-              </div>
+              )}
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <SectionPanel title="Alerts">
-                  <MonitoringAlertsList alerts={overview?.alerts ?? []} />
+              {tab === "activity" && (
+                <SectionPanel title="Activity">
+                  <ServerActivityPanel
+                    projectId={projectId}
+                    assetId={assetId}
+                    alerts={overview?.alerts ?? []}
+                  />
                 </SectionPanel>
-                <SectionPanel title="Processes">
-                  {(overview?.metrics?.processes ?? []).length === 0 ? (
-                    <p className="text-sm text-brand-600">Process list will appear after the first heartbeat.</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm">
-                        <thead className="text-xs uppercase tracking-wider text-brand-500">
-                          <tr>
-                            <th className="pb-2">Process</th>
-                            <th className="pb-2">User</th>
-                            <th className="pb-2 text-right">RSS</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(overview?.metrics?.processes ?? []).map((proc) => (
-                            <tr key={`${proc.pid}-${proc.name}`} className="border-t border-brand-800/40">
-                              <td className="py-2 text-brand-100">{proc.name || "—"}</td>
-                              <td className="py-2 text-brand-400">{proc.user || "—"}</td>
-                              <td className="py-2 text-right tabular-nums text-brand-300">
-                                {proc.rss_mb != null ? `${proc.rss_mb.toFixed(0)} MB` : "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {overview?.metrics?.process_count != null && (
-                        <p className="mt-3 text-xs text-brand-600">
-                          {overview.metrics.process_count} processes · CPU{" "}
-                          {formatPercent(metricCpuPercent(overview.metrics))}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </SectionPanel>
-              </div>
+              )}
             </>
           )}
         </div>

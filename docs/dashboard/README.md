@@ -12,6 +12,7 @@ The dashboard is the organization-level home screen showing security posture at 
 | Asset overview | Counts by type (websites, domains, IPs, servers) |
 | Top risky assets | Lowest-scoring or highest-risk assets |
 | Upcoming scans | Scheduled scan runs |
+| Servers | Enrolled agents: CPU, RAM, disk, uptime, SSH/firewall/Fail2Ban/updates/Docker |
 | Activity | Recent audit events |
 
 ## Access

@@ -9,7 +9,7 @@ import pytest
 from app.findings.constants import FINDING_SOURCE_MONITORING
 from app.findings.enums import FindingStatus
 from app.findings.models import Finding
-from app.monitoring.enums import AlertStatus
+from app.monitoring.enums import AgentStatus, AlertStatus
 from app.monitoring.metric_types import CPU_USAGE, DISK_USAGE, LOAD_AVERAGE, MEMORY_USAGE, UPTIME
 from app.monitoring.models import MonitoringAlert, MonitoringMetric
 from tests.support import bootstrap_org_context, create_website_asset, invite_and_accept_member
@@ -280,6 +280,12 @@ def test_enroll_register_and_overview(client, db) -> None:
     assert summary["agents_online"] == 1
     assert summary["open_alerts"] == 0
     assert summary["servers"][0]["asset_id"] == server["id"]
+    assert summary["servers"][0]["uptime_seconds"] == 3600
+    assert summary["servers"][0]["security"]["ssh"]["status"] == "ok"
+    assert summary["servers"][0]["security"]["firewall"]["status"] == "ok"
+    assert summary["servers"][0]["security"]["fail2ban"]["status"] == "ok"
+    assert summary["servers"][0]["security"]["docker"]["status"] == "ok"
+    assert summary["servers"][0]["security"]["updates"]["status"] == "ok"
 
 
 def test_each_server_has_its_own_credential(client, db) -> None:
@@ -456,6 +462,43 @@ def test_stale_heartbeat_opens_server_offline_alert(client, db) -> None:
     open_codes = {alert["alert_code"] for alert in overview["alerts"] if alert["status"] == "open"}
     assert "SERVER_OFFLINE" in open_codes
     assert overview["agent"]["status"] == "offline"
+
+
+def test_delayed_heartbeat_does_not_open_offline_alert(client, db) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.monitoring.enums import AGENT_DELAYED_SECONDS
+    from app.monitoring.models import MonitoringAgent
+
+    ctx = bootstrap_org_context(db, client, email="mon-delayed@example.com")
+    project_id = ctx["project"]["id"]
+    headers = ctx["org_headers"]
+    server = _create_server(client, project_id, headers)
+    credential = _register(
+        client,
+        _enroll(client, project_id, server["id"], headers)["enrollment_token"],
+    )["credential"]
+    ingest = client.post(
+        "/api/v1/monitoring/ingest",
+        json=_ingest_payload(),
+        headers={"Authorization": f"Bearer {credential}"},
+    )
+    assert ingest.status_code == 200
+
+    agent = db.query(MonitoringAgent).filter(MonitoringAgent.asset_id == uuid.UUID(server["id"])).one()
+    agent.last_seen_at = datetime.now(UTC) - timedelta(seconds=AGENT_DELAYED_SECONDS + 15)
+    db.add(agent)
+    db.flush()
+
+    overview = client.get(
+        f"/api/v1/projects/{project_id}/assets/{server['id']}/monitoring",
+        headers=headers,
+    ).json()["data"]
+    open_codes = {alert["alert_code"] for alert in overview["alerts"] if alert["status"] == "open"}
+    assert "SERVER_OFFLINE" not in open_codes
+    assert overview["agent"]["status"] == "delayed"
+    db.refresh(agent)
+    assert agent.status == AgentStatus.ONLINE
 
 
 def test_viewer_can_read_but_cannot_enroll(client, db) -> None:

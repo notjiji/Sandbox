@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.risk_engine.engine import risk_engine
 from app.findings.services.monitoring_finding_sync import sync_monitoring_findings
-from app.monitoring.enums import AgentStatus
+from app.monitoring.enums import AGENT_HEARTBEAT_SECONDS, AgentStatus
 from app.monitoring.models import MonitoringAgent
 from app.monitoring.repositories.alert_repository import count_open_alerts_for_assets
 from app.monitoring.repositories.metric_repository import insert_metrics, prune_metrics
@@ -85,4 +85,5 @@ def ingest_agent_payload(
         accepted=True,
         agent_status=AgentStatus.ONLINE,
         alerts_open=remaining,
+        next_interval_seconds=AGENT_HEARTBEAT_SECONDS,
     )

@@ -9,6 +9,7 @@ from app.core.exceptions import NotFoundError, UnauthorizedError, ValidationAppE
 from app.core.security import generate_opaque_token, hash_token
 from app.members.models import OrganizationMember
 from app.monitoring.enums import (
+    AGENT_HEARTBEAT_SECONDS,
     CREDENTIAL_PREFIX,
     ENROLLMENT_TOKEN_PREFIX,
     MONITORABLE_ASSET_TYPES,
@@ -147,6 +148,7 @@ def register_agent(db: Session, *, body: AgentRegisterRequest) -> AgentRegisterR
         agent_id=str(agent.id),
         asset_id=str(agent.asset_id),
         credential=credential,
+        next_interval_seconds=AGENT_HEARTBEAT_SECONDS,
     )
 
 

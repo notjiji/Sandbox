@@ -46,7 +46,7 @@ class AgentConfig:
             raise SystemExit("SANDBOX_API_URL is required")
         enrollment = os.environ.get("SANDBOX_ENROLLMENT_TOKEN", "").strip() or None
         credential = os.environ.get("SANDBOX_AGENT_CREDENTIAL", "").strip() or None
-        interval = int(os.environ.get("SANDBOX_AGENT_INTERVAL", "60"))
+        interval = int(os.environ.get("SANDBOX_AGENT_INTERVAL", "30"))
         timeout = float(os.environ.get("SANDBOX_AGENT_TIMEOUT", "15"))
         config = cls(
             api_url=api_url,

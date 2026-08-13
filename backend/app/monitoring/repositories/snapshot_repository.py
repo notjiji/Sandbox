@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.monitoring.enums import MAX_SNAPSHOTS
@@ -50,3 +51,31 @@ def get_latest_snapshot(db: Session, *, asset_id: uuid.UUID) -> MonitoringSnapsh
         .order_by(MonitoringSnapshot.collected_at.desc())
         .first()
     )
+
+
+def get_latest_snapshots_for_assets(
+    db: Session,
+    *,
+    asset_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, MonitoringSnapshot]:
+    if not asset_ids:
+        return {}
+    latest_ts = (
+        db.query(
+            MonitoringSnapshot.asset_id,
+            func.max(MonitoringSnapshot.collected_at).label("max_ts"),
+        )
+        .filter(MonitoringSnapshot.asset_id.in_(asset_ids))
+        .group_by(MonitoringSnapshot.asset_id)
+        .subquery()
+    )
+    rows = (
+        db.query(MonitoringSnapshot)
+        .join(
+            latest_ts,
+            (MonitoringSnapshot.asset_id == latest_ts.c.asset_id)
+            & (MonitoringSnapshot.collected_at == latest_ts.c.max_ts),
+        )
+        .all()
+    )
+    return {row.asset_id: row for row in rows}

@@ -32,7 +32,10 @@ from app.monitoring.repositories.metric_repository import (
     get_latest_metrics_for_assets,
     list_metrics_since,
 )
-from app.monitoring.repositories.snapshot_repository import get_latest_snapshot
+from app.monitoring.repositories.snapshot_repository import (
+    get_latest_snapshot,
+    get_latest_snapshots_for_assets,
+)
 from app.monitoring.schemas import (
     AgentSummary,
     AlertSummary,
@@ -43,9 +46,11 @@ from app.monitoring.schemas import (
     SecurityPayload,
     SnapshotSummary,
 )
+from app.monitoring.services.security_summary import summarize_security_payload
 from app.projects.validators import require_org_asset
 
 _LATEST_METRIC_TYPES = HISTORY_METRIC_TYPES + (UPTIME, PROCESS_COUNT)
+_ORG_METRIC_TYPES = HISTORY_METRIC_TYPES + (UPTIME,)
 
 
 def _agent_summary(agent: MonitoringAgent, *, asset_name: str | None = None) -> AgentSummary:
@@ -173,21 +178,28 @@ def get_organization_monitoring(
         for agent in agents:
             db.refresh(agent)
     asset_ids = [agent.asset_id for agent in agents]
-    latest_by_asset = get_latest_metrics_for_assets(db, asset_ids=asset_ids)
+    latest_by_asset = get_latest_metrics_for_assets(
+        db, asset_ids=asset_ids, metric_types=_ORG_METRIC_TYPES
+    )
+    snapshots_by_asset = get_latest_snapshots_for_assets(db, asset_ids=asset_ids)
     open_by_asset = count_open_alerts_for_assets(db, asset_ids=asset_ids)
 
     servers: list[OrgMonitoringServer] = []
-    online = offline = pending = 0
+    online = delayed = offline = pending = 0
     for agent in agents:
         status = effective_status(agent)
         if status == AgentStatus.ONLINE:
             online += 1
+        elif status == AgentStatus.DELAYED:
+            delayed += 1
         elif status == AgentStatus.PENDING:
             pending += 1
         else:
             offline += 1
         asset = get_asset_by_id(db, project_id=agent.project_id, asset_id=agent.asset_id)
         by_type = latest_by_asset.get(agent.asset_id, {})
+        snapshot = snapshots_by_asset.get(agent.asset_id)
+        raw_security = (snapshot.payload or {}).get("security") if snapshot and snapshot.payload else None
         servers.append(
             OrgMonitoringServer(
                 asset_id=str(agent.asset_id),
@@ -198,13 +210,16 @@ def get_organization_monitoring(
                 cpu_percent=_metric_value(by_type, CPU_USAGE),
                 ram_percent=_metric_value(by_type, MEMORY_USAGE),
                 disk_percent=_metric_value(by_type, DISK_USAGE),
+                uptime_seconds=_metric_int(by_type, UPTIME),
                 open_alerts=open_by_asset.get(agent.asset_id, 0),
                 last_seen_at=agent.last_seen_at,
+                security=summarize_security_payload(raw_security),
             )
         )
 
     return OrgMonitoringOverview(
         agents_online=online,
+        agents_delayed=delayed,
         agents_offline=offline,
         agents_pending=pending,
         open_alerts=count_open_alerts_for_organization(

@@ -63,7 +63,7 @@ def reconcile_offline_agent(db: Session, *, agent: MonitoringAgent, now: datetim
     opened = open_or_refresh_alert(
         db, agent=agent, candidate=server_offline_alert(agent), now=timestamp
     )
-    if agent.status == AgentStatus.ONLINE:
+    if agent.status not in {AgentStatus.OFFLINE, AgentStatus.REVOKED, AgentStatus.PENDING}:
         agent.status = AgentStatus.OFFLINE
         db.add(agent)
     return opened

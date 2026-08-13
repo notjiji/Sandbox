@@ -1,4 +1,4 @@
-export type AgentStatus = "pending" | "online" | "offline" | "revoked";
+export type AgentStatus = "pending" | "online" | "delayed" | "offline" | "revoked";
 export type AlertSeverity = "critical" | "high" | "medium" | "low" | "info";
 export type AlertStatus = "open" | "resolved";
 
@@ -173,6 +173,21 @@ export interface EnrollmentResponse {
   api_url: string;
 }
 
+export type SecurityCheckStatus = "ok" | "warn" | "fail" | "unknown";
+
+export interface SecurityCheckSummary {
+  status: SecurityCheckStatus;
+  detail?: string | null;
+}
+
+export interface ServerSecuritySummary {
+  ssh: SecurityCheckSummary;
+  firewall: SecurityCheckSummary;
+  fail2ban: SecurityCheckSummary;
+  updates: SecurityCheckSummary;
+  docker: SecurityCheckSummary;
+}
+
 export interface OrgMonitoringServer {
   asset_id: string;
   asset_name: string;
@@ -182,12 +197,15 @@ export interface OrgMonitoringServer {
   cpu_percent?: number | null;
   ram_percent?: number | null;
   disk_percent?: number | null;
+  uptime_seconds?: number | null;
   open_alerts: number;
   last_seen_at?: string | null;
+  security?: ServerSecuritySummary | null;
 }
 
 export interface OrgMonitoringOverview {
   agents_online: number;
+  agents_delayed?: number;
   agents_offline: number;
   agents_pending: number;
   open_alerts: number;

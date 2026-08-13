@@ -45,6 +45,8 @@ Register returns `{ "credential": "sba_...", "agent_id", "asset_id" }`. The enro
 |--------|------|------------|
 | `GET` | `/api/v1/organizations/current/monitoring/overview` | `monitoring:read` |
 
+Each server includes `cpu_percent`, `ram_percent`, `disk_percent`, `uptime_seconds`, and a compact `security` summary (`ok` / `warn` / `unknown` for SSH, firewall, Fail2Ban, updates, Docker). The dashboard **Servers** section uses this payload. Clicking a card opens `/projects/{projectId}/assets/{assetId}/monitoring`.
+
 ## Permissions
 
 | Role | Read | Install / revoke |

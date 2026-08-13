@@ -194,7 +194,7 @@ export default function Dashboard() {
           </SectionPanel>
         </div>
 
-        <SectionPanel title="Server health">
+        <SectionPanel title="Servers">
           <ServerHealthPanel />
         </SectionPanel>
 

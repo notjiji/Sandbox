@@ -33,7 +33,7 @@ celery_app.conf.update(
         },
         "reconcile-offline-agents": {
             "task": "app.jobs.monitoring.reconcile_offline_agents",
-            "schedule": crontab(minute="*/2"),
+            "schedule": crontab(minute="*"),
         },
     },
 )

@@ -6,6 +6,7 @@ from app.assets.enums import AssetType
 class AgentStatus(str, enum.Enum):
     PENDING = "pending"
     ONLINE = "online"
+    DELAYED = "delayed"
     OFFLINE = "offline"
     REVOKED = "revoked"
 
@@ -30,7 +31,9 @@ MONITORABLE_ASSET_TYPES = frozenset(
 ENROLLMENT_TOKEN_PREFIX = "sbe_"
 CREDENTIAL_PREFIX = "sba_"
 AGENT_TOKEN_PREFIX = CREDENTIAL_PREFIX  # ingest credential
-AGENT_OFFLINE_SECONDS = 600
+AGENT_HEARTBEAT_SECONDS = 30
+AGENT_DELAYED_SECONDS = 60  # last seen >= 1 min → delayed (display only)
+AGENT_OFFLINE_SECONDS = 300  # last seen >= 5 min → offline + SERVER_OFFLINE
 ENROLLMENT_TOKEN_EXPIRE_MINUTES = 15
 DEFAULT_HISTORY_HOURS = 24
 MAX_HISTORY_HOURS = 168

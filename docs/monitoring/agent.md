@@ -18,7 +18,7 @@ On first start the agent:
 1. `POST /monitoring/register` with the enrollment token
 2. Receives a per-server credential (`sba_…`)
 3. Stores it in `~/.sandbox-agent/credential` (mode 0600)
-4. Heartbeats with `Authorization: Bearer sba_…`
+4. Heartbeats every 30 seconds with `Authorization: Bearer sba_…`
 
 The enrollment token is then invalid.
 

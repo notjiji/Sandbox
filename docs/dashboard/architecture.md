@@ -40,6 +40,8 @@ Dashboard security score comes from organization risk history (`OrganizationRisk
 
 Each panel is an independent TanStack Query with shared invalidation via `dashboardKeys.all`. The page shows skeleton loaders per-panel so one slow endpoint does not block the entire view.
 
+The **Servers** panel loads `/organizations/current/monitoring/overview` separately. Clicking a server opens the asset monitoring page (`Overview`, `Metrics`, `Services`, `Docker`, `Security`, `Findings`, `Activity`).
+
 ## Testing
 
 `backend/tests/test_dashboard.py` covers:

@@ -7,7 +7,7 @@ export function useAssetMonitoring(projectId?: string, assetId?: string, hours =
     queryKey: monitoringKeys.asset(projectId ?? "", assetId ?? "", hours),
     queryFn: () => monitoringApi.getAssetOverview(projectId!, assetId!, hours),
     enabled: Boolean(projectId && assetId),
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
   });
 }
 
@@ -15,6 +15,6 @@ export function useOrganizationMonitoring() {
   return useQuery({
     queryKey: monitoringKeys.organization(),
     queryFn: () => monitoringApi.getOrganizationOverview(),
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
   });
 }
