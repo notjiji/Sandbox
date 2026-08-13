@@ -99,6 +99,8 @@ export interface DockerCheck {
 export interface UpdatesCheck {
   available?: number | null;
   security?: number | null;
+  manager?: string | null;
+  reboot_required?: boolean | null;
 }
 
 export interface SystemInfo {

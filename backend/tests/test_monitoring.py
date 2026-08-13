@@ -149,7 +149,12 @@ def _ingest_payload(**overrides):
                     {"name": "web", "status": "running", "image": "nginx:latest"},
                 ],
             },
-            "updates": {"available": 0, "security": 0},
+            "updates": {
+                "available": 0,
+                "security": 0,
+                "manager": "apt",
+                "reboot_required": False,
+            },
             "system": {"os": "Linux", "hostname": "vps-01"},
         },
     }
@@ -245,6 +250,9 @@ def test_enroll_register_and_overview(client, db) -> None:
     assert data["security"]["ssh"]["port"] == 22
     assert data["security"]["fail2ban"]["jail_count"] == 3
     assert data["security"]["fail2ban"]["banned_ips"] == 12
+    assert data["security"]["updates"]["manager"] == "apt"
+    assert data["security"]["updates"]["available"] == 0
+    assert data["security"]["updates"]["security"] == 0
     assert data["latest"]["disk_percent"] == 55.0
     assert len(data["history"]) >= 1
 

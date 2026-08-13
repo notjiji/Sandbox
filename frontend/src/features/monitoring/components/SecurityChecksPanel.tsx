@@ -79,10 +79,10 @@ export default function SecurityChecksPanel({ security }: SecurityChecksPanelPro
         label="Updates"
         value={
           updates
-            ? `${updates.available ?? 0} available (${updates.security ?? 0} security)`
+            ? `${updates.available ?? 0} available · ${updates.security ?? 0} security`
             : "Not reported"
         }
-        warn={(updates?.security ?? 0) > 0}
+        warn={(updates?.security ?? 0) > 0 || updates?.reboot_required === true}
       />
       <Row label="OS" value={system?.os || "Not reported"} />
       <Row label="Hostname" value={system?.hostname || "Not reported"} />

@@ -37,6 +37,7 @@ import DockerPanel from "../components/DockerPanel";
 import FirewallPanel from "../components/FirewallPanel";
 import SshPanel from "../components/SshPanel";
 import Fail2BanPanel from "../components/Fail2BanPanel";
+import UpdatesPanel from "../components/UpdatesPanel";
 import { cn } from "@/shared/lib/utils";
 
 function statusClass(status?: string): string {
@@ -335,15 +336,18 @@ export default function AssetMonitoring() {
               </div>
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <SectionPanel title="System updates">
+                  <UpdatesPanel updates={overview?.security?.updates} />
+                </SectionPanel>
                 <SectionPanel title="Running services">
                   <ServicesPanel services={overview?.metrics?.services} />
-                </SectionPanel>
-                <SectionPanel title="Alerts">
-                  <MonitoringAlertsList alerts={overview?.alerts ?? []} />
                 </SectionPanel>
               </div>
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <SectionPanel title="Alerts">
+                  <MonitoringAlertsList alerts={overview?.alerts ?? []} />
+                </SectionPanel>
                 <SectionPanel title="Processes">
                   {(overview?.metrics?.processes ?? []).length === 0 ? (
                     <p className="text-sm text-brand-600">Process list will appear after the first heartbeat.</p>

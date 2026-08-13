@@ -109,8 +109,10 @@ class DockerCheck(AgentPayloadSchema):
 
 
 class UpdatesCheck(AgentPayloadSchema):
-    available: int | None = None
-    security: int | None = None
+    available: int | None = Field(default=None, ge=0)
+    security: int | None = Field(default=None, ge=0)
+    manager: str | None = None
+    reboot_required: bool | None = None
 
 
 class SystemInfo(AgentPayloadSchema):

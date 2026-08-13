@@ -220,15 +220,51 @@ def evaluate_ingest(payload: AgentIngestRequest) -> list[AlertCandidate]:
             )
 
     updates = security.updates
-    if updates and (updates.security or 0) > 0:
-        candidates.append(
-            AlertCandidate(
-                code="UPDATES_AVAILABLE",
-                title="Security updates available",
-                message=f"{updates.security} security update(s) available ({updates.available or 0} total).",
-                severity=AlertSeverity.MEDIUM,
-                evidence=f"security={updates.security}, available={updates.available}",
+    if updates:
+        security_count = updates.security or 0
+        available_count = updates.available or 0
+        if security_count > 0:
+            candidates.append(
+                AlertCandidate(
+                    code="SECURITY_UPDATES_PENDING",
+                    title=f"{security_count} security update{'s' if security_count != 1 else ''} pending",
+                    message=(
+                        f"Current: {security_count} security update(s), "
+                        f"{available_count} total available"
+                        f"{f' ({updates.manager})' if updates.manager else ''}\n\n"
+                        "Recommendation: Apply security updates promptly to reduce exposure "
+                        "from known vulnerabilities."
+                    ),
+                    severity=AlertSeverity.MEDIUM,
+                    evidence=f"security={security_count}, available={available_count}",
+                )
             )
-        )
+        elif available_count > 0:
+            candidates.append(
+                AlertCandidate(
+                    code="UPDATES_AVAILABLE",
+                    title=f"{available_count} system update{'s' if available_count != 1 else ''} available",
+                    message=(
+                        f"Current: {available_count} update(s) available"
+                        f"{f' ({updates.manager})' if updates.manager else ''}\n\n"
+                        "Recommendation: Review and apply pending system updates on a regular cadence."
+                    ),
+                    severity=AlertSeverity.LOW,
+                    evidence=f"available={available_count}, security=0",
+                )
+            )
+        if updates.reboot_required is True:
+            candidates.append(
+                AlertCandidate(
+                    code="REBOOT_REQUIRED",
+                    title="System reboot required",
+                    message=(
+                        "Current: reboot-required flag is set\n\n"
+                        "Recommendation: Schedule a reboot so kernel/library updates take effect."
+                    ),
+                    severity=AlertSeverity.LOW,
+                    evidence="reboot_required=true",
+                )
+            )
 
     return candidates

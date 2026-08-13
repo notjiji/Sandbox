@@ -195,11 +195,29 @@ Example alert:
 }
 ```
 
+### System updates (read-only)
+
+Counts pending packages via `apt-check` / `apt list --upgradable` / `dnf`/`yum`. Never installs packages.
+
+```json
+{
+  "available": 17,
+  "security": 4,
+  "manager": "apt",
+  "reboot_required": false
+}
+```
+
+Risk finding example:
+
+- **12 security updates pending** → MEDIUM (`SECURITY_UPDATES_PENDING`)
+- Non-security updates only → LOW (`UPDATES_AVAILABLE`)
+- Reboot required flag → LOW (`REBOOT_REQUIRED`)
+
 ### Also collected
 
 - **Processes** — top CPU consumers, count
 - **System** — hostname, OS, kernel, architecture
-- **Security** — pending updates
 
 ## What not to do
 

@@ -70,3 +70,31 @@ def test_alert_engine_disk_critical_beats_high() -> None:
     payload = AgentIngestRequest(metrics=MetricsPayload(disk_percent=96))
     codes = [item.code for item in evaluate_ingest(payload)]
     assert codes == ["DISK_CRITICAL__root"]
+
+
+def test_alert_engine_security_updates_medium() -> None:
+    from app.monitoring.schemas import UpdatesCheck
+
+    payload = AgentIngestRequest(
+        security=SecurityPayload(
+            updates=UpdatesCheck(available=17, security=12, manager="apt", reboot_required=False),
+        ),
+    )
+    codes = {item.code: item for item in evaluate_ingest(payload)}
+    assert "SECURITY_UPDATES_PENDING" in codes
+    assert codes["SECURITY_UPDATES_PENDING"].severity == AlertSeverity.MEDIUM
+    assert codes["SECURITY_UPDATES_PENDING"].title == "12 security updates pending"
+    assert "UPDATES_AVAILABLE" not in codes
+
+
+def test_alert_engine_non_security_updates_low() -> None:
+    from app.monitoring.schemas import UpdatesCheck
+
+    payload = AgentIngestRequest(
+        security=SecurityPayload(updates=UpdatesCheck(available=5, security=0, manager="apt")),
+    )
+    codes = {item.code: item for item in evaluate_ingest(payload)}
+    assert "UPDATES_AVAILABLE" in codes
+    assert codes["UPDATES_AVAILABLE"].severity == AlertSeverity.LOW
+    assert "SECURITY_UPDATES_PENDING" not in codes
+
