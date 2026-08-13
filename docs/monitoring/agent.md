@@ -39,7 +39,9 @@ agent/
 
 ## What it collects
 
-Each heartbeat sends a `metrics` object. Collectors live in `agent/agent/collectors/`.
+Each heartbeat sends a `metrics` object. Collectors live in `agent/agent/collectors/`. The API stores numeric series in a shared `monitoring_metrics` table (`metric_type`, `value`, `unit`, `collected_at`) so new collectors do not need new columns.
+
+### CPU
 
 ### CPU
 

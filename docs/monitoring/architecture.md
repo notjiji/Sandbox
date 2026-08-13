@@ -35,10 +35,38 @@ Enrollment tokens expire in 15 minutes and are single-use. They cannot ingest me
 | Component | Role |
 |-----------|------|
 | `MonitoringAgent` | One identity per asset. Enrollment hash, credential hash, status. |
-| `MonitoringSnapshot` | Time-series metrics plus JSON payload. |
+| `MonitoringMetric` | Normalized time-series: `metric_type`, `value`, `unit`, `collected_at`. New collectors add a type, not a column. |
+| `MonitoringSnapshot` | Heartbeat document (JSON payload for services, security, processes). |
 | `MonitoringAlert` | Deduped by `(asset_id, alert_code)`. |
 | Collectors | CPU, memory, disk, uptime, processes, Docker, system. |
 | Security modules | Firewall, SSH, Fail2Ban, updates. |
+
+## Normalized metrics
+
+Numeric collector output is stored as rows, not per-metric columns:
+
+```
+monitoring_metrics
+  id
+  asset_id      -- server
+  metric_type
+  value
+  unit
+  collected_at
+  labels        -- optional, e.g. {"filesystem": "/var"}
+```
+
+Built-in `metric_type` values:
+
+| Type | Unit | Notes |
+|------|------|--------|
+| `cpu_usage` | percent | |
+| `memory_usage` | percent | |
+| `disk_usage` | percent | one row per filesystem via `labels` |
+| `load_average` | ratio | 1-minute load |
+| `uptime` | seconds | |
+
+Add types such as `memory_used` or `process_count` without a schema change. `labels` distinguishes dimensions (mounts) without extra tables.
 
 ## Status
 

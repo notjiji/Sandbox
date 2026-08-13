@@ -7,7 +7,8 @@ import uuid
 import pytest
 
 from app.monitoring.enums import AlertStatus
-from app.monitoring.models import MonitoringAlert
+from app.monitoring.metric_types import CPU_USAGE, DISK_USAGE, LOAD_AVERAGE, MEMORY_USAGE, UPTIME
+from app.monitoring.models import MonitoringAlert, MonitoringMetric
 from tests.support import bootstrap_org_context, create_website_asset, invite_and_accept_member
 
 pytestmark = pytest.mark.integration
@@ -254,7 +255,21 @@ def test_enroll_register_and_overview(client, db) -> None:
     assert data["security"]["updates"]["available"] == 0
     assert data["security"]["updates"]["security"] == 0
     assert data["latest"]["disk_percent"] == 55.0
+    assert data["latest"]["cpu_percent"] == 12.0
+    assert data["latest"]["ram_percent"] == 40.0
     assert len(data["history"]) >= 1
+
+    stored = {
+        row.metric_type: row
+        for row in db.query(MonitoringMetric).filter(MonitoringMetric.asset_id == uuid.UUID(server["id"])).all()
+        if row.metric_type != DISK_USAGE or (row.labels or {}).get("filesystem") == "/"
+    }
+    assert stored[CPU_USAGE].value == 12.0
+    assert stored[CPU_USAGE].unit == "percent"
+    assert stored[MEMORY_USAGE].value == 40.0
+    assert stored[LOAD_AVERAGE].value == 0.2
+    assert stored[UPTIME].unit == "seconds"
+    assert stored[DISK_USAGE].value == 55.0
 
     org = client.get("/api/v1/organizations/current/monitoring/overview", headers=headers)
     assert org.status_code == 200, org.text

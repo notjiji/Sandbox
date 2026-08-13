@@ -98,3 +98,34 @@ def test_alert_engine_non_security_updates_low() -> None:
     assert codes["UPDATES_AVAILABLE"].severity == AlertSeverity.LOW
     assert "SECURITY_UPDATES_PENDING" not in codes
 
+
+def test_normalize_metrics_uses_shared_shape() -> None:
+    from app.monitoring.metric_types import CPU_USAGE, DISK_USAGE, LOAD_AVERAGE, MEMORY_USAGE, UPTIME
+    from app.monitoring.services.metric_normalizer import normalize_metrics
+
+    points = normalize_metrics(
+        MetricsPayload(
+            cpu_usage=73.4,
+            load_1m=2.14,
+            cores=4,
+            total_mb=8192,
+            used_mb=5412,
+            available_mb=2780,
+            usage_percent=66.1,
+            disks=[
+                DiskFilesystem(filesystem="/", usage_percent=72.0, used_gb=72.0, total_gb=100.0, available_gb=28.0),
+                DiskFilesystem(filesystem="/var", usage_percent=84.0, used_gb=42.0, total_gb=50.0, available_gb=8.0),
+            ],
+            uptime_seconds=1480320,
+        )
+    )
+    by_type = {(item.metric_type, (item.labels or {}).get("filesystem")): item for item in points}
+    assert by_type[(CPU_USAGE, None)].value == 73.4
+    assert by_type[(CPU_USAGE, None)].unit == "percent"
+    assert by_type[(MEMORY_USAGE, None)].value == 66.1
+    assert by_type[(LOAD_AVERAGE, None)].value == 2.14
+    assert by_type[(UPTIME, None)].unit == "seconds"
+    assert by_type[(DISK_USAGE, "/")].value == 72.0
+    assert by_type[(DISK_USAGE, "/var")].value == 84.0
+
+

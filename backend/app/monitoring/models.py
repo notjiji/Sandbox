@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -61,6 +61,11 @@ class MonitoringAgent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         back_populates="agent",
         cascade="all, delete-orphan",
     )
+    metrics: Mapped[list["MonitoringMetric"]] = relationship(
+        "MonitoringMetric",
+        back_populates="agent",
+        cascade="all, delete-orphan",
+    )
     alerts: Mapped[list["MonitoringAlert"]] = relationship(
         "MonitoringAlert",
         back_populates="agent",
@@ -69,6 +74,8 @@ class MonitoringAgent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
 
 class MonitoringSnapshot(Base, UUIDPrimaryKeyMixin):
+    """Heartbeat document: latest payload (services, security, processes). Numeric series live in MonitoringMetric."""
+
     __tablename__ = "monitoring_snapshots"
 
     agent_id: Mapped[uuid.UUID] = mapped_column(
@@ -84,19 +91,35 @@ class MonitoringSnapshot(Base, UUIDPrimaryKeyMixin):
         index=True,
     )
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    cpu_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
-    ram_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
-    ram_used_mb: Mapped[float | None] = mapped_column(Float, nullable=True)
-    ram_total_mb: Mapped[float | None] = mapped_column(Float, nullable=True)
-    disk_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
-    disk_used_gb: Mapped[float | None] = mapped_column(Float, nullable=True)
-    disk_total_gb: Mapped[float | None] = mapped_column(Float, nullable=True)
-    uptime_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    load_avg_1: Mapped[float | None] = mapped_column(Float, nullable=True)
-    process_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     agent: Mapped["MonitoringAgent"] = relationship("MonitoringAgent", back_populates="snapshots")
+
+
+class MonitoringMetric(Base, UUIDPrimaryKeyMixin):
+    """Normalized time-series point. New collectors add a metric_type, not a column."""
+
+    __tablename__ = "monitoring_metrics"
+
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("monitoring_agents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    asset_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    metric_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    unit: Mapped[str] = mapped_column(String(16), nullable=False)
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    labels: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    agent: Mapped["MonitoringAgent"] = relationship("MonitoringAgent", back_populates="metrics")
 
 
 class MonitoringAlert(Base, UUIDPrimaryKeyMixin, TimestampMixin):
