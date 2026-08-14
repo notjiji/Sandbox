@@ -51,6 +51,8 @@ def _category_for_action(action: str) -> str:
         return "security"
     if action.startswith("monitoring."):
         return "security"
+    if action.startswith("ai."):
+        return "system"
     if action.startswith("org."):
         return "organization"
     return "system"
@@ -101,6 +103,8 @@ def _build_message(record: AuditLog, actor_name: str) -> str:
     if action == "org.member_accept":
         return f"{actor_name} joined the organization"
     if action == "org.member_update":
+        if details.get("status") == "suspended":
+            return f"{actor_name} disabled an account"
         return f"{actor_name} updated a member role"
     if action == "org.member_remove":
         return f"{actor_name} removed a member from the organization"
@@ -111,6 +115,8 @@ def _build_message(record: AuditLog, actor_name: str) -> str:
         return f"{actor_name} created the organization"
     if action == "org.update":
         return f"{actor_name} updated organization settings"
+    if action == "org.config_changed":
+        return f"{actor_name} changed system configuration"
     if action == "org.archive":
         return f"{actor_name} archived the organization"
     if action == "org.restore":
@@ -150,8 +156,23 @@ def _build_message(record: AuditLog, actor_name: str) -> str:
         return f"{actor_name} scheduled a scan"
     if action == "scan.run":
         return f"{actor_name} started a scan"
+    if action == "scan.started":
+        name = details.get("asset_name") or "an asset"
+        return f"Scan started on {name}"
+    if action == "scan.completed":
+        name = details.get("asset_name") or "an asset"
+        return f"Scan completed on {name}"
+    if action == "scan.failed":
+        name = details.get("asset_name") or "an asset"
+        return f"Scan failed on {name}"
     if action == "scan.cancel":
         return f"{actor_name} cancelled a scan"
+    if action == "scan.plugin_failed":
+        plugin = details.get("plugin_name", "plugin")
+        name = details.get("asset_name")
+        if name:
+            return f"Plugin {plugin} failed on {name}"
+        return f"Plugin {plugin} failed"
 
     if action == "report.create":
         return f"{actor_name} created report {details.get('name', 'Untitled')}"
@@ -159,8 +180,21 @@ def _build_message(record: AuditLog, actor_name: str) -> str:
         return f"{actor_name} updated report {details.get('name', 'settings')}"
     if action == "report.generate":
         return f"{actor_name} generated a report"
+    if action == "report.download":
+        return f"{actor_name} downloaded a report"
     if action == "report.delete":
         return f"{actor_name} deleted a report"
+
+    if action == "ai.conversation_started":
+        return f"{actor_name} started an AI conversation"
+    if action == "ai.explanation_requested":
+        return f"{actor_name} requested an AI explanation"
+    if action == "ai.remediation_generated":
+        return f"{actor_name} generated AI remediation"
+    if action == "ai.summary_generated":
+        return f"{actor_name} generated an AI summary"
+    if action == "ai.chat":
+        return f"{actor_name} used the AI assistant"
 
     if action == "finding.update":
         return f"{actor_name} updated a finding"
@@ -193,6 +227,7 @@ def present_activity_event(record: AuditLog, users_by_id: dict[uuid.UUID, User])
         actor=actor if user else None,
         resource_type=record.resource_type,
         resource_id=str(record.resource_id) if record.resource_id else None,
+        severity=record.severity or "info",
         href=_build_href(record),
         created_at=record.created_at,
     )
@@ -217,6 +252,13 @@ def get_organization_activity(
     organization_id: uuid.UUID,
     page: int = 1,
     limit: int = 20,
+    action: str | None = None,
+    user_id: uuid.UUID | None = None,
+    actor: str | None = None,
+    asset_id: uuid.UUID | None = None,
+    severity: str | None = None,
+    date_from=None,
+    date_to=None,
 ) -> OrganizationActivityResponse:
     offset = (page - 1) * limit
     records, total = list_organization_activity(
@@ -224,6 +266,13 @@ def get_organization_activity(
         organization_id=organization_id,
         limit=limit,
         offset=offset,
+        action=action,
+        user_id=user_id,
+        actor=actor,
+        asset_id=asset_id,
+        severity=severity,
+        date_from=date_from,
+        date_to=date_to,
     )
     items = present_activity_events(db, records)
     return OrganizationActivityResponse(

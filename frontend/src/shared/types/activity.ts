@@ -9,6 +9,8 @@ export type ActivityCategory =
   | "findings"
   | "system";
 
+export type AuditSeverity = "info" | "warning" | "error" | "critical";
+
 export interface ActivityActor {
   id?: string | null;
   name: string;
@@ -23,6 +25,7 @@ export interface ActivityEvent {
   actor?: ActivityActor | null;
   resource_type?: string | null;
   resource_id?: string | null;
+  severity?: AuditSeverity | string;
   href?: string | null;
   created_at: string;
 }
@@ -32,4 +35,13 @@ export interface OrganizationActivityData {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface ActivityFilters {
+  action?: string;
+  actor?: string;
+  asset_id?: string;
+  severity?: string;
+  date_from?: string;
+  date_to?: string;
 }

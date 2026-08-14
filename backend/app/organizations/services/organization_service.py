@@ -171,7 +171,11 @@ def update_current_organization(
     )
     record_audit_event(
         db,
-        action=OrganizationAuditAction.UPDATE,
+        action=(
+            OrganizationAuditAction.CONFIG_CHANGED
+            if settings_payload is not None
+            else OrganizationAuditAction.UPDATE
+        ),
         user_id=membership.user_id,
         organization_id=organization.id,
         resource_type="organization",

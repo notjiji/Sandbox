@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.assets.models import Asset
 from app.audit.models import AuditLog
+from app.audit.repositories.audit_repository import search_audit_logs
 from app.findings.enums import FindingSeverity, FindingStatus
 from app.findings.models import Finding
 from app.members.enums import MemberStatus
@@ -291,13 +292,25 @@ def list_organization_activity(
     organization_id: uuid.UUID,
     limit: int = 20,
     offset: int = 0,
+    action: str | None = None,
+    user_id: uuid.UUID | None = None,
+    actor: str | None = None,
+    asset_id: uuid.UUID | None = None,
+    severity: str | None = None,
+    date_from=None,
+    date_to=None,
 ) -> tuple[list[AuditLog], int]:
-    base_query = db.query(AuditLog).filter(AuditLog.organization_id == organization_id)
-    for prefix in ("auth.", "user."):
-        base_query = base_query.filter(~AuditLog.action.startswith(prefix))
-
-    total = base_query.count()
-    items = (
-        base_query.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
+    return search_audit_logs(
+        db,
+        organization_id=organization_id,
+        action=action,
+        user_id=user_id,
+        actor=actor,
+        asset_id=asset_id,
+        severity=severity,
+        date_from=date_from,
+        date_to=date_to,
+        exclude_prefixes=("auth.", "user."),
+        limit=limit,
+        offset=offset,
     )
-    return items, total

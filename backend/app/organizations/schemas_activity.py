@@ -19,6 +19,7 @@ class ActivityEvent(BaseSchema):
     actor: ActivityActor | None = None
     resource_type: str | None = None
     resource_id: str | None = None
+    severity: str = "info"
     href: str | None = None
     created_at: datetime
 

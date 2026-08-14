@@ -5,9 +5,26 @@ import type {
   OrganizationListData,
   UpdateOrganizationRequest,
 } from "@/shared/types/organization";
-import type { OrganizationActivityData } from "@/shared/types/activity";
+import type { ActivityFilters, OrganizationActivityData } from "@/shared/types/activity";
 import type { OrganizationOverview } from "@/shared/types/organization-overview";
 import type { MessageResponse } from "@/shared/types/auth";
+
+function activityQuery(page: number, limit: number, filters?: ActivityFilters): string {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (!filters) return params.toString();
+  const entries: Array<[keyof ActivityFilters, string | undefined]> = [
+    ["action", filters.action],
+    ["actor", filters.actor],
+    ["asset_id", filters.asset_id],
+    ["severity", filters.severity],
+    ["date_from", filters.date_from],
+    ["date_to", filters.date_to],
+  ];
+  for (const [key, value] of entries) {
+    if (value?.trim()) params.set(key, value.trim());
+  }
+  return params.toString();
+}
 
 export const organizationsApi = {
   listMine: () =>
@@ -26,9 +43,9 @@ export const organizationsApi = {
   getOverview: () =>
     apiRequest<OrganizationOverview>("/organizations/current/overview", { auth: true }),
 
-  getActivity: (page = 1, limit = 20) =>
+  getActivity: (page = 1, limit = 20, filters?: ActivityFilters) =>
     apiRequest<OrganizationActivityData>(
-      `/organizations/current/activity?page=${page}&limit=${limit}`,
+      `/organizations/current/activity?${activityQuery(page, limit, filters)}`,
       { auth: true },
     ),
 

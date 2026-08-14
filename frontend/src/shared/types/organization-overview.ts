@@ -50,6 +50,9 @@ export interface AuditLogSummary {
   user_id?: string | null;
   resource_type?: string | null;
   resource_id?: string | null;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  severity?: string;
   details?: Record<string, unknown> | null;
   created_at: string;
 }

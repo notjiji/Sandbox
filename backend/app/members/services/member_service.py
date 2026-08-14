@@ -6,6 +6,8 @@ from app.core.exceptions import ForbiddenError, NotFoundError, ValidationAppErro
 from app.members.enums import MemberStatus, OrganizationRole
 from app.members.events import MemberAuditAction
 from app.members.models import OrganizationMember
+from app.audit.events import AuditAction
+from app.audit.constants import AuditSeverity
 from app.members.repositories.member_repository import (
     get_membership,
     get_organization_member_by_id,
@@ -123,6 +125,21 @@ def update_member(
         resource_id=target.id,
         details=body.model_dump(exclude_none=True),
     )
+    if body.status == MemberStatus.SUSPENDED:
+        privileged = target.role in {OrganizationRole.OWNER, OrganizationRole.ADMIN}
+        record_audit_event(
+            db,
+            action=AuditAction.AUTH_ACCOUNT_DISABLED,
+            user_id=membership.user_id,
+            organization_id=membership.organization_id,
+            resource_type="organization_member",
+            resource_id=target.id,
+            severity=AuditSeverity.CRITICAL.value if privileged else AuditSeverity.WARNING.value,
+            details={
+                "disabled_user_id": str(target.user_id),
+                "role": target.role.value,
+            },
+        )
     db.commit()
     db.refresh(updated)
     return to_member_summary(updated)

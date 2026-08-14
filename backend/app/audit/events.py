@@ -1,4 +1,10 @@
-"""Centralized audit action names used across feature modules."""
+"""Centralized audit action names used across feature modules.
+
+Dot-separated `{domain}.{action}` — not SCREAMING_SNAKE. Existing rows and
+activity messages depend on this convention.
+
+User-facing catalog names map here, e.g. ASSET_CREATED → `asset.create`.
+"""
 
 
 class AuditAction:
@@ -6,6 +12,7 @@ class AuditAction:
     AUTH_LOGIN = "auth.login"
     AUTH_LOGIN_FAILED = "auth.login_failed"
     AUTH_ACCOUNT_LOCKED = "auth.account_locked"
+    AUTH_ACCOUNT_DISABLED = "auth.account_disabled"
     AUTH_LOGOUT = "auth.logout"
     AUTH_REFRESH = "auth.refresh"
     AUTH_PASSWORD_CHANGE = "auth.password_change"
@@ -19,6 +26,7 @@ class AuditAction:
     ORG_UPDATE = "org.update"
     ORG_DELETE = "org.delete"
     ORG_CREATE = "org.create"
+    ORG_CONFIG_CHANGED = "org.config_changed"
     ORG_RISK_SCORE_CHANGED = "org.risk_score_changed"
     ORG_MEMBER_INVITE = "org.member_invite"
     ORG_MEMBER_INVITE_REVOKE = "org.member_invite_revoke"
@@ -34,7 +42,11 @@ class AuditAction:
     ASSET_DELETE = "asset.delete"
     SCAN_CREATE = "scan.create"
     SCAN_RUN = "scan.run"
+    SCAN_STARTED = "scan.started"
+    SCAN_COMPLETED = "scan.completed"
+    SCAN_FAILED = "scan.failed"
     SCAN_CANCEL = "scan.cancel"
+    SCAN_PLUGIN_FAILED = "scan.plugin_failed"
     FINDING_UPDATE = "finding.update"
     FINDING_REVIEW = "finding.review"
     REPORT_CREATE = "report.create"
@@ -44,7 +56,14 @@ class AuditAction:
     REPORT_DOWNLOAD = "report.download"
     REPORT_DELETE = "report.delete"
     AI_CHAT = "ai.chat"
+    AI_CONVERSATION_STARTED = "ai.conversation_started"
+    AI_EXPLANATION = "ai.explanation_requested"
+    AI_REMEDIATION = "ai.remediation_generated"
+    AI_SUMMARY = "ai.summary_generated"
     MONITORING_ENROLL = "monitoring.enroll"
     MONITORING_REGISTER = "monitoring.register"
     MONITORING_REVOKE = "monitoring.revoke"
     MONITORING_ALERT_OPENED = "monitoring.alert_opened"
+    # Reserved until an API-key product surface exists.
+    ADMIN_API_KEY_CREATED = "admin.api_key_created"
+    ADMIN_API_KEY_REVOKED = "admin.api_key_revoked"

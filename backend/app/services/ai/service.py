@@ -13,7 +13,7 @@ from app.audit.service import record_audit_event
 from app.members.models import OrganizationMember
 from app.services.ai.context_builder import ContextBuilder
 from app.services.ai.conversation import append_message, get_or_create_conversation
-from app.services.ai.models import AIChatRequest, AIChatResponse, AIResponsePayload
+from app.services.ai.models import AICapability, AIChatRequest, AIChatResponse, AIResponsePayload
 from app.services.ai.prompts import get_system_prompt, resolve_prompt_name
 from app.services.ai.provider import LLMProvider
 from app.services.ai.validators import validate_chat_request
@@ -22,6 +22,25 @@ _DISCLAIMER = (
     "Recommendations are guidance only. Validate changes in a non-production environment "
     "before applying them to production systems."
 )
+
+_SUMMARY_CAPABILITIES = {
+    AICapability.EXECUTIVE_SUMMARY,
+    AICapability.TECHNICAL_SUMMARY,
+    AICapability.ASSET_SUMMARY,
+    AICapability.ORGANIZATION_OVERVIEW,
+    AICapability.COMPARE_SCANS,
+    AICapability.EXPLAIN_RISK_SCORE,
+}
+
+
+def _ai_audit_action(capability: AICapability) -> str:
+    if capability == AICapability.EXPLAIN_FINDING:
+        return AuditAction.AI_EXPLANATION
+    if capability == AICapability.REMEDIATION:
+        return AuditAction.AI_REMEDIATION
+    if capability in _SUMMARY_CAPABILITIES:
+        return AuditAction.AI_SUMMARY
+    return AuditAction.AI_CHAT
 
 
 class AIService:
@@ -77,17 +96,32 @@ class AIService:
             output_tokens=result.output_tokens,
         )
 
+        if request.conversation_id is None:
+            record_audit_event(
+                db,
+                organization_id=membership.organization_id,
+                user_id=user_id,
+                action=AuditAction.AI_CONVERSATION_STARTED,
+                resource_type="ai_conversation",
+                resource_id=conversation.id,
+            )
+
         record_audit_event(
             db,
             organization_id=membership.organization_id,
             user_id=user_id,
-            action=AuditAction.AI_CHAT,
+            action=_ai_audit_action(request.capability),
             resource_type="ai_conversation",
             resource_id=conversation.id,
             details={
-                "capability": request.capability.value,
-                "prompt": resolve_prompt_name(request.capability, audience=request.audience),
-                "model": result.model,
+                key: value
+                for key, value in {
+                    "capability": request.capability.value,
+                    "prompt": resolve_prompt_name(request.capability, audience=request.audience),
+                    "model": result.model,
+                    "asset_id": str(request.asset_id) if request.asset_id else None,
+                }.items()
+                if value is not None
             },
         )
 

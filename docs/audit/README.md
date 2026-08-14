@@ -1,63 +1,104 @@
 # Audit Logging
 
-Sandbox records security-relevant actions to an audit log for compliance, activity feeds, and forensic review.
+Sandbox records **meaningful events only** — not every request — for compliance, the activity feed, and forensic search.
 
 ## How it works
 
-```python
-from app.audit.service import record_audit_event
+Every feature uses the same write path. Audit failure never rolls back the business action.
 
-record_audit_event(
+```python
+from app.audit.service import audit_service
+
+audit_service.log(
     db,
-    action="scan.run",
-    user_id=membership.user_id,
-    organization_id=membership.organization_id,
-    resource_type="scan",
-    resource_id=scan.id,
-    details={"project_id": str(project_id), …},
+    organization_id=org_id,
+    user_id=user_id,
+    action="asset.create",
+    entity_type="asset",
+    entity_id=asset.id,
+    severity="info",  # optional; inferred from the action when omitted
+    details={"asset_name": asset.name, "asset_type": "website"},
 )
 ```
 
-Called from service layers after successful mutations — not from routers directly.
+`record_audit_event(...)` is the same method (used by existing call sites). Writes run in a SAVEPOINT so a failed insert cannot abort the outer transaction.
+
+Event names are **dot-separated** (`asset.create`), not `ASSET_CREATED`. See [event-catalog.md](./event-catalog.md) for the mapping.
 
 ## Storage
 
-Audit events are persisted and queried by:
+Table `audit_logs`:
 
-- Organization activity feed (`/organizations/current/activity`)
-- Dashboard activity panel (`/dashboard/activity`)
+| Field | Type |
+|-------|------|
+| id | UUID |
+| organization_id | UUID |
+| user_id | UUID |
+| action | VARCHAR |
+| resource_type | VARCHAR (`entity_type` in APIs) |
+| resource_id | UUID (`entity_id` in APIs) |
+| severity | VARCHAR (`info` / `warning` / `error` / `critical`) |
+| details | JSONB |
+| ip_address | VARCHAR |
+| user_agent | TEXT |
+| created_at | TIMESTAMP |
 
-Model/service: `backend/app/audit/`
+`entity_type` / `entity_id` are API aliases of `resource_type` / `resource_id`. Column names are unchanged so existing rows stay valid.
 
-## Event naming convention
+## Severity
 
-Dot-separated: `{domain}.{action}`
+| Level | Examples |
+|-------|----------|
+| INFO | Asset created, login success, invite, report generated |
+| WARNING | Scan failed, login failure, member removed |
+| ERROR | Plugin failed |
+| CRITICAL | Admin account disabled, account locked |
 
-Examples: `auth.login`, `scan.run`, `report.download`, `org.member_invite`
+Defaults live in `backend/app/audit/constants.py`. Callers can override.
 
-Each feature module defines constants in `*/events.py` (e.g. `ReportAuditAction`, `ScanAuditAction`).
+## Search
 
-## Full catalog
+Forensic (includes auth events):
 
-[event-catalog.md](./event-catalog.md)
+`GET /api/v1/organizations/current/audit-logs`
 
-## Central definitions
+Activity feed (excludes `auth.*` and `user.*`):
 
-`backend/app/audit/events.py` — `AuditAction` class with cross-cutting event names (auth, org, project, asset, scan, finding, report, AI).
+`GET /api/v1/organizations/current/activity`
 
-## Activity presentation
+Shared filters from day one:
 
-`activity_service.py` transforms raw audit rows into human-readable timeline items with actor name, action verb, resource label, and timestamp.
+- `date_from` / `date_to`
+- `action` (exact, or `scan.*` for a prefix)
+- `user_id`
+- `actor` (name or email, e.g. Amine)
+- `asset_id`
+- `severity`
+- `entity_type` / `entity_id` (audit-logs only)
+- `organization` is implied by the current org membership header
 
-Frontend: `ActivityTimeline` component shared by dashboard and activity page.
+Examples:
+
+- Scan failures last 30 days: `action=scan.failed&date_from=<iso>`
+- All actions by Amine: `actor=Amine`
+
+## Activity feed
+
+The dashboard and organization Activity page consume the same audit rows, presented as human-readable messages:
+
+- Scan completed on vinca.family
+- New asset added (`added asset {name}`)
+- Technical report generated
+- User invited to organization
 
 ## Permissions
 
-Reading audit/activity data requires org membership with appropriate read access. There is no separate `audit:read` permission — activity is available to members who can access the organization.
+`org:read`. There is no separate `audit:read` permission.
 
-## Best practices for new features
+## Best practices
 
-1. Add action constants to `{feature}/events.py`
-2. Call `record_audit_event` in the service layer after commit-worthy actions
-3. Include `resource_type`, `resource_id`, and useful `details` (never secrets)
-4. Add the action to [event-catalog.md](./event-catalog.md)
+1. Log only catalog events — not heartbeats, list GETs, or token refresh noise for the feed
+2. Call `audit_service.log` / `record_audit_event` after the mutation is ready to commit
+3. Include `entity_type`, `entity_id`, and useful `details` (never passwords, tokens, or API keys)
+4. Do not wrap business logic in try/except around audit — the service already swallows write errors
+5. Add new actions to `{feature}/events.py` and [event-catalog.md](./event-catalog.md)

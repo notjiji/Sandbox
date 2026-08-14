@@ -2,18 +2,21 @@
 
 Source: `backend/app/audit/events.py` and feature-specific `*/events.py` files.
 
+Actions use `{domain}.{action}`. The names in parentheses are the product-language labels from the audit spec.
+
 ## Authentication
 
 | Event | Description |
 |-------|-------------|
-| `auth.register` | New account created |
-| `auth.login` | Successful login |
-| `auth.login_failed` | Failed login attempt |
+| `auth.register` | User registered |
+| `auth.login` | User login success |
+| `auth.login_failed` | User login failure |
 | `auth.account_locked` | Account locked after failed attempts |
-| `auth.logout` | User logged out |
-| `auth.refresh` | Token refreshed |
-| `auth.password_change` | Password changed while authenticated |
-| `auth.password_reset_request` | Reset email requested |
+| `auth.account_disabled` | Account disabled (member suspended) |
+| `auth.logout` | User logout |
+| `auth.refresh` | Token refreshed (existing; not shown on the activity feed) |
+| `auth.password_change` | Password changed |
+| `auth.password_reset_request` | Password reset requested |
 | `auth.password_reset` | Password reset completed |
 | `auth.email_verified` | Email verified via OTP |
 | `auth.session_revoked` | Single session revoked |
@@ -31,13 +34,16 @@ Source: `backend/app/audit/events.py` and feature-specific `*/events.py` files.
 | Event | Description |
 |-------|-------------|
 | `org.create` | Organization created |
-| `org.update` | Organization settings/profile updated |
-| `org.delete` | Organization deleted/archived |
+| `org.update` | Organization updated |
+| `org.config_changed` | System configuration changed (org settings) |
+| `org.delete` | Organization deleted |
+| `org.archive` | Organization archived |
+| `org.restore` | Organization restored |
 | `org.risk_score_changed` | Organization risk score recalculated |
 | `org.member_invite` | Member invited |
 | `org.member_invite_revoke` | Invite revoked |
 | `org.member_accept` | Invite accepted |
-| `org.member_update` | Member role/status updated |
+| `org.member_update` | Role changed / member status updated |
 | `org.member_remove` | Member removed |
 | `org.ownership_transfer` | Ownership transferred |
 
@@ -56,14 +62,20 @@ Source: `backend/app/audit/events.py` and feature-specific `*/events.py` files.
 | `asset.create` | Asset created |
 | `asset.update` | Asset updated |
 | `asset.delete` | Asset deleted |
+| `asset.archive` | Asset archived |
+| `asset.restore` | Asset restored |
 
 ## Scans
 
 | Event | Description |
 |-------|-------------|
-| `scan.create` | Scan record created |
-| `scan.run` | Scan execution started/completed |
+| `scan.create` | Scan created |
+| `scan.run` | Scan queued / started from the API |
+| `scan.started` | Scan execution started |
+| `scan.completed` | Scan completed |
+| `scan.failed` | Scan failed |
 | `scan.cancel` | Scan cancelled |
+| `scan.plugin_failed` | Plugin failed |
 
 ## Findings
 
@@ -78,16 +90,20 @@ Source: `backend/app/audit/events.py` and feature-specific `*/events.py` files.
 |-------|-------------|
 | `report.create` | Report record created |
 | `report.update` | Report metadata updated |
-| `report.generate` | Report generation started/completed |
+| `report.generate` | Report generated |
 | `report.regenerate` | Report re-generated |
-| `report.download` | PDF downloaded (authenticated) |
+| `report.download` | Report downloaded |
 | `report.delete` | Report deleted |
 
 ## AI
 
 | Event | Description |
 |-------|-------------|
-| `ai.chat` | AI assistant message exchanged |
+| `ai.conversation_started` | Conversation started |
+| `ai.explanation_requested` | AI explanation requested |
+| `ai.remediation_generated` | AI remediation generated |
+| `ai.summary_generated` | AI summary generated |
+| `ai.chat` | General AI assistant turn |
 
 ## Monitoring
 
@@ -97,6 +113,15 @@ Source: `backend/app/audit/events.py` and feature-specific `*/events.py` files.
 | `monitoring.register` | Agent exchanged enrollment token for a per-server credential |
 | `monitoring.revoke` | Agent token revoked |
 | `monitoring.alert_opened` | New monitoring alert opened (not every refresh) |
+
+## Administrative
+
+| Event | Description |
+|-------|-------------|
+| `org.member_update` | User permission / role changed |
+| `org.config_changed` | System configuration changed |
+| `admin.api_key_created` | API key created (**reserved** — no key API yet) |
+| `admin.api_key_revoked` | API key revoked (**reserved** — no key API yet) |
 
 ## Feature-specific aliases
 

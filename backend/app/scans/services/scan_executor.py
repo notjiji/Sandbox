@@ -8,7 +8,9 @@ from app.core.logging import get_logger
 from app.core.risk_engine.engine import risk_engine
 from app.core.scan_engine.orchestrator import scan_orchestrator
 from app.projects.models import Project
+from app.scans.audit import record_scan_audit
 from app.scans.enums import ScanStatus
+from app.scans.events import ScanAuditAction
 from app.scans.lifecycle import transition_scan_status
 from app.scans.repositories.scan_plugin_repository import list_plugin_runs_for_scan
 from app.scans.repositories.scan_repository import get_scan_for_asset, update_scan_status
@@ -44,6 +46,7 @@ def run_queued_scan(
     transition_scan_status(scan, status=ScanStatus.RUNNING)
     db.add(scan)
     db.flush()
+    record_scan_audit(db, scan, action=ScanAuditAction.STARTED)
 
     try:
         scan_orchestrator.execute(db, scan=scan, project_id=project_id, asset_id=asset_id)
@@ -61,5 +64,10 @@ def run_queued_scan(
         db.refresh(scan)
         if scan.status == ScanStatus.RUNNING:
             update_scan_status(db, scan, status=ScanStatus.FAILED)
+
+    if scan.status == ScanStatus.COMPLETED:
+        record_scan_audit(db, scan, action=ScanAuditAction.COMPLETED)
+    elif scan.status == ScanStatus.FAILED:
+        record_scan_audit(db, scan, action=ScanAuditAction.FAILED)
 
     scan.plugin_runs = list_plugin_runs_for_scan(db, scan_id=scan.id)

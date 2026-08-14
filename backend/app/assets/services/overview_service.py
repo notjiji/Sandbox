@@ -36,6 +36,9 @@ def _to_audit_summary(record) -> AuditLogSummary:
         user_id=str(record.user_id) if record.user_id else None,
         resource_type=record.resource_type,
         resource_id=str(record.resource_id) if record.resource_id else None,
+        entity_type=record.resource_type,
+        entity_id=str(record.resource_id) if record.resource_id else None,
+        severity=getattr(record, "severity", None) or "info",
         details=record.details,
         created_at=record.created_at,
     )

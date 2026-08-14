@@ -29,6 +29,12 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   system: Activity,
 };
 
+const SEVERITY_ICON: Record<string, string> = {
+  warning: "text-amber-400",
+  error: "text-red-400",
+  critical: "text-red-300",
+};
+
 
 function dayLabel(iso: string): string {
   const date = new Date(iso);
@@ -89,7 +95,10 @@ function ActivityTimelineItem({
           compact && "h-7 w-7",
         )}
       >
-        <Icon size={compact ? 14 : 16} className="text-brand-400" />
+        <Icon
+          size={compact ? 14 : 16}
+          className={cn("text-brand-400", item.severity && SEVERITY_ICON[item.severity])}
+        />
       </div>
       <div className="min-w-0 flex-1 pb-1">
         <p className={cn("text-brand-100", compact ? "text-sm" : "text-sm leading-relaxed")}>

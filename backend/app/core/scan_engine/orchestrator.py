@@ -19,7 +19,9 @@ from app.plugins.base.contracts import ScanResult, ScanResultStatus
 from app.plugins.base.loader import plugin_loader
 from app.plugins.base.plugin import ScanTarget, ScannerPlugin
 from app.plugins.shared.scan_context import scan_context
+from app.scans.audit import record_scan_audit
 from app.scans.enums import PluginRunStatus, ScanStatus
+from app.scans.events import ScanAuditAction
 from app.scans.models import Scan, ScanPluginRun
 from app.scans.repositories.scan_plugin_repository import (
     complete_plugin_run,
@@ -84,7 +86,7 @@ class ScanOrchestrator:
                 for item, output in zip(phase_two, asyncio.run(self._run_plugins_parallel(phase_two)), strict=True):
                     item_outputs.append((item, output))
 
-            records = [self._finalize_plugin_run(db, item, output) for item, output in item_outputs]
+            records = [self._finalize_plugin_run(db, scan, item, output) for item, output in item_outputs]
         finally:
             scan_context.end()
 
@@ -138,6 +140,7 @@ class ScanOrchestrator:
     def _finalize_plugin_run(
         self,
         db: Session,
+        scan: Scan,
         item: _PluginWorkItem,
         output: ScanResult,
     ) -> PluginExecutionRecord:
@@ -164,6 +167,15 @@ class ScanOrchestrator:
                 duration_seconds=output.duration,
                 error_message=error_message,
                 metadata=metadata,
+            )
+            record_scan_audit(
+                db,
+                scan,
+                action=ScanAuditAction.PLUGIN_FAILED,
+                extra={
+                    "plugin_name": item.plugin.id,
+                    "error": (error_message or "")[:500],
+                },
             )
             return PluginExecutionRecord(
                 plugin_name=item.plugin.id,

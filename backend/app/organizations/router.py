@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
@@ -20,6 +21,7 @@ from app.organizations.services.organization_service import (
     restore_archived_organization,
     update_current_organization,
 )
+from app.audit.router import router as audit_router
 from app.dashboard.router import router as dashboard_router
 from app.organizations.services.activity_service import get_organization_activity
 from app.organizations.services.overview_service import get_organization_overview
@@ -36,6 +38,7 @@ router.include_router(
     prefix="/current/monitoring",
     tags=["organization-monitoring"],
 )
+router.include_router(audit_router, tags=["audit"])
 
 
 @router.get("/me")
@@ -84,6 +87,13 @@ def get_organization_overview_route(
 def get_organization_activity_route(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
+    action: str | None = Query(default=None),
+    user_id: uuid.UUID | None = Query(default=None),
+    actor: str | None = Query(default=None),
+    asset_id: uuid.UUID | None = Query(default=None),
+    severity: str | None = Query(default=None),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(Permission.ORG_READ)),
 ) -> JSONResponse:
@@ -92,6 +102,13 @@ def get_organization_activity_route(
         organization_id=membership.organization_id,
         page=page,
         limit=limit,
+        action=action,
+        user_id=user_id,
+        actor=actor,
+        asset_id=asset_id,
+        severity=severity,
+        date_from=date_from,
+        date_to=date_to,
     )
     return success_response(data=activity.model_dump(mode="json"))
 

@@ -358,6 +358,10 @@ def run_asset_scan(
         organization_id=membership.organization_id,
         resource_type="scan",
         resource_id=scan.id,
+        details={
+            "project_id": str(project_id),
+            "asset_id": str(asset_id),
+        },
     )
     db.commit()
     db.refresh(scan)
@@ -411,6 +415,10 @@ def cancel_asset_scan(
         organization_id=membership.organization_id,
         resource_type="scan",
         resource_id=scan.id,
+        details={
+            "project_id": str(project_id),
+            "asset_id": str(asset_id),
+        },
     )
     db.commit()
     db.refresh(scan)
