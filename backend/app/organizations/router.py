@@ -38,7 +38,7 @@ router.include_router(
     prefix="/current/monitoring",
     tags=["organization-monitoring"],
 )
-router.include_router(audit_router, tags=["audit"])
+router.include_router(audit_router, prefix="/current/audit-logs", tags=["audit"])
 
 
 @router.get("/me")

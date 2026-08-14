@@ -20,6 +20,7 @@ from app.core.version import API_VERSION
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.core.request_context import RequestContextMiddleware
+from app.events.bus import ensure_default_handlers
 
 settings = get_settings()
 setup_logging(
@@ -32,7 +33,8 @@ logger = get_logger("sandbox.errors")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
+    ensure_default_handlers()
     yield
 
 

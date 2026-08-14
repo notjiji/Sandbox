@@ -36,6 +36,8 @@ class AuditLogRecord(BaseSchema):
     details: dict | None = None
     ip_address: str | None = None
     user_agent: str | None = None
+    prev_hash: str | None = None
+    entry_hash: str | None = None
     created_at: datetime
 
 
@@ -44,3 +46,10 @@ class AuditLogSearchResponse(BaseSchema):
     total: int
     page: int
     limit: int
+
+
+class AuditLogIntegrityResponse(BaseSchema):
+    valid: bool
+    checked: int
+    broken_at: str | None = None
+    reason: str | None = None

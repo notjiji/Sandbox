@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
 import DashboardShell from "../components/DashboardShell";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import DashboardEmptyState from "../components/dashboard/DashboardEmptyState";
@@ -14,6 +13,9 @@ import TopRiskyAssets from "../components/dashboard/TopRiskyAssets";
 import UpcomingScansPanel from "../components/dashboard/UpcomingScansPanel";
 import ServerHealthPanel from "@/features/monitoring/components/ServerHealthPanel";
 import { SectionPanel } from "../components/dashboard/StatCard";
+import ActivityFeedCard, {
+  ActivityFeedViewAll,
+} from "../components/dashboard/ActivityFeedCard";
 import {
   useDashboardActivity,
   useDashboardFindingsSummary,
@@ -22,7 +24,6 @@ import {
   useDashboardTopAssets,
   useDashboardUpcomingScans,
 } from "@/features/dashboard/hooks/useSecurityDashboard";
-import ActivityTimeline from "@/shared/components/activity/ActivityTimeline";
 import ErrorState from "@/shared/components/ErrorState";
 import { PanelSkeleton } from "@/shared/components/ui/Skeleton";
 import { useOrganizationRole } from "@/shared/hooks/useOrganizationRole";
@@ -198,26 +199,13 @@ export default function Dashboard() {
           <ServerHealthPanel />
         </SectionPanel>
 
-        <SectionPanel
-          title="Recent Activity"
-          action={
-            <Link
-              to="/organization/activity"
-              className="inline-flex items-center gap-1 text-xs text-brand-400 hover:text-brand-200"
-            >
-              View all
-              <ChevronRight size={14} />
-            </Link>
-          }
-        >
+        <SectionPanel title="Recent Activity" action={<ActivityFeedViewAll />}>
           {activityQuery.isLoading ? (
             <PanelSkeleton lines={4} />
           ) : activityQuery.isError ? (
             <ErrorState compact onRetry={() => void activityQuery.refetch()} />
-          ) : (activityQuery.data?.items.length ?? 0) === 0 ? (
-            <p className="text-sm text-brand-600">Activity will appear as your team works.</p>
           ) : (
-            <ActivityTimeline items={activityQuery.data?.items ?? []} compact />
+            <ActivityFeedCard items={activityQuery.data?.items ?? []} />
           )}
         </SectionPanel>
       </div>

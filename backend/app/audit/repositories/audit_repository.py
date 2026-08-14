@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.audit.constants import AuditSeverity, normalize_severity
 from app.audit.models import AuditLog
+from app.events.names import normalize_action
 from app.users.models import User
 
 
@@ -21,6 +22,10 @@ def create_audit_log(
     details: dict | None = None,
     ip_address: str | None = None,
     user_agent: str | None = None,
+    record_id: uuid.UUID | None = None,
+    created_at: datetime | None = None,
+    prev_hash: str | None = None,
+    entry_hash: str | None = None,
 ) -> AuditLog:
     record = AuditLog(
         action=action,
@@ -32,7 +37,13 @@ def create_audit_log(
         details=details,
         ip_address=ip_address,
         user_agent=user_agent,
+        prev_hash=prev_hash,
+        entry_hash=entry_hash,
     )
+    if record_id is not None:
+        record.id = record_id
+    if created_at is not None:
+        record.created_at = created_at
     db.add(record)
     db.flush()
     return record
@@ -86,12 +97,13 @@ def search_audit_logs(
         query = query.filter(~AuditLog.action.startswith(prefix))
 
     if action:
-        if action.endswith(".*"):
-            query = query.filter(AuditLog.action.startswith(action[:-1]))
-        elif action.endswith("."):
-            query = query.filter(AuditLog.action.startswith(action))
+        resolved = normalize_action(action) or action
+        if resolved.endswith(".*"):
+            query = query.filter(AuditLog.action.startswith(resolved[:-1]))
+        elif resolved.endswith("."):
+            query = query.filter(AuditLog.action.startswith(resolved))
         else:
-            query = query.filter(AuditLog.action == action)
+            query = query.filter(AuditLog.action == resolved)
 
     if user_id is not None:
         query = query.filter(AuditLog.user_id == user_id)
@@ -136,3 +148,53 @@ def search_audit_logs(
         query.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
     )
     return items, total
+
+
+def get_audit_log_for_organization(
+    db: Session,
+    *,
+    organization_id: uuid.UUID,
+    log_id: uuid.UUID,
+) -> AuditLog | None:
+    return (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.id == log_id,
+            AuditLog.organization_id == organization_id,
+        )
+        .first()
+    )
+
+
+def latest_entry_hash(
+    db: Session,
+    *,
+    organization_id: uuid.UUID | None,
+) -> str | None:
+    query = db.query(AuditLog).filter(AuditLog.entry_hash.isnot(None))
+    if organization_id is not None:
+        query = query.filter(AuditLog.organization_id == organization_id)
+    else:
+        query = query.filter(AuditLog.organization_id.is_(None))
+    row = (
+        query.order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        .with_for_update()
+        .first()
+    )
+    return row.entry_hash if row else None
+
+
+def list_chain_for_organization(
+    db: Session,
+    *,
+    organization_id: uuid.UUID,
+) -> list[AuditLog]:
+    return (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.organization_id == organization_id,
+            AuditLog.entry_hash.isnot(None),
+        )
+        .order_by(AuditLog.created_at.asc(), AuditLog.id.asc())
+        .all()
+    )

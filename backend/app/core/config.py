@@ -55,6 +55,19 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     RESEND_FROM: str = "Sandbox <onboarding@resend.dev>"
 
+    AUDIT_SIEM_SINK: str = "none"
+    AUDIT_SYSLOG_HOST: str = ""
+    AUDIT_SYSLOG_PORT: int = 514
+    AUDIT_SYSLOG_PROTOCOL: str = "udp"
+    AUDIT_SPLUNK_HEC_URL: str = ""
+    AUDIT_SPLUNK_HEC_TOKEN: str = ""
+    AUDIT_ELK_URL: str = ""
+    AUDIT_ELK_INDEX: str = "sandbox-audit"
+    AUDIT_ELK_API_KEY: str = ""
+    AUDIT_SENTINEL_WORKSPACE_ID: str = ""
+    AUDIT_SENTINEL_SHARED_KEY: str = ""
+    AUDIT_SENTINEL_LOG_TYPE: str = "SandboxAudit"
+
     @property
     def database_url(self) -> str:
         return (

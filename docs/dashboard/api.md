@@ -50,7 +50,7 @@ Response: assets sorted by risk (lowest score / highest exposure first).
 
 Query: `limit` (1–50, default 10)
 
-Response: recent audit events formatted for `ActivityTimeline`.
+Response: recent audit events formatted for the dashboard Activity Feed card (`ActivityFeedCard`).
 
 ### GET `/upcoming-scans`
 

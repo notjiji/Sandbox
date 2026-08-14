@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Activity } from "lucide-react";
+import { Activity, Download } from "lucide-react";
 import DashboardShell from "../components/DashboardShell";
 import Pagination from "@/shared/components/Pagination";
 import ActivityTimeline from "@/shared/components/activity/ActivityTimeline";
@@ -10,6 +10,7 @@ import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/client";
 import type { ActivityEvent, ActivityFilters } from "@/shared/types/activity";
 import { organizationsApi } from "../api";
+import { auditApi } from "../audit-api";
 
 const PAGE_SIZE = 20;
 
@@ -59,9 +60,27 @@ export default function OrganizationActivity() {
   const [filters, setFilters] = useState<ActivityFilters>(EMPTY_FILTERS);
   const [loading, setLoading] = useState(true);
 
+  const [exporting, setExporting] = useState(false);
+
   const setFilter = <K extends keyof ActivityFilters>(key: K, value: ActivityFilters[K]) => {
     setPage(1);
     setFilters((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleExport = async (format: "csv" | "pdf") => {
+    setExporting(true);
+    try {
+      if (format === "pdf") {
+        await auditApi.exportPdf(filters);
+      } else {
+        await auditApi.exportCsv(filters);
+      }
+      toast.success(format === "pdf" ? "Audit log PDF downloaded." : "Audit log CSV downloaded.");
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Unable to export audit logs.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   useEffect(() => {
@@ -110,6 +129,26 @@ export default function OrganizationActivity() {
                 Invites, assets, scans, reports, and security changes — not forensic audit logs.
               </p>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-ghost inline-flex items-center gap-2 text-sm disabled:opacity-60"
+              disabled={exporting}
+              onClick={() => void handleExport("csv")}
+            >
+              <Download size={14} />
+              CSV
+            </button>
+            <button
+              type="button"
+              className="btn-ghost inline-flex items-center gap-2 text-sm disabled:opacity-60"
+              disabled={exporting}
+              onClick={() => void handleExport("pdf")}
+            >
+              <Download size={14} />
+              PDF
+            </button>
           </div>
         </div>
 

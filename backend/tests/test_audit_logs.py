@@ -58,9 +58,9 @@ def test_audit_logs_filter_scan_failures_and_actor(client, db) -> None:
 
     since = (datetime.now(UTC) - timedelta(days=30)).date().isoformat()
     failed = client.get(
-        "/api/v1/organizations/current/audit-logs",
+        "/api/v1/audit-logs",
         headers=org_headers,
-        params={"action": "scan.failed", "date_from": since, "severity": "warning"},
+        params={"action": "SCAN_FAILED", "date_from": since, "severity": "WARNING"},
     )
     assert failed.status_code == 200, failed.text
     failed_items = failed.json()["data"]["items"]
@@ -108,3 +108,57 @@ def test_activity_feed_filters_and_excludes_auth(client, db) -> None:
     assert items[0]["action"] == "scan.completed"
     assert "vinca.family" in items[0]["message"]
     assert not any(item["action"].startswith("auth.") for item in items)
+
+
+def test_audit_logs_get_export_and_integrity(client, db) -> None:
+    ctx = bootstrap_org_context(db, client, email="audit-export@example.com")
+    from uuid import UUID
+
+    from app.users.models import User
+
+    user = db.query(User).filter(User.email == "audit-export@example.com").one()
+    record_audit_event(
+        db,
+        action="scan.completed",
+        organization_id=UUID(ctx["organization"]["id"]),
+        user_id=user.id,
+        entity_type="scan",
+        details={"asset_name": "vinca.family"},
+    )
+    db.commit()
+
+    listed = client.get("/api/v1/audit-logs", headers=ctx["org_headers"], params={"action": "SCAN_COMPLETED"})
+    assert listed.status_code == 200, listed.text
+    items = listed.json()["data"]["items"]
+    assert len(items) >= 1
+    log_id = items[0]["id"]
+    assert items[0]["entry_hash"]
+
+    single = client.get(f"/api/v1/audit-logs/{log_id}", headers=ctx["org_headers"])
+    assert single.status_code == 200, single.text
+    assert single.json()["data"]["id"] == log_id
+    assert single.json()["data"]["action"] == "scan.completed"
+
+    csv_response = client.get(
+        "/api/v1/audit-logs/export",
+        headers=ctx["org_headers"],
+        params={"format": "csv", "action": "scan.completed"},
+    )
+    assert csv_response.status_code == 200, csv_response.text
+    assert "text/csv" in csv_response.headers["content-type"]
+    assert csv_response.text.startswith("id,created_at,action")
+    assert "scan.completed" in csv_response.text
+
+    pdf_response = client.get(
+        "/api/v1/audit-logs/export",
+        headers=ctx["org_headers"],
+        params={"format": "pdf"},
+    )
+    assert pdf_response.status_code == 200, pdf_response.text
+    assert pdf_response.content.startswith(b"%PDF")
+
+    integrity = client.get("/api/v1/audit-logs/integrity", headers=ctx["org_headers"])
+    assert integrity.status_code == 200, integrity.text
+    body = integrity.json()["data"]
+    assert body["valid"] is True
+    assert body["checked"] >= 1
