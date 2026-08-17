@@ -1,62 +1,52 @@
 # Sandbox Platform Documentation
 
-Technical documentation for the Sandbox security assessment platform.
+**Source of truth for the current implementation** is the seven folders below. They describe what the code does now (Alembic head `045_audit_log_hash_chain`), not a target playlist.
 
-## Feature documentation
+If a feature README disagrees with those folders, **the seven folders win** until the deep-dive is updated.
+
+## Current implementation (start here)
+
+| Folder | What it answers |
+|--------|-----------------|
+| [product/](./product/README.md) | Goal, users, use cases, in-vs-later, functional and non-functional as-built |
+| [architecture/](./architecture/README.md) | System, backend, frontend, scan, AI, events, observability |
+| [database/](./database/README.md) | ER diagram, tables, migrations |
+| [security/](./security/README.md) | Auth, RBAC, tenancy, scanner limits, audit integrity |
+| [testing/](./testing/README.md) | How tests run, what exists, gaps |
+| [deployment/](./deployment/README.md) | Compose, env vars, health, production gates — **no backup story** |
+| [roadmap/](./roadmap/README.md) | Limitations and later work (not shipped) |
+
+## Feature deep-dives
+
+Implementation notes for modules. Use them for APIs and internals; do not treat them as the product spec if they conflict with the folders above.
 
 | Area | Description |
 |------|-------------|
-| [Reports](./reports/README.md) | PDF report generation, templates, API |
-| [Dashboard](./dashboard/README.md) | Security Intelligence dashboard |
-| [RBAC](./rbac/README.md) | Roles, permissions, enforcement |
-| [Scan engine & plugins](./plugins/README.md) | Scanner orchestration and plugin development |
 | [Auth](./auth/README.md) | Registration, login, sessions, tokens |
+| [RBAC](./rbac/README.md) | Roles and permission matrix |
 | [Organizations](./organizations/README.md) | Multi-tenancy, settings, activity |
 | [Findings](./findings/README.md) | Normalized security findings |
 | [Risk](./risk/README.md) | Scoring, grades, trends |
 | [AI Assistant](./ai/README.md) | Org-scoped chat and context |
-| [Audit](./audit/README.md) | Audit log and event catalog |
-| [Background jobs](./jobs/README.md) | Celery workers and scheduled tasks |
-| [Scans](./scans/README.md) | Scan lifecycle and schedules (see also [scan-engine.md](./scan-engine.md)) |
-| [Monitoring](./monitoring/README.md) | Server agent, metrics, security posture, alerts |
+| [Audit](./audit/README.md) | Audit log and [event catalog](./audit/event-catalog.md) |
+| [Reports](./reports/README.md) | PDF generation |
+| [Dashboard](./dashboard/README.md) | Security Intelligence dashboard |
+| [Scans](./scans/README.md) | Scan lifecycle and schedules |
+| [Scan engine](./scan-engine.md) | Orchestrator, adapter, plugins |
+| [Plugins](./plugins/README.md) | Scanner plugins and [authoring](./plugins/authoring.md) |
+| [Monitoring](./monitoring/README.md) | Server agent, metrics, alerts |
+| [Background jobs](./jobs/README.md) | Celery workers and beat |
+| [Demo data](./demo-data.md) | Seed script and demo accounts |
 
-## Existing deep-dive docs
-
-| Document | Description |
-|----------|-------------|
-| [scan-engine.md](./scan-engine.md) | Full scan orchestrator, asset adapter, lifecycle |
-| [demo-data.md](./demo-data.md) | Seed script and demo accounts |
-
-## Diagrams
-
-Auth flow diagrams live in [diagrams/](./diagrams/):
-
-- Register flow, login flow, token lifecycle, auto-refresh, RBAC enforcement
-
-## Architecture placeholders
-
-Reserved for future expansion:
-
-- `docs/architecture/` — system-wide diagrams
-- `docs/api/` — OpenAPI supplements
-- `docs/database/` — ERD and migration guides
-
-## Quick links (code)
-
-| Layer | Path |
-|-------|------|
-| Backend API | `backend/app/api/v1/router.py` |
-| Permissions | `backend/app/core/permissions.py` |
-| Scan engine | `backend/app/core/scan_engine/` |
-| Plugins | `backend/app/plugins/` |
-| Frontend routes | `frontend/src/app/routes/index.tsx` |
+Auth flow PNGs: [diagrams/](./diagrams/).
 
 ## Local development
 
 ```bash
 make up          # Start Docker services
-make migrate     # Run Alembic migrations
-make seed        # Load demo data (see demo-data.md)
+make migrate     # Alembic to head
+make seed        # Demo tenant (see demo-data.md)
+make test        # Backend pytest
 ```
 
-Interactive API docs: `http://localhost:8000/docs` (non-production).
+App: `http://localhost` (nginx). OpenAPI: non-production only (`/docs` on the API). Grafana: `http://localhost:3000`.

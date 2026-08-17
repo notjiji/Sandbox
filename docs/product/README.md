@@ -1,0 +1,16 @@
+# Product
+
+As-built description of Sandbox. This folder is the product source of truth: it records what the platform **does today**, not a target spec.
+
+If a feature README under `docs/auth/`, `docs/scans/`, and similar disagrees with these pages, treat this folder as correct until that deep-dive is updated.
+
+| Document | Covers |
+|----------|--------|
+| [Goal](./goal.md) | What Sandbox is for |
+| [Users](./users.md) | Roles and who uses the product |
+| [Use cases](./use-cases.md) | Core workflows that exist in the UI and API |
+| [Scope](./scope.md) | In the current product vs later / stubbed |
+| [Functional requirements](./functional-requirements.md) | Capabilities as implemented |
+| [Non-functional requirements](./non-functional-requirements.md) | Auth, tenancy, RBAC, ops — as the code actually enforces |
+
+Related: [architecture](../architecture/README.md), [security](../security/README.md), [roadmap](../roadmap/README.md).

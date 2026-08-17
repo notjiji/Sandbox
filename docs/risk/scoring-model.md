@@ -8,13 +8,11 @@
 
 ## Asset score
 
-`RiskCalculator.score_findings()` in `backend/app/risk/calculator.py` combines finding severities into a 0–100 score where higher is better (more secure).
+The live engine is `backend/app/core/risk_engine/` (`security_score = max(0, 100 - total_risk_points)`). Severity points: info 0, low 5, medium 15, high 30, critical 50. Higher remaining score is more secure.
 
-Typical weighting:
+`RiskCalculator.score_findings()` in `backend/app/risk/calculator.py` is a helper on the same 0–100 scale; do not treat it as a second scoring product.
 
-- Critical findings penalize heavily
-- Multiple medium/low findings accumulate
-- Resolved findings are excluded (only `open` status counts)
+Open findings accumulate points; resolved/false-positive/accepted rows are not treated as open risk in the engine snapshots.
 
 ## Rollup
 

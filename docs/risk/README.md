@@ -15,15 +15,18 @@ Used by: dashboard, reports, org risk API.
 
 ## Grades
 
+Source: `backend/app/core/risk_engine/scoring.py`. Score is **0–100, higher = more secure**.
+
 | Score range | Grade |
 |-------------|-------|
-| 90–100 | A |
-| 80–89 | B |
-| 70–79 | C |
-| 60–69 | D |
+| ≥ 95 | A+ |
+| ≥ 90 | A |
+| ≥ 80 | B |
+| ≥ 70 | C |
+| ≥ 60 | D |
 | < 60 | F |
 
-Applied in both risk service and report data collector.
+Canonical product note: [docs/product/functional-requirements.md](../product/functional-requirements.md).
 
 ## API
 

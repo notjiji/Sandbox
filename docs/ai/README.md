@@ -21,11 +21,13 @@ Org-scoped conversational AI for security questions, powered by structured platf
 ```
 User message
     → ai/router.py
-    → core/ai_engine/service.py
-    → services/ai/ (OpenAI integration)
+    → services/ai/service.py (AIService.chat)
     → structured context builders (org, assets, findings summaries)
+    → LLMProvider (OpenAI when OPENAI_API_KEY is set)
     → response + conversation persistence
 ```
+
+`app/core/ai_engine/service.py` is a leftover facade that raises `NotImplementedError`. HTTP chat does not use it. Canonical write-up: [docs/architecture/ai.md](../architecture/ai.md).
 
 The AI receives **structured facts** (scores, finding counts, top issues) — it must not invent vulnerabilities. Same principle as report AI summaries.
 
@@ -62,7 +64,7 @@ Report generation uses a separate AI path in `core/report_engine/ai_summary.py` 
 
 ## Audit
 
-Each chat interaction can emit `ai.chat` audit events.
+New conversations emit `ai.conversation_started`. Each message then emits a capability-specific action: `ai.explanation_requested`, `ai.remediation_generated`, `ai.summary_generated`, or `ai.chat`.
 
 ## Fallback behavior
 
