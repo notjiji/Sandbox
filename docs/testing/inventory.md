@@ -13,6 +13,7 @@
 | `test_org_isolation.py` | Cross-tenant isolation |
 | `test_assets.py` plus `test_asset_*` | Assets, tags, notes, bulk, timeline, relationships, overview, card fields, findings, reports, schedules, risk history |
 | `test_scans.py` / `test_scan_history.py` | Scans |
+| `test_product_pipeline.py` | API E2E: user → org → project → asset → scan/plugins → findings → risk → AI → report → audit (external HTTP/DNS/TLS/LLM mocked) |
 | `test_risk_engine.py` | Scoring engine |
 | `test_dashboard.py` | Dashboard |
 | `test_project_reports.py` / `test_asset_reports.py` / `test_reports_rbac.py` | Reports |

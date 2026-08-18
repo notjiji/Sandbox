@@ -1,0 +1,51 @@
+%PDF-1.4
+1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj
+2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj
+3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>endobj
+4 0 obj<< /Length 431 >>stream
+BT
+/F1 16 Tf
+50 780 Td
+(Executive ? Pipeline Site) Tj
+ET
+BT
+/F1 11 Tf
+50 752 Td
+(Organization: Pipeline Org) Tj
+0 -14 Td
+50 738 Td
+(Project: Pipeline Project) Tj
+0 -14 Td
+50 724 Td
+(Score: 0.0) Tj
+0 -14 Td
+50 710 Td
+(Critical: 0) Tj
+0 -14 Td
+50 696 Td
+(High: 0) Tj
+0 -14 Td
+50 682 Td
+() Tj
+0 -14 Td
+50 668 Td
+(Summary:) Tj
+0 -14 Td
+50 654 Td
+(Mocked LLM: the scan context was received and findings can be explained.) Tj
+0 -14 Td
+ET
+endstream endobj
+5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000056 00000 n 
+0000000111 00000 n 
+0000000235 00000 n 
+0000000715 00000 n 
+trailer<< /Size 6 /Root 1 0 R >>
+startxref
+783
+%%EOF

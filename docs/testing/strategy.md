@@ -14,7 +14,7 @@ make test
 | Layer | Location | Typical style |
 |-------|----------|----------------|
 | Feature unit/module | `backend/app/<feature>/tests.py` | Model/tablename and small unit checks |
-| API / integration | `backend/tests/test_*.py` | HTTP + DB via shared fixtures in `tests/support.py` |
+| API / integration | `backend/tests/test_*.py` | HTTP + DB via shared fixtures in `tests/support.py`. `test_product_pipeline.py` is the full product path. |
 | Plugin | `backend/app/plugins/*/tests` (where present) | Plugin parse/rules |
 | Scan engine | `backend/app/core/scan_engine/tests.py` | Orchestrator pieces |
 

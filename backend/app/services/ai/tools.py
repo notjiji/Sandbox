@@ -235,7 +235,7 @@ def build_asset_snapshot(
     return AssetContextSnapshot(
         asset_id=str(asset.id),
         name=asset.name,
-        identifier=asset.identifier,
+        identifier=asset.external_identifier or asset.name,
         asset_type=asset.type.value if hasattr(asset.type, "value") else str(asset.type),
         latest_scan=latest,
         risk_score=risk,
