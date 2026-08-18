@@ -4,8 +4,8 @@ Postgres 16 in Compose. SQLAlchemy models in feature modules. Migrations: Alembi
 
 | Document | Covers |
 |----------|--------|
-| [ER diagram](./erd.md) | Relationships as implemented |
+| [ER diagram](./erd.md) | Logical spine + mermaid ERD + cardinalities from model FKs (**33 tables**) |
 | [Tables](./tables.md) | Table list and important columns |
 | [Migrations](./migrations.md) | How schema is applied; SQLite tests |
 
-There is no checked-in PNG ERD. The diagram below is the source.
+The ERD is generated from SQLAlchemy metadata (`ForeignKey`, unique constraints, nullability). There is no checked-in PNG.
