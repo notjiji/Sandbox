@@ -26,8 +26,8 @@ Implementation notes for modules. Use them for APIs and internals; do not treat 
 | [RBAC](./rbac/README.md) | Roles and permission matrix |
 | [Organizations](./organizations/README.md) | Multi-tenancy, settings, activity |
 | [Findings](./findings/README.md) | Normalized security findings |
-| [Risk](./risk/README.md) | Scoring, grades, trends |
-| [AI Assistant](./ai/README.md) | Org-scoped chat and context |
+| [Risk](./risk/README.md) | Scoring, grades A+–F, [rule catalog](./risk/risk-rules.md) |
+| [AI Assistant](./ai/README.md) | Org-scoped chat, capability audit events |
 | [Audit](./audit/README.md) | Audit log and [event catalog](./audit/event-catalog.md) |
 | [Reports](./reports/README.md) | PDF generation |
 | [Dashboard](./dashboard/README.md) | Security Intelligence dashboard |

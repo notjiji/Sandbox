@@ -18,7 +18,6 @@ Aligned with the current code (Alembic head `045_audit_log_hash_chain`).
 
 ## Platform
 
-- Root README was empty before this documentation set; feature READMEs can lag code (AI `ai.chat`, risk grade table missing A+)
 - No backup/restore
 - No published performance SLA
 - No frontend automated tests

@@ -97,13 +97,17 @@ Actions use `{domain}.{action}`. The names in parentheses are the product-langua
 
 ## AI
 
-| Event | Description |
-|-------|-------------|
-| `ai.conversation_started` | Conversation started |
-| `ai.explanation_requested` | AI explanation requested |
-| `ai.remediation_generated` | AI remediation generated |
-| `ai.summary_generated` | AI summary generated |
-| `ai.chat` | General AI assistant turn |
+Emitted from `AIService.chat` (`backend/app/services/ai/service.py`). **`ai.chat` is only the fallback** for `capability=general`. Other capabilities use the rows below. A new conversation also writes `ai.conversation_started` **in addition to** the capability event.
+
+| Event | Description | Emitted when |
+|-------|-------------|--------------|
+| `ai.conversation_started` | Conversation started | First turn (`conversation_id` omitted) |
+| `ai.explanation_requested` | AI explanation requested | `explain_finding` |
+| `ai.remediation_generated` | AI remediation generated | `remediation` |
+| `ai.summary_generated` | AI summary generated | `executive_summary`, `technical_summary`, `asset_summary`, `organization_overview`, `compare_scans`, `explain_risk_score` |
+| `ai.chat` | General AI assistant turn | `general` (default) |
+
+Full mapping: [docs/ai/README.md](../ai/README.md#audit-events).
 
 ## Monitoring
 

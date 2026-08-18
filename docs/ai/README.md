@@ -62,9 +62,37 @@ Report generation uses a separate AI path in `core/report_engine/ai_summary.py` 
 | Chat sidebar | `frontend/src/features/ai/components/AiChatSidebar.tsx` |
 | Context | `frontend/src/features/ai/context/ChatPanelContext.tsx` |
 
-## Audit
+## Audit events
 
-New conversations emit `ai.conversation_started`. Each message then emits a capability-specific action: `ai.explanation_requested`, `ai.remediation_generated`, `ai.summary_generated`, or `ai.chat`.
+Source: `backend/app/audit/events.py` and `_ai_audit_action()` in `backend/app/services/ai/service.py`.
+
+**`ai.chat` is not the only AI event.** A new thread writes two rows: conversation start, then the capability action for that turn. Later turns write only the capability action.
+
+| Event | When it is written | Typical `capability` in `details` |
+|-------|--------------------|-----------------------------------|
+| `ai.conversation_started` | First message of a new conversation (`request.conversation_id` is null) | — (no capability field required) |
+| `ai.explanation_requested` | Capability `explain_finding` | `explain_finding` |
+| `ai.remediation_generated` | Capability `remediation` | `remediation` |
+| `ai.summary_generated` | Summary-style capabilities | `executive_summary`, `technical_summary`, `asset_summary`, `organization_overview`, `compare_scans`, `explain_risk_score` |
+| `ai.chat` | Everything else — currently `general` | `general` |
+
+Capability → event mapping in code:
+
+```
+explain_finding          → ai.explanation_requested
+remediation              → ai.remediation_generated
+executive_summary        → ai.summary_generated
+technical_summary        → ai.summary_generated
+asset_summary            → ai.summary_generated
+organization_overview    → ai.summary_generated
+compare_scans            → ai.summary_generated
+explain_risk_score       → ai.summary_generated
+general                  → ai.chat
+```
+
+Each capability event’s `details` JSON includes `capability`, `prompt` (template name), `model`, and `asset_id` when set. Resource is `ai_conversation`.
+
+Canonical list also lives in [audit/event-catalog.md](../audit/event-catalog.md). Architecture note: [architecture/ai.md](../architecture/ai.md).
 
 ## Fallback behavior
 

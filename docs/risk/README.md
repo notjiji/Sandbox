@@ -75,4 +75,5 @@ Assets without a completed scan may show as unscanned with no score. Dashboard t
 
 ## Scoring model detail
 
-[scoring-model.md](./scoring-model.md)
+- [scoring-model.md](./scoring-model.md) — 0–100 score, penalties, aggregation, grades A+–F
+- [risk-rules.md](./risk-rules.md) — seeded rule catalog (code, severity, weight, evidence)
