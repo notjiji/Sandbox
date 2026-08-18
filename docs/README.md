@@ -33,6 +33,7 @@ Implementation notes for modules. Use them for APIs and internals; do not treat 
 | [Dashboard](./dashboard/README.md) | Security Intelligence dashboard |
 | [Scans](./scans/README.md) | Scan lifecycle and schedules |
 | [Scan engine](./scan-engine.md) | Orchestrator, adapter, plugins |
+| [Plugin architecture](./architecture/plugins.md) | Diagram B and the plugin contract |
 | [Plugins](./plugins/README.md) | Scanner plugins and [authoring](./plugins/authoring.md) |
 | [Monitoring](./monitoring/README.md) | Server agent, metrics, alerts |
 | [Background jobs](./jobs/README.md) | Celery workers and beat |

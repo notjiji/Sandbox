@@ -2,6 +2,8 @@
 
 Plugins are isolated security checks that run as part of a scan. Each plugin collects raw data, parses it, and emits normalized findings through the declarative rule engine.
 
+**Diagram B and the plugin contract:** [architecture/plugins.md](../architecture/plugins.md) — orchestrator → registry → plugins → normalizer → finding model → risk / AI.
+
 ## Overview
 
 ```
@@ -60,5 +62,6 @@ Each plugin returns a `ScanResult` with status (`success`, `failed`, `timeout`, 
 ## Related docs
 
 - [authoring.md](./authoring.md) — how to build a new plugin
+- [../architecture/plugins.md](../architecture/plugins.md) — Diagram B and the plugin contract
 - [../findings/README.md](../findings/README.md) — finding model after normalization
 - [../jobs/README.md](../jobs/README.md) — async scan execution

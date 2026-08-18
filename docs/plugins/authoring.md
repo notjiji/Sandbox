@@ -2,6 +2,8 @@
 
 This guide supplements [../scan-engine.md](../scan-engine.md) with a practical checklist for adding a scanner plugin.
 
+**Contract (inputs, outputs, isolation):** [../architecture/plugins.md](../architecture/plugins.md). Do not write findings or scores from inside a plugin.
+
 ## Recommended pattern: `ScannerPipeline`
 
 Most plugins use the three-stage pipeline:

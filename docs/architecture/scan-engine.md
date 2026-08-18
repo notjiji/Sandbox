@@ -1,6 +1,6 @@
 # Scan engine (as built)
 
-The scan engine is **in-process** (API or Celery worker), not a separate cluster. Full pipeline diagrams: [docs/scan-engine.md](../scan-engine.md). Plugin authoring: [docs/plugins/](../plugins/README.md).
+The scan engine is **in-process** (API or Celery worker), not a separate cluster. Full pipeline diagrams: [docs/scan-engine.md](../scan-engine.md). Plugin architecture (Diagram B) and contract: [plugins.md](./plugins.md). Plugin authoring: [docs/plugins/](../plugins/README.md).
 
 ## Layers
 
