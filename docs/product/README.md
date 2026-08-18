@@ -6,6 +6,7 @@ If a feature README under `docs/auth/`, `docs/scans/`, and similar disagrees wit
 
 | Document | Covers |
 |----------|--------|
+| [Definition](./definition.md) | Product, problem, solution, target users, V1 vs Future |
 | [Goal](./goal.md) | What Sandbox is for |
 | [Users](./users.md) | Roles and who uses the product |
 | [Use cases](./use-cases.md) | Core workflows that exist in the UI and API |

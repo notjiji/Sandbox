@@ -1,6 +1,6 @@
 # Platform goal
 
-Sandbox is a **multi-tenant security assessment platform**. An organization inventories digital assets, runs plugin-based scans, reviews findings, sees a deterministic risk score, and uses dashboard, PDF reports, and an org-scoped AI assistant to act on the results. Server-like assets can also enroll a read-only monitoring agent.
+Sandbox is a **multi-tenant security assessment platform** (see the [product definition](./definition.md)). An organization inventories digital assets, runs plugin-based scans, reviews findings, sees a deterministic risk score, and uses dashboard, PDF reports, and an org-scoped AI assistant to act on the results. Server-like assets can also enroll a read-only monitoring agent.
 
 The product is an **internal assessment tool for assets the organization already manages**. It is not a general-purpose attack platform, and it does not implement third-party scan authorization or IP-ownership proof.
 
