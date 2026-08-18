@@ -4,7 +4,7 @@ As-built system shape. Feature deep-dives (`docs/scan-engine.md`, `docs/plugins/
 
 | Document | Covers |
 |----------|--------|
-| [System](./system.md) | Runtime pieces and request/scan/event flows |
+| [System](./system.md) | **Diagram A** (logical), runtime topology, request/scan/event flows |
 | [Backend](./backend.md) | FastAPI modular monolith |
 | [Frontend](./frontend.md) | React app and org-scoped API usage |
 | [Scan engine](./scan-engine.md) | Orchestrator, plugins, jobs |

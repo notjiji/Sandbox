@@ -1,6 +1,150 @@
 # System architecture
 
-Sandbox is a **modular monolith**: one FastAPI process, one Postgres database, Redis, Celery workers, and a React SPA. Nginx terminates HTTP in Compose and proxies `/api` to the backend and `/` to Vite.
+Sandbox is a **modular monolith**: one FastAPI process, one Postgres database, Redis, Celery workers, and a React SPA. Nginx terminates HTTP in Compose and proxies `/` to the frontend and `/api` to the backend.
+
+## Diagram A — System Architecture
+
+Logical product flow. Edge and API are processes; Authentication through SIEM are **modules inside FastAPI** (plus Celery for scan/report jobs). They are not separate microservices.
+
+```mermaid
+flowchart TB
+  Browser[Browser]
+  Nginx[Nginx]
+  FE[React Frontend]
+  API[FastAPI API]
+
+  Browser --> Nginx
+  Nginx --> FE
+  Nginx --> API
+
+  subgraph tenant["Tenant modules"]
+    Auth[Authentication]
+    Orgs[Organizations]
+    Assets[Assets]
+  end
+
+  API --> Auth
+  API --> Orgs
+  API --> Assets
+
+  Auth --> Orchestrator
+  Orgs --> Orchestrator
+  Assets --> Orchestrator
+
+  Orchestrator[Scan Orchestrator]
+
+  subgraph plugins["Scanner plugins"]
+    HTTP[HTTP]
+    SSL[SSL / TLS]
+    DNS[DNS]
+    WHOIS[WHOIS]
+    Ports[Ports]
+    Cookies[Cookies]
+    Fingerprint[Fingerprint]
+    More["robots / security.txt / …"]
+  end
+
+  Orchestrator --> HTTP
+  Orchestrator --> SSL
+  Orchestrator --> DNS
+  Orchestrator --> WHOIS
+  Orchestrator --> Ports
+  Orchestrator --> Cookies
+  Orchestrator --> Fingerprint
+  Orchestrator --> More
+
+  HTTP --> Risk
+  SSL --> Risk
+  DNS --> Risk
+  WHOIS --> Risk
+  Ports --> Risk
+  Cookies --> Risk
+  Fingerprint --> Risk
+  More --> Risk
+
+  Risk[Risk Engine]
+
+  Risk --> Dashboard[Dashboard]
+  Risk --> AI[AI]
+  Risk --> Reports[Reports]
+
+  Dashboard --> Audit[Audit]
+  AI --> Audit
+  Reports --> Audit
+
+  Audit --> SIEM[SIEM]
+```
+
+```
+                    Browser
+                       │
+                       ▼
+                ┌─────────────┐
+                │   Nginx     │
+                └──────┬──────┘
+                       │
+          ┌────────────┴────────────┐
+          ▼                         ▼
+     React Frontend            FastAPI API
+                                      │
+        ┌─────────────────────────────┼──────────────────┐
+        │                             │                  │
+        ▼                             ▼                  ▼
+ Authentication                 Organizations        Assets
+        │                             │                  │
+        └─────────────────────────────┼──────────────────┘
+                                      │
+                               Scan Orchestrator
+                                      │
+                     ┌────────────────┼────────────────┐
+                     ▼                ▼                ▼
+                   HTTP              SSL              DNS
+                     │
+                     ├── WHOIS
+                     ├── Ports
+                     ├── Cookies
+                     ├── Fingerprint
+                     └── ...
+                                      │
+                                      ▼
+                                Risk Engine
+                                      │
+                     ┌────────────────┼──────────────┐
+                     ▼                ▼              ▼
+                  Dashboard           AI           Reports
+                                      │
+                                      ▼
+                                   Audit
+                                      │
+                                      ▼
+                                    SIEM
+```
+
+| Box | What it is |
+|-----|------------|
+| Browser | User agent |
+| Nginx | Reverse proxy (`/` → frontend, `/api` → FastAPI) |
+| React Frontend | Vite SPA |
+| FastAPI API | `/api/v1` modular monolith |
+| Authentication | Register, JWT, sessions, lockout |
+| Organizations | Tenants, members, RBAC, `X-Organization-ID` |
+| Assets | Inventory under projects |
+| Scan Orchestrator | Profiles, plugin dispatch, findings persist |
+| HTTP / SSL / DNS / … | Active V1 plugins (see [plugins](../plugins/README.md)) |
+| Risk Engine | Deterministic scores and grades |
+| Dashboard / AI / Reports | Read the same findings + scores |
+| Audit | Append-only hash-chained events |
+| SIEM | Optional export (`AUDIT_SIEM_SINK`, default `none`) |
+
+**On this diagram but not separate boxes:** Projects sit under Organizations; Findings are the orchestrator’s output into the Risk Engine.
+
+**Not on Diagram A** (runtime only — see below): PostgreSQL, Redis, Celery worker/beat, monitoring agent, Prometheus/Grafana/Loki. Future stubs (malware, cloud, kubernetes, webhooks) are **not** in this picture.
+
+---
+
+## Runtime topology
+
+How Diagram A is deployed. Data stores and workers are here, not on Diagram A.
 
 ```mermaid
 flowchart LR
