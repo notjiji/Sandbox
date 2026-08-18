@@ -8,7 +8,7 @@ If a feature README disagrees with those folders, **the seven folders win** unti
 
 | Folder | What it answers |
 |--------|-----------------|
-| [product/](./product/README.md) | Definition (users + V1 vs Future), goal, use cases, in-vs-later, functional and non-functional as-built |
+| [product/](./product/README.md) | Definition, users, use cases, V1 vs Future, numbered FR-* and NFR-* |
 | [architecture/](./architecture/README.md) | System, backend, frontend, scan, AI, events, observability |
 | [database/](./database/README.md) | ER diagram, tables, migrations |
 | [security/](./security/README.md) | Auth, RBAC, tenancy, scanner limits, audit integrity |

@@ -12,6 +12,6 @@ If a feature README under `docs/auth/`, `docs/scans/`, and similar disagrees wit
 | [Use cases](./use-cases.md) | Core workflows that exist in the UI and API |
 | [Scope](./scope.md) | In the current product vs later / stubbed |
 | [Functional requirements](./functional-requirements.md) | Numbered V1 shall-statements (FR-*) |
-| [Non-functional requirements](./non-functional-requirements.md) | Auth, tenancy, RBAC, ops — as the code actually enforces |
+| [Non-functional requirements](./non-functional-requirements.md) | Numbered NFR-* : security, performance, scale, availability, maintainability |
 
 Related: [architecture](../architecture/README.md), [security](../security/README.md), [roadmap](../roadmap/README.md).
