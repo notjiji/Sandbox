@@ -4,7 +4,7 @@ Relative to a “full platform” checklist. These are **missing or thin**, not 
 
 | Expected coverage | Status |
 |-------------------|--------|
-| Expired / invalid JWT matrix | Not a dedicated suite |
+| Expired / invalid JWT matrix | **Covered** by `backend/tests/test_jwt_security.py` (expired, invalid signature, malformed, refresh rotation/logout, session mismatch). |
 | Ownership transfer integration | Endpoint exists; **no** dedicated integration test called out |
 | Member remove / self-remove | Lifecycle exists; coverage thinner than invite/role update |
 | Invite resend / list pending | Implemented; not fully tested |
