@@ -103,7 +103,7 @@ There is **no** in-repo secret rotation runbook, vault integration, or encrypted
 
 | ID | Requirement | Kind | Notes |
 |----|-------------|------|-------|
-| **NFR-SEC-32** | Meaningful domain events shall be written to append-only `audit_logs` with a per-org SHA-256 hash chain. PostgreSQL shall reject UPDATE/DELETE on that table. | Enforced | SQLite tests do **not** have the trigger. |
+| **NFR-SEC-32** | Meaningful domain events shall be written to append-only `audit_logs` with a per-org SHA-256 hash chain. PostgreSQL shall reject UPDATE/DELETE on that table. | Enforced | SQLite tests do **not** have the trigger. Integrity skips unhashed legacy rows. |
 | **NFR-SEC-33** | Members with `org:read` shall be able to list, filter, export (CSV/PDF), and integrity-check audit logs. There shall be no public audit endpoint. | Enforced | FR-AUD-*. |
 | **NFR-SEC-34** | Application logs shall be structured (`LOG_LEVEL`), include request/correlation IDs, and remain distinct from the compliance audit trail. | Enforced | Loki/Promtail in Compose. |
 

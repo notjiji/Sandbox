@@ -282,7 +282,7 @@ Deep-dive: [monitoring](../monitoring/README.md).
 | **FR-AUD-01** | The system shall record meaningful domain events (not every HTTP request) with dot-separated action names (for example `asset.create`). | System | Catalog: [event-catalog](../audit/event-catalog.md). |
 | **FR-AUD-02** | The system shall store each audit row with organization, actor, resource, severity (`info`, `warning`, `error`, `critical`), details, IP, and user agent. | System | APIs expose `entity_type` / `entity_id` for `resource_*`. |
 | **FR-AUD-03** | The system shall make audit rows append-only. PostgreSQL shall reject UPDATE and DELETE on `audit_logs`. | System | Application code never updates or deletes rows. |
-| **FR-AUD-04** | The system shall maintain a per-organization SHA-256 hash chain (`prev_hash`, `entry_hash`) and expose an integrity check API. | System | `GET /api/v1/audit-logs/integrity`. |
+| **FR-AUD-04** | The system shall maintain a per-organization SHA-256 hash chain (`prev_hash`, `entry_hash`) and expose an integrity check API. | System | `GET /api/v1/audit-logs/integrity`. Verification skips legacy rows with NULL hashes. |
 | **FR-AUD-05** | The system shall allow members with `org:read` to list, get, filter, and export audit logs as CSV or PDF. | Roles with `org:read` | Filters: action, severity, user, asset, date, entity. |
 | **FR-AUD-06** | The system shall not fail the business action if audit persist or SIEM export fails. | System | SAVEPOINT / fail-safe; subscribers are independent. |
 | **FR-AUD-07** | The system shall not persist secrets (passwords, tokens, API keys) in audit details. | System | |

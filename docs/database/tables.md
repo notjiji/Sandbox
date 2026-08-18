@@ -51,7 +51,7 @@ Asset notes are a **column** on `assets` (migration 028), not a `notes` table.
 | `resource_type` / `resource_id` | DB names. API aliases: entity_type / entity_id |
 | `severity` | info / warning / error / critical (migration 044) |
 | `details` | JSONB |
-| `prev_hash` / `entry_hash` | SHA-256 hex, nullable for pre-045 rows (migration 045) |
+| `prev_hash` / `entry_hash` | SHA-256 hex, nullable for pre-045 rows (migration 045). Chain is per organization; verify skips NULL hashes. |
 | `ip_address`, `user_agent` | Request metadata when provided |
 
 ## AI

@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "038_report_pipeline_fields"
-down_revision = "037_ai_assistant_tables"
+down_revision = "037"
 branch_labels = None
 depends_on = None
 

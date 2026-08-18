@@ -3,7 +3,10 @@
 - Tool: Alembic (`backend/alembic/`). Config: `backend/alembic.ini`.
 - Apply in Compose: `make migrate` → `docker compose exec backend alembic upgrade head`.
 - Down one: `make migrate-down`.
-- Linear revisions `001` … `045_audit_log_hash_chain`. Latest adds `prev_hash` / `entry_hash` and the `audit_logs_immutable` trigger.
+- Linear revisions `001` … `045_audit_log_hash_chain`.
+- **044** adds `audit_logs.severity`.
+- **045** adds `prev_hash` / `entry_hash` and trigger `audit_logs_immutable`.
+- Hash chains are **per organization**. Integrity verification **skips** rows with NULL `entry_hash` (pre-045 / legacy).
 
 ## Environments
 

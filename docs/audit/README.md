@@ -35,14 +35,27 @@ Event names are **dot-separated** (`asset.create`). `ASSET_CREATED` and `SCAN_CO
 
 ## Tamper resistance
 
-Rows are **append-only**. Application code never updates or deletes `audit_logs`. PostgreSQL enforces that with a trigger.
+Rows are **append-only**. Application code never updates or deletes `audit_logs`. PostgreSQL trigger `audit_logs_immutable` (Alembic `045`) rejects UPDATE and DELETE. SQLite tests do not install that trigger.
 
-Each organization has a **SHA-256 hash chain**:
+**Hash chains are maintained per organization.** Org A and Org B never share `prev_hash` links. The first hashed event in each organization uses genesis (`prev_hash` = 64 zero hex characters).
 
-- `prev_hash` — previous row's `entry_hash` (64 zeros for the first hashed event)
-- `entry_hash` — SHA-256 of the canonical payload plus `prev_hash`
+Each hashed row stores:
 
-`GET /api/v1/audit-logs/integrity` re-computes the chain for the current organization.
+- `prev_hash` — previous hashed row’s `entry_hash` in the same organization (or genesis)
+- `entry_hash` — SHA-256 of canonical JSON including `prev_hash` and the event payload. Canonical `created_at` is UTC second precision (`replace(microsecond=0)`).
+
+**Legacy audit records without hashes are skipped during verification.** `list_chain_for_organization` loads only rows with `entry_hash IS NOT NULL`. Pre-`045` rows stay searchable and exportable; integrity does not recompute them.
+
+Verified flow:
+
+```
+create event → persist writes entry_hash
+             → next event.prev_hash == previous entry_hash
+             → GET /audit-logs/integrity  valid=true
+             → (SQLite only) mutate a hashed row → valid=false
+```
+
+`GET /api/v1/audit-logs/integrity` re-computes the chain for the current organization only. See [security/audit.md](../security/audit.md).
 
 ## Storage
 

@@ -22,7 +22,7 @@ Names: dot-separated `{domain}.{action}`. Aliases: `backend/app/events/names.py`
 
 ## Subscribers (order registered)
 
-1. `persist_audit_event` — write `audit_logs` with prev/entry SHA-256 (per organization). Genesis previous hash is 64 zeros. Fail-safe SAVEPOINT.
+1. `persist_audit_event` — write `audit_logs` with prev/entry SHA-256 (**per organization**). Genesis previous hash is 64 zeros. Integrity verification skips legacy rows with NULL hashes. Fail-safe SAVEPOINT.
 2. `forward_audit_to_siem` — `AUDIT_SIEM_SINK=none|syslog|splunk|elk|sentinel`. Default **none**.
 3. `on_domain_event` — if action in `{scan.completed, scan.failed, org.member_invite, report.generate, monitoring.alert_opened}`, **log** `notification hook`. No send.
 

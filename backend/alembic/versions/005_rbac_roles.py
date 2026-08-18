@@ -23,6 +23,7 @@ def upgrade() -> None:
         )
         """
     )
+    op.execute("ALTER TABLE organization_members ALTER COLUMN role DROP DEFAULT")
     op.execute(
         """
         ALTER TABLE organization_members
@@ -37,6 +38,9 @@ def upgrade() -> None:
     )
     op.execute("DROP TYPE organization_role")
     op.execute("ALTER TYPE organization_role_new RENAME TO organization_role")
+    op.execute(
+        "ALTER TABLE organization_members ALTER COLUMN role SET DEFAULT 'security_analyst'"
+    )
 
 
 def downgrade() -> None:
