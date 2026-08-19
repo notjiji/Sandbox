@@ -5,13 +5,7 @@ from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, UniqueConstrain
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.assets.enums import (
-    AssetCategory,
-    AssetCriticality,
-    AssetEnvironment,
-    AssetStatus,
-    AssetType,
-)
+from app.assets.enums import AssetCategory, AssetCriticality, AssetEnvironment, AssetStatus, AssetType
 from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
@@ -85,6 +79,20 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=True,
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verification_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    verification_status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="unverified",
+    )
+    verification_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    verification_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    verification_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    verification_last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     organization: Mapped["Organization"] = relationship("Organization")
     project: Mapped["Project"] = relationship("Project", back_populates="assets")

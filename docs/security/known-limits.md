@@ -4,7 +4,7 @@ Documented so operators do not assume controls that are not in the repo.
 
 | Topic | Reality |
 |-------|---------|
-| Third-party scan authorization | Not implemented |
+| Third-party scan authorization | Implemented for asset-level challenge/verify flows (domain, DNS TXT, HTTP, IP). Mandatory for `website`, `domain`, and `public_ip` scan targets. |
 | API keys | Not implemented (audit names reserved) |
 | Billing isolation | Permission only |
 | Superuser | `users.is_superuser` exists; not a documented product RBAC path |

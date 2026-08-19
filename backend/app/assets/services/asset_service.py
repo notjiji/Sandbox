@@ -40,6 +40,7 @@ from app.assets.schemas import (
     NormalizedScanTarget,
     UpdateAssetRequest,
 )
+from app.assets.enums import AssetVerificationStatus
 from app.assets.services.asset_enrichment import (
     AssetSecurityStats,
     card_last_scan,
@@ -110,6 +111,11 @@ class AssetService:
             type=asset.type,
             external_identifier=asset.external_identifier,
             status=asset.status,
+            verification_method=asset.verification_method,
+            verification_status=asset.verification_status or AssetVerificationStatus.UNVERIFIED.value,
+            verification_requested_at=asset.verification_requested_at,
+            verification_verified_at=asset.verification_verified_at,
+            verification_last_error=asset.verification_last_error,
             environment=asset.environment,
             criticality=asset.criticality,
             business_unit=asset.business_unit,
@@ -406,6 +412,20 @@ class AssetService:
                 fallback_name=asset.name,
             )
             asset.external_identifier = external_id
+            db.add(asset)
+            db.flush()
+        if (
+            body.type is not None
+            or body.external_identifier is not None
+            or body.metadata is not None
+            or body.name is not None
+        ):
+            asset.verification_status = AssetVerificationStatus.UNVERIFIED.value
+            asset.verification_method = None
+            asset.verification_token = None
+            asset.verification_requested_at = None
+            asset.verification_verified_at = None
+            asset.verification_last_error = None
             db.add(asset)
             db.flush()
         if body.tags is not None:

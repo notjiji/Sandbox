@@ -40,13 +40,13 @@ This is the v1 / as-shipped boundary for **this repository**, not a marketing MV
 
 Enum (`backend/app/assets/enums.py`) includes website, domain, public_ip, server, windows_server, docker_host, cloud_account, kubernetes_cluster, api_endpoint, mobile_application, git_repository, email_domain, s3_bucket, azure_subscription.
 
-- **Scan target rule:** the asset must belong to the org/project and be `active`. There is **no** IP-ownership allowlist.
+- **Scan target rule:** the caller must be an org member with scan permissions; the asset must belong to that org/project and be `active`. `website`, `domain`, and `public_ip` assets must be ownership-verified before scan.
 - **Monitoring:** only `server`, `windows_server`, `docker_host`.
 - Cloud / K8s / mobile / git / S3 / Azure types can be inventoried; they do **not** all have dedicated working scanners.
 
 ## Explicitly not in this codebase
 
-- Third-party scan authorization / proof of IP ownership
+- CIDR/ASN ownership allowlists and "I own this range" workflows
 - Documented backup/restore strategy (Compose volumes only; no backup jobs)
 - System ERD or architecture pack — **this documentation set is that pack**
 - Product API keys

@@ -149,6 +149,29 @@ class SortOrder(str, enum.Enum):
     DESC = "desc"
 
 
+class AssetVerificationMethod(str, enum.Enum):
+    DOMAIN = "domain"
+    DNS_TXT = "dns_txt"
+    HTTP = "http"
+    IP_OWNERSHIP = "ip_ownership"
+
+
+class AssetVerificationStatus(str, enum.Enum):
+    UNVERIFIED = "unverified"
+    PENDING = "pending"
+    VERIFIED = "verified"
+    FAILED = "failed"
+
+
+REQUIRED_SCAN_VERIFICATION_TYPES: frozenset[AssetType] = frozenset(
+    {
+        AssetType.WEBSITE,
+        AssetType.DOMAIN,
+        AssetType.PUBLIC_IP,
+    }
+)
+
+
 DEFAULT_ASSET_CATEGORY_BY_TYPE: dict[AssetType, AssetCategory] = {
     AssetType.WEBSITE: AssetCategory.APPLICATION,
     AssetType.API_ENDPOINT: AssetCategory.APPLICATION,

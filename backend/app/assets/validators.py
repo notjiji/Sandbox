@@ -4,6 +4,8 @@ from app.assets.enums import (
     ALLOWED_PARENT_TYPES,
     AssetStatus,
     AssetType,
+    AssetVerificationStatus,
+    REQUIRED_SCAN_VERIFICATION_TYPES,
     OPTIONAL_PARENT_TYPES,
     PURE_ROOT_TYPES,
     REQUIRED_PARENT_TYPES,
@@ -97,6 +99,19 @@ def validate_parent_type(child_type: AssetType, parent_type: AssetType) -> None:
 def validate_asset_scannable(asset: Asset) -> None:
     if asset.status != AssetStatus.ACTIVE:
         raise ValidationAppError("Only active assets can be scanned")
+    if (
+        asset.type in REQUIRED_SCAN_VERIFICATION_TYPES
+        and asset.verification_status != AssetVerificationStatus.VERIFIED.value
+    ):
+        raise ValidationAppError(
+            "Ownership verification is mandatory for website, domain, and public_ip assets before scanning."
+        )
+    if asset.verification_method and (
+        asset.verification_status != AssetVerificationStatus.VERIFIED.value
+    ):
+        raise ValidationAppError(
+            "Asset ownership verification is required before scanning. Complete verification first."
+        )
 
 
 def validate_archivable(asset: Asset) -> None:

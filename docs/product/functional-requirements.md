@@ -115,9 +115,9 @@ Deep-dive: [organizations](../organizations/README.md).
 | **FR-AST-04** | The system shall allow peer links between assets (`depends_on`, `hosts`, `runs_on`, `exposes`, `related`). | Analyst / admin | |
 | **FR-AST-05** | The system shall record environment (`production`, `staging`, `development`, `testing`) and criticality (`critical`, `high`, `medium`, `low`) on an asset. | Analyst / admin | |
 | **FR-AST-06** | The system shall support tags, metadata, notes, saved filters, bulk actions, and an asset timeline. | Analyst / admin | |
-| **FR-AST-07** | The system shall allow scan of an asset only when `status=active`. | System | `validate_asset_scannable`. |
+| **FR-AST-07** | The system shall allow scan of an asset only when `status=active`; `website`, `domain`, and `public_ip` assets must also have ownership verification status `verified`. | System | `validate_asset_scannable`. |
 | **FR-AST-08** | The system shall soft-delete assets (`deleted_at`, `status=deleted`). | Roles with `asset:delete` | |
-| **FR-AST-09** | The system shall **not** require third-party IP-ownership proof or an allowlist before scanning an in-tenant active asset. | System | Product is for infrastructure the org already manages. |
+| **FR-AST-09** | The system shall support domain, DNS TXT, HTTP, and IP ownership verification challenge flows at the asset level. | System | Verification is mandatory for `website`, `domain`, and `public_ip` scan targets. |
 
 ---
 
@@ -349,7 +349,7 @@ These are **not** functional requirements. Code may exist as a stub.
 | API keys / machine auth | Catalogued audit names only; not issued. |
 | Billing | Permission exists; no billing product. |
 | Organization restore | Archive/delete is one-way. |
-| Third-party scan authorization | No DNS TXT / IP-ownership proof. |
+| Third-party scan authorization | Implemented as asset-level challenge/verify methods (domain, DNS TXT, HTTP, IP). Not a CIDR/ASN ownership workflow. |
 | Inbound SSH / agent command channel | Explicitly forbidden (FR-MON-05). |
 
 When a Future item ships, add `FR-*` rows here, mark the capability V1 in [definition](./definition.md), and remove it from [roadmap/planned](../roadmap/planned.md).

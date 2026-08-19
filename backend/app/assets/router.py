@@ -42,9 +42,11 @@ from app.assets.schemas import (
     CreateAssetLinkRequest,
     CreateAssetRequest,
     CreateAssetSavedFilterRequest,
+    StartAssetVerificationRequest,
     UpdateAssetRequest,
 )
 from app.assets.services.bulk_service import execute_bulk_action
+from app.assets.services.verification_service import asset_verification_service
 from app.assets.tag_filters import normalize_tags
 from app.core.database import get_db
 from app.core.responses import success_response
@@ -408,3 +410,53 @@ def delete_asset(
         db, membership, project_id=project_id, asset_id=asset_id
     )
     return success_response(data={"message": "Asset deleted successfully"})
+
+
+@router.get("/{asset_id}/verification")
+def get_asset_verification_status(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_READ)),
+) -> JSONResponse:
+    result = asset_verification_service.get_status(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+    )
+    return success_response(data=result.model_dump(mode="json"))
+
+
+@router.post("/{asset_id}/verification/challenge")
+def start_asset_verification(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    body: StartAssetVerificationRequest,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_UPDATE)),
+) -> JSONResponse:
+    result = asset_verification_service.start_challenge(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+        method=body.method,
+    )
+    return success_response(data=result.model_dump(mode="json"))
+
+
+@router.post("/{asset_id}/verification/verify")
+def verify_asset_ownership(
+    project_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    membership: OrganizationMember = Depends(require_permission(ASSET_UPDATE)),
+) -> JSONResponse:
+    result = asset_verification_service.verify(
+        db,
+        membership,
+        project_id=project_id,
+        asset_id=asset_id,
+    )
+    return success_response(data=result.model_dump(mode="json"))

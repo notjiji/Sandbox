@@ -1,12 +1,46 @@
 # Scanner security boundaries (as built)
 
-## What we scan
+## Current scan authorization model
 
-The target is an **asset already in the organization’s project**, with `status=active`. Identity of the target is the asset identifier (URL, host, IP, etc.) stored on the asset.
+The current rule is:
 
-**Not implemented:** proof that the org owns a public IP, DNS TXT authorization, or an allowlist of CIDRs.
+1. User is authenticated.
+2. User is acting inside an organization (`X-Organization-ID`).
+3. User has the required org-scoped permissions (`scan:create` and `scan:run` as applicable).
+4. The target asset exists in that organization's project.
+5. The asset passes scannable checks.
+6. The scan is created or run.
 
-That means a user with `scan:run` can point a scan at any identifier they attach to an asset. Treat that as an **operator-trust** model, not a legal-authorization product.
+In code, the create/run path is:
+
+`get_current_membership` -> permission check -> `asset_service.require_scannable_asset(...)` -> `validate_asset_scannable(asset)` -> scan orchestration
+
+Today, `validate_asset_scannable()` checks:
+
+- asset `status` must be `active`
+- `website`, `domain`, and `public_ip` assets must have `verification_status=verified`
+- for other asset types, if a verification challenge is configured, `verification_status` must be `verified`
+
+The identifier that plugins scan is whatever is stored on the asset metadata / external identifier (URL, domain, host, IP, etc.) after the org member creates or updates that asset.
+
+## Ownership verification (implemented)
+
+The asset API now supports four verification methods:
+
+- Domain verification
+- DNS TXT verification
+- HTTP verification
+- IP ownership verification
+
+Flow:
+
+1. `POST /assets/{asset_id}/verification/challenge` with method.
+2. Platform issues a challenge token.
+3. Operator publishes token (DNS TXT or well-known HTTP file, depending on method).
+4. `POST /assets/{asset_id}/verification/verify` runs validation.
+5. Asset verification state becomes `verified` or `failed`.
+
+Verification enforcement is mandatory for `website`, `domain`, and `public_ip` scan targets.
 
 ## Scanner capabilities
 

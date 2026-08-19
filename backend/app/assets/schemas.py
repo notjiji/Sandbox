@@ -12,6 +12,8 @@ from app.assets.enums import (
     AssetSortField,
     AssetStatus,
     AssetType,
+    AssetVerificationMethod,
+    AssetVerificationStatus,
     SortOrder,
 )
 from app.scans.enums import ScanStatus, ScanType
@@ -46,6 +48,11 @@ class AssetSummary(BaseSchema):
     asset_category: AssetCategory | None = None
 
     status: AssetStatus
+    verification_method: AssetVerificationMethod | None = None
+    verification_status: AssetVerificationStatus = AssetVerificationStatus.UNVERIFIED
+    verification_requested_at: datetime | None = None
+    verification_verified_at: datetime | None = None
+    verification_last_error: str | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
     tags: list[str] = Field(default_factory=list)
     children_count: int = 0
@@ -299,4 +306,20 @@ class AssetBulkActionResponse(BaseSchema):
     failed: int
     results: list[AssetBulkActionItemResult]
     export_items: list[AssetSummary] = Field(default_factory=list)
+
+
+class StartAssetVerificationRequest(BaseSchema):
+    method: AssetVerificationMethod
+
+
+class AssetVerificationSummary(BaseSchema):
+    method: AssetVerificationMethod | None = None
+    status: AssetVerificationStatus
+    challenge_token: str | None = None
+    dns_record_name: str | None = None
+    http_challenge_url: str | None = None
+    message: str | None = None
+    requested_at: datetime | None = None
+    verified_at: datetime | None = None
+    last_error: str | None = None
 

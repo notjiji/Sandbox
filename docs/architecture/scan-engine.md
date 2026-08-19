@@ -51,6 +51,13 @@ A scan is allowed when:
 
 1. The caller has `scan:run` (and create as required).
 2. The asset exists in the current org/project.
-3. Asset `status` is `active`.
+3. `asset_service.require_scannable_asset(...)` resolves that org/project asset.
+4. `validate_asset_scannable(asset)` passes.
 
-There is **no** IP allowlist, ASN check, or “I own this range” workflow.
+Today, step 4 means:
+
+- asset status is `active`
+- `website`, `domain`, and `public_ip` assets must have ownership verification status `verified`
+- for other asset types, ownership verification is enforced when configured
+
+Ownership verification methods supported by the asset API are domain, DNS TXT, HTTP, and IP ownership checks. CIDR/ASN allowlist and "I own this range" workflows are still not implemented.

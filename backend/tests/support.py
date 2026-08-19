@@ -8,6 +8,8 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.assets.enums import AssetCriticality, AssetEnvironment, AssetStatus, AssetType
+from app.assets.enums import AssetVerificationStatus
+from app.assets.models import Asset
 from app.assets.schemas import CreateAssetRequest
 from app.assets.services import create_project_asset
 from app.core.security import hash_password
@@ -149,7 +151,7 @@ def create_website_asset(
     name: str = "Example Site",
     url: str = "https://example.com",
 ):
-    return create_project_asset(
+    summary = create_project_asset(
         db,
         membership,
         project_id=project_id,
@@ -162,6 +164,14 @@ def create_website_asset(
             metadata={"url": url},
         ),
     )
+    asset = db.get(Asset, uuid.UUID(summary.id))
+    assert asset is not None
+    asset.verification_method = "http"
+    asset.verification_status = AssetVerificationStatus.VERIFIED.value
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+    return summary
 
 
 def create_pending_scan(
