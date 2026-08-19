@@ -88,3 +88,34 @@ export interface DashboardTopAssets {
 export interface DashboardUpcomingScans {
   items: DashboardUpcomingScan[];
 }
+
+export interface DashboardScanHistoryItem {
+  scan_id: string;
+  date: string;
+  asset_id: string;
+  asset_name: string;
+  project_id: string;
+  duration_seconds: number | null;
+  plugins: number;
+  findings: number;
+  score: number | null;
+  status: string;
+}
+
+export interface DashboardScanHistory {
+  range_days: number;
+  items: DashboardScanHistoryItem[];
+}
+
+export interface DashboardFindingTrendPoint {
+  date: string;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+}
+
+export interface DashboardFindingTrend {
+  range_days: number;
+  points: DashboardFindingTrendPoint[];
+}

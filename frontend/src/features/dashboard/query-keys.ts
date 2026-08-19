@@ -6,4 +6,8 @@ export const dashboardKeys = {
   topAssets: () => [...dashboardKeys.all, "top-assets"] as const,
   activity: () => [...dashboardKeys.all, "activity"] as const,
   upcomingScans: () => [...dashboardKeys.all, "upcoming-scans"] as const,
+  scanHistory: (rangeDays: number) =>
+    [...dashboardKeys.all, "scan-history", rangeDays] as const,
+  findingTrend: (rangeDays: number) =>
+    [...dashboardKeys.all, "finding-trend", rangeDays] as const,
 };

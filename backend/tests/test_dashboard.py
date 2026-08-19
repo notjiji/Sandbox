@@ -23,6 +23,8 @@ DASHBOARD_PATHS = [
     "/api/v1/organizations/current/dashboard/top-assets",
     "/api/v1/organizations/current/dashboard/activity",
     "/api/v1/organizations/current/dashboard/upcoming-scans",
+    "/api/v1/organizations/current/dashboard/scan-history",
+    "/api/v1/organizations/current/dashboard/finding-trend",
 ]
 
 
@@ -46,6 +48,26 @@ def test_dashboard_widget_endpoints(client, db) -> None:
         response = client.get(path, headers=headers)
         assert response.status_code == 200, response.text
         assert response.json()["success"] is True
+
+
+def test_dashboard_history_endpoints_accept_ranges(client, db) -> None:
+    ctx = bootstrap_org_context(db, client, email="dash-history@example.com")
+    headers = ctx["org_headers"]
+
+    for days in (7, 30, 90, 365):
+        scan_history = client.get(
+            f"/api/v1/organizations/current/dashboard/scan-history?range_days={days}",
+            headers=headers,
+        )
+        assert scan_history.status_code == 200, scan_history.text
+        assert scan_history.json()["data"]["range_days"] == days
+
+        finding_trend = client.get(
+            f"/api/v1/organizations/current/dashboard/finding-trend?range_days={days}",
+            headers=headers,
+        )
+        assert finding_trend.status_code == 200, finding_trend.text
+        assert finding_trend.json()["data"]["range_days"] == days
 
 
 def test_dashboard_requires_authentication(client, db) -> None:

@@ -13,6 +13,8 @@ from app.dashboard.repository import (
     count_assets_by_category,
     count_open_findings_by_severity,
     get_latest_scan,
+    list_finding_trend_for_organization,
+    list_scan_history_for_organization,
     get_primary_project_id,
     list_top_open_findings,
     list_upcoming_schedules_for_organization,
@@ -25,7 +27,11 @@ from app.dashboard.schemas import (
     DashboardLastScan,
     DashboardOverviewResponse,
     DashboardRiskTrendResponse,
+    DashboardFindingTrendPoint,
+    DashboardFindingTrendResponse,
     DashboardScore,
+    DashboardScanHistoryItem,
+    DashboardScanHistoryResponse,
     DashboardTopAsset,
     DashboardTopAssetsResponse,
     DashboardUpcomingScan,
@@ -41,6 +47,7 @@ logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
 
 
 def dashboard_operation(func: Callable[P, R]) -> Callable[P, R]:
@@ -236,3 +243,45 @@ def get_dashboard_upcoming_scans(
         if schedule.next_run_at is not None
     ]
     return DashboardUpcomingScansResponse(items=items)
+
+
+def _range_since(range_days: int):
+    from datetime import UTC, datetime, timedelta
+
+    return datetime.now(UTC) - timedelta(days=range_days)
+
+
+@dashboard_operation
+def get_dashboard_scan_history(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    range_days: int = 30,
+    limit: int = 100,
+) -> DashboardScanHistoryResponse:
+    since = _range_since(range_days)
+    rows = list_scan_history_for_organization(
+        db,
+        organization_id=membership.organization_id,
+        since=since,
+        limit=limit,
+    )
+    items = [DashboardScanHistoryItem(**row) for row in rows]
+    return DashboardScanHistoryResponse(range_days=range_days, items=items)
+
+
+@dashboard_operation
+def get_dashboard_finding_trend(
+    db: Session,
+    membership: OrganizationMember,
+    *,
+    range_days: int = 30,
+) -> DashboardFindingTrendResponse:
+    since = _range_since(range_days)
+    rows = list_finding_trend_for_organization(
+        db,
+        organization_id=membership.organization_id,
+        since=since,
+    )
+    points = [DashboardFindingTrendPoint(**row) for row in rows]
+    return DashboardFindingTrendResponse(range_days=range_days, points=points)

@@ -93,3 +93,34 @@ class DashboardActivityResponse(BaseSchema):
 
 class DashboardUpcomingScansResponse(BaseSchema):
     items: list[DashboardUpcomingScan] = Field(default_factory=list)
+
+
+class DashboardScanHistoryItem(BaseSchema):
+    scan_id: str
+    date: datetime
+    asset_id: str
+    asset_name: str
+    project_id: str
+    duration_seconds: float | None = None
+    plugins: int = 0
+    findings: int = 0
+    score: float | None = None
+    status: str
+
+
+class DashboardScanHistoryResponse(BaseSchema):
+    range_days: int
+    items: list[DashboardScanHistoryItem] = Field(default_factory=list)
+
+
+class DashboardFindingTrendPoint(BaseSchema):
+    date: datetime
+    critical: int = 0
+    high: int = 0
+    medium: int = 0
+    low: int = 0
+
+
+class DashboardFindingTrendResponse(BaseSchema):
+    range_days: int
+    points: list[DashboardFindingTrendPoint] = Field(default_factory=list)

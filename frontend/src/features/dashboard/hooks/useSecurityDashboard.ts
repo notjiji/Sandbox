@@ -43,3 +43,17 @@ export function useDashboardUpcomingScans() {
     queryFn: () => dashboardApi.getUpcomingScans(),
   });
 }
+
+export function useDashboardScanHistory(rangeDays: number) {
+  return useQuery({
+    queryKey: dashboardKeys.scanHistory(rangeDays),
+    queryFn: () => dashboardApi.getScanHistory(rangeDays),
+  });
+}
+
+export function useDashboardFindingTrend(rangeDays: number) {
+  return useQuery({
+    queryKey: dashboardKeys.findingTrend(rangeDays),
+    queryFn: () => dashboardApi.getFindingTrend(rangeDays),
+  });
+}

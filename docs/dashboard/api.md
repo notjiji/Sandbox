@@ -58,6 +58,23 @@ Query: `limit` (1–50, default 10)
 
 Response: scheduled scans with `next_run_at`, asset name, scan type.
 
+### GET `/scan-history`
+
+Query:
+
+- `range_days`: one of `7`, `30`, `90`, `365` (default `30`)
+- `limit`: `1`–`100` (default `25`)
+
+Response: posture scan history rows with `scan_id`, `date`, `asset`, `duration_seconds`, `plugins`, `findings`, `score`, `status`.
+
+### GET `/finding-trend`
+
+Query:
+
+- `range_days`: one of `7`, `30`, `90`, `365` (default `30`)
+
+Response: time-series points containing `critical`, `high`, `medium`, and `low` counts by day.
+
 ## Error handling
 
 Partial endpoint failures return empty collections with HTTP 200 where possible. Hard auth/permission failures return 401/403.
@@ -72,5 +89,7 @@ Partial endpoint failures return empty collections with HTTP 200 where possible.
 | `useDashboardTopAssets` | `/top-assets` |
 | `useDashboardActivity` | `/activity` |
 | `useDashboardUpcomingScans` | `/upcoming-scans` |
+| `useDashboardScanHistory` | `/scan-history` |
+| `useDashboardFindingTrend` | `/finding-trend` |
 
 Defined in `frontend/src/features/dashboard/hooks/useSecurityDashboard.ts`.

@@ -11,6 +11,9 @@ import AssetOverviewChart from "../components/dashboard/AssetOverviewChart";
 import CriticalFindingsList from "../components/dashboard/CriticalFindingsList";
 import TopRiskyAssets from "../components/dashboard/TopRiskyAssets";
 import UpcomingScansPanel from "../components/dashboard/UpcomingScansPanel";
+import ScanHistoryTable from "../components/dashboard/ScanHistoryTable";
+import FindingTrendChart from "../components/dashboard/FindingTrendChart";
+import DashboardRangeTabs from "../components/dashboard/DashboardRangeTabs";
 import ServerHealthPanel from "@/features/monitoring/components/ServerHealthPanel";
 import { SectionPanel } from "../components/dashboard/StatCard";
 import ActivityFeedCard, {
@@ -21,6 +24,8 @@ import {
   useDashboardFindingsSummary,
   useDashboardOverview,
   useDashboardRiskTrend,
+  useDashboardScanHistory,
+  useDashboardFindingTrend,
   useDashboardTopAssets,
   useDashboardUpcomingScans,
 } from "@/features/dashboard/hooks/useSecurityDashboard";
@@ -35,12 +40,15 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const { canRunScan, canGenerateReport } = useOrganizationRole();
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [historyRange, setHistoryRange] = useState(30);
   const overviewQuery = useDashboardOverview();
   const riskTrendQuery = useDashboardRiskTrend();
   const findingsQuery = useDashboardFindingsSummary();
   const topAssetsQuery = useDashboardTopAssets();
   const activityQuery = useDashboardActivity();
   const upcomingQuery = useDashboardUpcomingScans();
+  const scanHistoryQuery = useDashboardScanHistory(historyRange);
+  const findingTrendQuery = useDashboardFindingTrend(historyRange);
 
   const retryAll = () => {
     void queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
@@ -132,6 +140,34 @@ export default function Dashboard() {
                 projectId={projectId}
               />
             )}
+          </SectionPanel>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
+          <SectionPanel
+            title="Posture History"
+            action={<DashboardRangeTabs value={historyRange} onChange={setHistoryRange} />}
+          >
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <div className="xl:col-span-2">
+                {scanHistoryQuery.isLoading ? (
+                  <PanelSkeleton lines={6} />
+                ) : scanHistoryQuery.isError ? (
+                  <ErrorState compact onRetry={() => void scanHistoryQuery.refetch()} />
+                ) : (
+                  <ScanHistoryTable items={scanHistoryQuery.data?.items ?? []} />
+                )}
+              </div>
+              <div>
+                {findingTrendQuery.isLoading ? (
+                  <PanelSkeleton lines={4} />
+                ) : findingTrendQuery.isError ? (
+                  <ErrorState compact onRetry={() => void findingTrendQuery.refetch()} />
+                ) : (
+                  <FindingTrendChart points={findingTrendQuery.data?.points ?? []} />
+                )}
+              </div>
+            </div>
           </SectionPanel>
         </div>
 

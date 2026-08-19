@@ -2,8 +2,10 @@ import { apiRequest } from "@/shared/api/client";
 import type {
   DashboardActivity,
   DashboardFindingsSummary,
+  DashboardFindingTrend,
   DashboardOverview,
   DashboardRiskTrend,
+  DashboardScanHistory,
   DashboardTopAssets,
   DashboardUpcomingScans,
 } from "@/shared/types/dashboard";
@@ -28,6 +30,17 @@ export const dashboardApi = {
 
   getUpcomingScans: (limit = 10) =>
     apiRequest<DashboardUpcomingScans>(`${base}/upcoming-scans?limit=${limit}`, {
+      auth: true,
+    }),
+
+  getScanHistory: (rangeDays = 30, limit = 25) =>
+    apiRequest<DashboardScanHistory>(
+      `${base}/scan-history?range_days=${rangeDays}&limit=${limit}`,
+      { auth: true },
+    ),
+
+  getFindingTrend: (rangeDays = 30) =>
+    apiRequest<DashboardFindingTrend>(`${base}/finding-trend?range_days=${rangeDays}`, {
       auth: true,
     }),
 };
