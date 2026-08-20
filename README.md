@@ -12,6 +12,8 @@ Multi-tenant security assessment platform: inventory assets, run plugin scans, r
 
 ## Quick start
 
+See [docs/deployment/installation.md](docs/deployment/installation.md) for the full boot sequence.
+
 ```bash
 cp .env.example .env   # set secrets (≥32 chars)
 make up
