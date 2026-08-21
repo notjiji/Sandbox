@@ -1,37 +1,166 @@
-# Backups
+# Backup strategy
 
-**There is no automated backup job in this repository.** Postgres data lives in a Docker named volume. If the volume is deleted or the host disk fails, **data is lost** unless you maintain backups outside this codebase.
+**Status:** This repository does **not** ship an automated backup job, PITR, or scheduled restore test. Operators must implement the policy below on their deployment target (Compose host, managed Postgres, Kubernetes, cloud DB, etc.).
 
-This document describes what to protect and how operators can back up and restore manually.
+This document defines:
 
-## What needs protection
+1. A **recommended policy** for PostgreSQL (frequency, retention, storage, restore)
+2. What happens to **reports**, **uploaded files**, **configuration**, and **Redis**
+3. Manual procedures for Compose-based deployments
 
-| Asset | Location | Criticality |
-|-------|----------|-------------|
-| PostgreSQL database | Docker volume `postgres_data` | **Critical** — all tenants, users, scans, findings, audit logs |
-| Generated PDF reports | `backend/storage/reports/` (bind mount in dev Compose) | High — can be regenerated but costly |
-| Redis | Volume `redis_data` | Medium — mostly Celery queue state; usually rebuildable |
-| Grafana dashboards | Volume `grafana_data` | Low — reprovisioned from `infrastructure/monitoring/grafana` |
-| Prometheus / Loki | Volumes `prometheus_data`, `loki_data` | Low — operational telemetry |
-| Environment secrets | `.env` file (not in git) | **Critical** — store separately in secret manager |
-| Application code | Git repository | Recoverable from remote |
+If the volume or database is lost and you have no backups, **tenant data is gone**.
 
-Audit logs are in Postgres with hash-chain integrity per organization. Backup Postgres **before** major upgrades or migrations.
+---
 
-## Backup strategy (operator-defined)
+## Data classification
 
-Recommended minimum for any non-demo deployment:
+| Asset | Is it durable business data? | Backup required? | Notes |
+|-------|------------------------------|------------------|-------|
+| **PostgreSQL** | **Yes — source of truth** | **Yes** | Users, orgs, assets, scans, findings, risk, audit logs, AI conversations, report *metadata* |
+| **Report PDF/HTML files** | Derived artifacts | Recommended | On disk under `backend/storage/reports/`; can be regenerated from DB + findings |
+| **Uploaded user files** | **N/A in V1** | N/A | There is **no** file-upload product. Org logos are `logo_url` strings (external URLs), not stored blobs |
+| **Configuration (`.env`)** | Operational secrets | **Yes** (secret vault) | Not in git; not recoverable from Postgres |
+| **Redis** | **No — ephemeral** | **No** | Broker, rate limits, lockout counters only — see [Redis](#redis-ephemeral-not-business-data) |
+| **Grafana / Prometheus / Loki volumes** | Observability only | Optional | Can rebuild; not tenant security data |
+| **Application code** | Source | Git remote | Not part of DB backup |
 
-1. **Daily logical backup** of Postgres (`pg_dump`)
-2. **Encrypted offsite copy** of dumps (S3, another region, tape — your policy)
-3. **Test restore quarterly** on a non-production instance
-4. **Version control** for `.env` secrets in a vault, not in backup archives unencrypted
+---
 
-Retention, encryption, and RPO/RTO targets are **your** policy — not specified by Sandbox NFRs beyond documenting the gap ([NFR-AVL-14](../product/non-functional-requirements.md)).
+## PostgreSQL policy (recommended)
 
-## Manual Postgres backup (Compose)
+The exact tooling depends on your deployment target (self-hosted Compose, RDS, Cloud SQL, etc.). The **policy intent** should be at least:
 
-While the stack is running:
+| Dimension | Recommended default |
+|-----------|---------------------|
+| **Frequency** | **Daily** full logical backup (or continuous WAL / PITR if using managed Postgres) |
+| **Retention** | **7 days** of daily dumps (extend for regulated environments) |
+| **Storage location** | **Encrypted** offsite object storage (e.g. S3/GCS/Azure Blob with SSE / customer-managed keys), **not** only the application host |
+| **Restore process** | Documented restore to a staging database; **test restoration monthly** |
+| **Before migrations** | Take an extra on-demand dump before `alembic upgrade head` on production |
+
+### Example policy (copy into your runbook)
+
+```
+Daily backup
+7-day retention
+Encrypted storage (offsite)
+Test restoration monthly
+```
+
+### What a Postgres backup must include
+
+Everything in the application database, including:
+
+- Auth and membership (`users`, tokens, org members)
+- Inventory (`projects`, `assets`, metadata, tags)
+- Scan history and plugin runs
+- Findings and risk snapshots / history
+- Report rows (status, type, paths referenced) — **not** the PDF bytes themselves
+- Audit logs (`audit_logs` with `prev_hash` / `entry_hash` chain)
+- AI conversation history
+- Monitoring enrollments and metrics history
+
+Audit hash chains are **per organization** and live only in Postgres. Losing the DB loses the chain; restoring a dump restores it as of that dump.
+
+### Deployment-target notes
+
+| Target | Typical approach |
+|--------|------------------|
+| Docker Compose (this repo) | Cron on the host: `pg_dump` → encrypt → upload to object storage (see [Manual procedures](#manual-procedures-compose)) |
+| Managed Postgres (RDS, Cloud SQL, Azure DB) | Use provider automated backups + PITR; still verify restore monthly |
+| Kubernetes | Volume snapshots **or** logical dump CronJob; prefer logical dumps for portability across clusters |
+
+---
+
+## Reports
+
+| Item | Behavior |
+|------|----------|
+| **Where files live** | `backend/storage/reports/{report_id}.pdf` and `.html` (see `app/core/report_engine/renderer.py`) |
+| **In Compose** | Backend bind-mounts `./backend:/app`, so files sit on the host under `backend/storage/reports/` |
+| **In the database** | Report metadata/status; download APIs read files from disk |
+| **If files are lost** | Metadata may still show `ready`, but download fails until regenerated |
+| **Backup recommendation** | Include `storage/reports/` in daily backup **or** accept regeneration after restore |
+
+Reports are **not** the system of record for findings. Prefer Postgres integrity first; back up report files if customers expect historical PDF downloads without re-running generation.
+
+```bash
+tar -czf sandbox-reports-$(date +%Y%m%d).tar.gz -C backend storage/reports
+# Encrypt and ship offsite with the same retention as DB dumps
+```
+
+---
+
+## Uploaded files
+
+**V1 has no uploaded-file store.**
+
+- Organization branding uses `organizations.logo_url` (URL string), not a multipart upload to local disk.
+- There is no `uploads/` product directory for tenant media.
+
+Do not invent a backup path for “user uploads” unless you add an upload feature later. If you later store blobs on disk or object storage, extend this document with that path and retention.
+
+---
+
+## Configuration
+
+| Item | Backup / recovery |
+|------|-------------------|
+| `.env` | **Critical.** Store in a secret manager (or encrypted vault). Never rely on Postgres to recover `SECRET_KEY`, `JWT_SECRET`, DB password, Resend, OpenAI, SIEM tokens |
+| `docker-compose.yml`, nginx, Grafana provisioning | In **git** — restore by cloning the repo |
+| Alembic migrations | In **git** under `backend/alembic/versions/` |
+
+After restoring a database dump to a new environment, you still need the **same** (or intentionally rotated) app secrets. Rotating `JWT_SECRET` invalidates all sessions — that is expected, not a restore failure.
+
+---
+
+## Redis (ephemeral — not business data)
+
+**Do not treat Redis as persistent business data.**
+
+In this product Redis is used for:
+
+| Use | Durable? | On Redis loss |
+|-----|----------|---------------|
+| Celery broker / result backend | No | In-flight and queued jobs are lost; re-run scans/reports |
+| API rate-limit counters (SlowAPI) | No | Counters reset; temporary higher burst until limits refill |
+| Account lockout counters | No | Active lockouts clear; users can retry login |
+
+Postgres remains the authority for users, memberships, assets, findings, and audit. Redis is **not** a replica of tenant data ([NFR-AVL-12](../product/non-functional-requirements.md)).
+
+Compose mounts volume `redis_data` for Redis persistence of its own RDB — that is for **operational convenience**, not a backup strategy for Sandbox. Operators may discard Redis volumes freely after confirming Celery queues can be empty.
+
+**Recommended policy:** do **not** include Redis dumps in the 7-day encrypted backup set. After disaster recovery: start Redis empty, start workers, let the app recreate ephemeral keys.
+
+---
+
+## Restore process (policy)
+
+1. **Stop writers** — stop `backend`, `celery-worker`, `celery-beat` (or take traffic off the load balancer).
+2. **Restore PostgreSQL** from the chosen daily dump (or PITR to a point in time).
+3. **Confirm schema** — `alembic current` matches the dump era; upgrade only if intentional.
+4. **Restore report files** (optional) into `backend/storage/reports/` if you backed them up.
+5. **Restore configuration** from secret manager into `.env` / runtime secrets.
+6. **Start Redis empty** (or existing empty volume) — do not require a Redis dump.
+7. **Start app and workers**; hit `/health/ready`.
+8. **Smoke test** — login, open an org, list assets, download a known report if files were restored.
+9. **Record** restore time, dump ID, and outcome (required for the monthly restore test).
+
+### Monthly restore test
+
+At least once per month:
+
+- Restore the latest daily dump into a **non-production** database
+- Verify row counts / login / one asset / one finding
+- Document pass/fail
+
+Untested backups are not a recovery plan.
+
+---
+
+## Manual procedures (Compose)
+
+### Daily Postgres dump
 
 ```bash
 # Custom format (recommended for pg_restore)
@@ -40,90 +169,61 @@ docker compose exec -T postgres pg_dump \
   -d "${POSTGRES_DB:-sandbox}" \
   -Fc \
   > "sandbox-$(date +%Y%m%d-%H%M%S).dump"
-
-# Plain SQL (human-readable, larger)
-docker compose exec -T postgres pg_dump \
-  -U "${POSTGRES_USER:-sandbox}" \
-  -d "${POSTGRES_DB:-sandbox}" \
-  > "sandbox-$(date +%Y%m%d-%H%M%S).sql"
 ```
 
-Use credentials from your `.env`. Store dumps encrypted at rest.
-
-### Backup report files
+Then encrypt and upload offsite (example with age or gpg — choose your tool):
 
 ```bash
-tar -czf sandbox-reports-$(date +%Y%m%d).tar.gz -C backend storage/reports
+# Example only — replace with your KMS / object-storage pipeline
+gpg --symmetric --cipher-algo AES256 "sandbox-YYYYMMDD-HHMMSS.dump"
+# Upload .gpg to encrypted bucket; delete local plaintext when safe
 ```
 
-## Manual Postgres restore
+Retention job: delete encrypted dumps older than **7 days** in that bucket (lifecycle rule preferred over ad-hoc scripts).
 
-**Warning:** restore overwrites data in the target database. Stop application traffic first.
+### Restore Postgres
 
 ```bash
-# Stop writers (optional but recommended)
 docker compose stop backend celery-worker celery-beat
 
-# Drop and recreate DB (destructive)
 docker compose exec postgres psql -U sandbox -c "DROP DATABASE IF EXISTS sandbox;"
 docker compose exec postgres psql -U sandbox -c "CREATE DATABASE sandbox;"
 
-# Restore from custom format
+# After decrypting the dump locally:
 docker compose exec -T postgres pg_restore \
   -U sandbox \
   -d sandbox \
   --no-owner --no-acl \
   < sandbox-YYYYMMDD-HHMMSS.dump
 
-# Or from plain SQL
-docker compose exec -T postgres psql -U sandbox -d sandbox < sandbox-YYYYMMDD-HHMMSS.sql
-
-# Restart app
 docker compose start backend celery-worker celery-beat
-```
-
-After restore, confirm Alembic revision matches expectations:
-
-```bash
 docker compose exec backend alembic current
 ```
 
-If restore is from an older dump, run `alembic upgrade head` only after verifying schema compatibility.
+### Dangerous Compose command
 
-## Volume-level backup (whole data directory)
+`docker compose down -v` **deletes named volumes** including `postgres_data`. Never use `-v` on a deployment that lacks a verified recent backup.
 
-Alternative to logical dump — copy the entire Postgres volume while **Postgres is stopped**:
+---
 
-```bash
-docker compose stop postgres
-docker run --rm \
-  -v sandbox_postgres_data:/data \
-  -v "$(pwd)/backups":/backup \
-  alpine tar czf /backup/postgres_data-$(date +%Y%m%d).tar.gz -C /data .
-docker compose start postgres
-```
+## What this repo does not automate
 
-Volume name may be prefixed with project name (`sandbox_postgres_data`). List with `docker volume ls`.
+| Capability | In-repo? |
+|------------|----------|
+| Scheduled `pg_dump` | No |
+| Encrypted offsite upload | No |
+| Lifecycle / 7-day retention job | No |
+| Monthly restore CI | No |
+| WAL archiving / PITR | No |
+| Redis as durable store | No (by design) |
 
-Volume snapshots require consistent filesystem state — prefer `pg_dump` for live backups.
+Until those exist as product features, this document is the operator runbook. Related limitation: [NFR-AVL-14](../product/non-functional-requirements.md), [roadmap/known-limitations.md](../roadmap/known-limitations.md).
 
-## Redis
+---
 
-Redis holds Celery task queues. For disaster recovery, flushing and re-queuing failed jobs is usually acceptable. Optional:
+## Related
 
-```bash
-docker compose exec redis redis-cli SAVE
-docker cp "$(docker compose ps -q redis)":/data/dump.rdb ./redis-backup.rdb
-```
-
-## What is not backed up by Compose
-
-- `docker compose down -v` **deletes named volumes** — never use `-v` on production unless intentional
-- Migrations are in git (`backend/alembic/versions/`), not in the database backup alone
-- Audit immutability triggers exist in Postgres only — restored dumps on SQLite test DBs do not include triggers
-
-## Future work
-
-Automated backup jobs, PITR, and restore verification are listed as **not implemented** in [roadmap/known-limitations.md](../roadmap/known-limitations.md). Until then, treat manual procedures in this document as the operator runbook.
-
-Related: [installation.md](./installation.md), [production.md](./production.md), [database/migrations.md](../database/migrations.md).
+- [installation.md](./installation.md) — first-time Compose bring-up
+- [production.md](./production.md) — production checklist (includes backups)
+- [configuration.md](./configuration.md) — secrets and env vars
+- [database/migrations.md](../database/migrations.md) — Alembic; dump before upgrades

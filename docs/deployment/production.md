@@ -65,7 +65,10 @@ Observability (Prometheus, Grafana, Loki) is optional but recommended for operat
 - [ ] TLS certificate and termination in front of nginx
 - [ ] Firewall: expose only 443 (and admin paths if needed); do not expose Postgres/Redis publicly
 - [ ] Change Grafana default admin password or disable public Grafana access
-- [ ] Automated Postgres backups — see [backups.md](./backups.md)
+- [ ] Postgres backups per [backups.md](./backups.md): daily dump, 7-day retention, encrypted offsite storage, monthly restore test
+- [ ] Report file directory backed up or accepted as regenerable
+- [ ] `.env` / secrets in a vault (not only on the app host)
+- [ ] Do **not** rely on Redis dumps for disaster recovery
 - [ ] Secret storage (vault, cloud secret manager) instead of plain `.env` on disk
 - [ ] Log and metric retention policy
 

@@ -18,7 +18,7 @@ Aligned with the current code (Alembic head `045_audit_log_hash_chain`).
 
 ## Platform
 
-- No backup/restore
+- No automated backup/restore job (operator policy documented in `docs/deployment/backups.md`)
 - No published performance SLA
 - No frontend automated tests
 - Compose is a dev stack (reload, default Grafana credentials)

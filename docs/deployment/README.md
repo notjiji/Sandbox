@@ -7,7 +7,7 @@ Docker Compose is the documented runtime for local and small-team deployments. T
 | [Installation](./installation.md) | `git clone` → `.env` → `docker compose up` — **what happens at each step** |
 | [Configuration](./configuration.md) | All environment variables and Compose overrides |
 | [Production](./production.md) | Production validator, hardening checklist, scaling notes |
-| [Backups](./backups.md) | Manual Postgres/report backup and restore (no automated job) |
+| [Backups](./backups.md) | Postgres policy (daily / 7-day / encrypted / monthly restore test); reports, config, Redis |
 | [Troubleshooting](./troubleshooting.md) | Common failures and fixes |
 
 ## Supplementary reference
@@ -31,4 +31,4 @@ make seed               # optional demo tenant
 
 Open http://localhost — see [installation.md](./installation.md) for the full boot sequence.
 
-**Backup:** not automated. Postgres uses volume `postgres_data`. See [backups.md](./backups.md).
+**Backup:** not automated in-repo. Recommended policy and data classification (including Redis as ephemeral): [backups.md](./backups.md).

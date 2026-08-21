@@ -213,7 +213,7 @@ Compose backend healthcheck uses `/health/ready`.
 
 | ID | Requirement | Kind | Notes |
 |----|-------------|------|-------|
-| **NFR-AVL-14** | There is **no** in-repo backup job, PITR, or restore procedure. Volume loss is data loss unless the operator adds backups outside this repository. | Explicitly unspecified | Documented limitation. |
+| **NFR-AVL-14** | There is **no** in-repo automated backup job or PITR. Operators shall follow the documented backup strategy (Postgres daily / retention / encrypted offsite / monthly restore test). Redis shall not be treated as durable business data. | Explicitly unspecified (automation) | [deployment/backups.md](../deployment/backups.md). |
 | **NFR-AVL-15** | Email (Resend) outage shall block production verification/invite/reset delivery. The API may still create hashed tokens; the user cannot complete the email step until mail works. | Intent | Production requires `RESEND_API_KEY` at boot, not a mail SLA. |
 
 ---
@@ -282,7 +282,7 @@ Compose backend healthcheck uses `/health/ready`.
 | p99 / RPS SLA | Not measured |
 | Per-tenant Postgres or RLS | Logical `organization_id` only |
 | Secret vault / key rotation product | Env vars + production startup checks |
-| Automated backups | Not implemented |
+| Automated backups | Not implemented in-repo; operator policy documented in [deployment/backups.md](../deployment/backups.md) |
 | Frontend test gate | Typecheck/build only |
 | Scanner legal authorization | Operator-trust model |
 
