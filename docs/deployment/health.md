@@ -24,9 +24,12 @@ Celery must run for scheduled scans, offline agent reconcile, and non-inline sca
 
 `make logs` / `make backend-logs`. Loki/Grafana if the monitoring profile is up.
 
+Day-2 ops (restart, migrate, backup, incidents): [production-runbook.md](./production-runbook.md).
+
 ## What ops docs do not include
 
-- Backup/restore
 - Multi-node Postgres
 - TLS termination beyond whatever you put in front of nginx
 - Secret rotation runbooks
+
+Backup/restore procedures: [backups.md](./backups.md) and the runbook.

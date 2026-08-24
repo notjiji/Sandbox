@@ -143,4 +143,4 @@ Those are operator responsibilities. [backups.md](./backups.md) documents manual
 
 Use `ENVIRONMENT=staging` to keep OpenAPI enabled while testing production-like settings. The production validator runs only when `ENVIRONMENT=production`. Staging still defaults `SCAN_RUN_INLINE`/`REPORT_RUN_INLINE` based on environment name (`false` for staging unless overridden).
 
-Related: [configuration.md](./configuration.md), [installation.md](./installation.md), [troubleshooting.md](./troubleshooting.md).
+Related: [production-runbook.md](./production-runbook.md) (day-2 ops), [configuration.md](./configuration.md), [installation.md](./installation.md), [troubleshooting.md](./troubleshooting.md).
