@@ -16,6 +16,8 @@ If a feature README disagrees with those folders, **the seven folders win** unti
 | [deployment/](./deployment/README.md) | Install, config, production, backups, troubleshooting |
 | [roadmap/](./roadmap/README.md) | Limitations and later work (not shipped) |
 
+**Boundaries:** [known-limitations.md](./known-limitations.md) — what this repo does *not* claim.
+
 ## Feature deep-dives
 
 Implementation notes for modules. Use them for APIs and internals; do not treat them as the product spec if they conflict with the folders above.

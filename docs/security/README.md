@@ -9,4 +9,5 @@ As-built controls. This folder is the security source of truth. Feature deep-div
 | [Multi-tenancy](./multi-tenancy.md) | Org header and data scoping |
 | [Scanning](./scanning.md) | What the scanner is allowed to do |
 | [Audit integrity](./audit.md) | Hash chain, immutability, SIEM default |
-| [Known limits](./known-limits.md) | Gaps that are real, not planned fiction |
+| [Known limits](./known-limits.md) | Security-operator gaps |
+| [Platform known limitations](../known-limitations.md) | Full honest boundary list (scanning, AI, audit, ops) |
