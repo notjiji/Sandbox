@@ -2,6 +2,8 @@
 
 As-built system shape. Feature deep-dives (`docs/scan-engine.md`, `docs/plugins/`, `docs/audit/`, `docs/monitoring/`) remain valid for detail; this folder is the map.
 
+Naming conventions (events, `resource_*` vs `entity_*`, enums): [glossary.md](../glossary.md).
+
 | Document | Covers |
 |----------|--------|
 | [System](./system.md) | **Diagram A** (logical), runtime topology, request/scan/event flows |

@@ -223,6 +223,7 @@ sandbox/
 | Area | Start here |
 |------|------------|
 | Index | [docs/README.md](docs/README.md) |
+| Glossary / naming | [docs/glossary.md](docs/glossary.md) |
 | Product / FR / NFR | [docs/product/](docs/product/README.md) |
 | Architecture | [docs/architecture/](docs/architecture/README.md) |
 | ADRs | [docs/architecture/decisions/](docs/architecture/decisions/README.md) |

@@ -2,23 +2,32 @@
 
 In-process bus: `backend/app/events/bus.py`. Not Kafka, not Redis pub/sub.
 
+Naming conventions: [glossary.md](../glossary.md).
+
 ## Publish
 
 ```python
 event_bus.publish(
-    "asset.create",  # or alias ASSET_CREATED → normalized
+    "asset.create",
     payload,
     db=db,
     organization_id=org_id,
     user_id=user_id,
-    entity_type="asset",  # stored as resource_type
-    entity_id=asset.id,
+    resource_type="asset",
+    resource_id=asset.id,
 )
 ```
 
+Aliases still work and are normalized before persist:
+
+- Action: `ASSET_CREATED` → `asset.create`
+- Identity: `entity_type` / `entity_id` → `resource_type` / `resource_id`
+
+Prefer the canonical forms in new code.
+
 `record_audit_event` / `audit_service.log` publish on the **same** bus.
 
-Names: dot-separated `{domain}.{action}`. Aliases: `backend/app/events/names.py`.
+Names: dot-separated `{domain}.{action}`. Alias normalization: `backend/app/events/names.py`.
 
 ## Subscribers (order registered)
 
@@ -35,6 +44,6 @@ Webhooks and analytics are comments/future, not modules. API-key events are cons
 ## Activity feed vs audit API
 
 - Activity: `GET .../organizations/current/activity` — operator timeline, **excludes** `auth.*` and `user.*`.
-- Audit: `GET /api/v1/audit-logs` — searchable log including auth events; CSV/PDF export; `/integrity` verifies the hash chain.
+- Audit: `GET /api/v1/audit-logs` — searchable log including auth events; CSV/PDF export; `/integrity` verifies the hash chain. Filters use `entity_type` / `entity_id` as aliases for `resource_type` / `resource_id`.
 
 Details: [docs/audit/README.md](../audit/README.md).

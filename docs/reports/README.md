@@ -18,6 +18,8 @@ Phase 9 security assessment reporting for the Sandbox platform.
 4. Worker collects findings, builds `ReportData`, generates AI summary, renders HTML, converts to PDF, stores in `backend/storage/reports/`.
 5. Report appears in the library with `status=ready`. Preview and download require authentication and `REPORT_READ`.
 
+Report types (`executive`, `technical`, `weekly`, `monthly`) and statuses: [glossary.md](../glossary.md).
+
 ## Security
 
 - PDFs are **never** served from a public static path.

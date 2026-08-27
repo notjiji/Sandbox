@@ -2,7 +2,9 @@
 
 Source: `backend/app/audit/events.py` and feature-specific `*/events.py` files.
 
-Actions use `{domain}.{action}`. The names in parentheses are the product-language labels from the audit spec.
+**Canonical form:** `{domain}.{action}` (e.g. `asset.create`). Do not use `ASSET_CREATED`, `asset.created`, or `asset_create` as the documented primary spelling.
+
+Input aliases such as `ASSET_CREATED` are accepted and normalized via `backend/app/events/names.py`. Naming rules: [glossary.md](../glossary.md).
 
 ## Authentication
 

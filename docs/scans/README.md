@@ -8,7 +8,7 @@ Scans execute security plugins against assets and produce findings. This documen
 pending → queued → running → completed | failed | cancelled
 ```
 
-Managed by `backend/app/scans/lifecycle.py` and `scan_service.py`.
+Managed by `backend/app/scans/lifecycle.py` and `scan_service.py`. Wire values: [glossary.md](../glossary.md).
 
 ## API
 
@@ -25,9 +25,9 @@ Asset scope: `/api/v1/projects/{project_id}/assets/{asset_id}/scans`
 
 | Type | Description |
 |------|-------------|
-| `QUICK` | Fast subset of plugins |
-| `FULL` | All active plugins |
-| `CUSTOM` | User-selected plugins |
+| `quick` | Fast subset of plugins |
+| `full` | All active plugins |
+| `custom` | User-selected plugins |
 
 Profiles: `backend/app/scans/profiles.py`
 

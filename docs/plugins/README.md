@@ -37,9 +37,9 @@ ScanOrchestrator
 
 | Profile | Plugins |
 |---------|---------|
-| `QUICK` | Subset for fast checks |
-| `FULL` | All active plugins |
-| `CUSTOM` | User-selected plugin list |
+| `quick` | Subset for fast checks |
+| `full` | All active plugins |
+| `custom` | User-selected plugin list |
 
 Profiles defined in `backend/app/scans/profiles.py`.
 

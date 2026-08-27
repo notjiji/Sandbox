@@ -9,7 +9,7 @@ Plugin ScanResult
     → ScanNormalizer
     → RuleEngine (catalog rules)
     → findings table (linked to scan, asset, project)
-    → review workflow (open → acknowledged → resolved)
+    → review workflow (`open` → `in_review` → `resolved` / `false_positive` / `accepted`)
 ```
 
 ## Core fields
@@ -20,13 +20,15 @@ Plugin ScanResult
 | `finding_code` | Stable identifier (e.g. `SSL_CERT_EXPIRED`) |
 | `severity` | `critical`, `high`, `medium`, `low`, `info` |
 | `risk_score` | Numeric score used in aggregation |
-| `status` | `open`, `acknowledged`, `resolved`, … |
+| `status` | `open`, `in_review`, `resolved`, `false_positive`, `accepted` |
 | `plugin` | Source scanner plugin or `monitoring` for agent findings |
 | `source` | `scan` (default) or `monitoring` |
 | `category` | Grouping such as `server_security` |
 | `evidence` | Reproducible proof |
 | `recommendation` | Remediation guidance |
 | `scan_id` / `asset_id` / `project_id` | Scope linkage (`scan_id` null for monitoring) |
+
+Wire values for statuses and severity: [glossary.md](../glossary.md).
 
 ## Monitoring as a finding source
 

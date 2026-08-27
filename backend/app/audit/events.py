@@ -1,9 +1,11 @@
 """Centralized audit action names used across feature modules.
 
-Dot-separated `{domain}.{action}` — not SCREAMING_SNAKE. Existing rows and
-activity messages depend on this convention.
+Canonical form: dot-separated `{domain}.{action}` (e.g. `asset.create`).
+Not SCREAMING_SNAKE as the stored or documented primary spelling.
 
-User-facing catalog names map here, e.g. ASSET_CREATED → `asset.create`.
+Aliases such as ASSET_CREATED are normalized by `app.events.names` before
+persist. Prefer `asset.create` in new code and documentation.
+See docs/glossary.md.
 """
 
 

@@ -23,13 +23,13 @@ docker compose exec backend python scripts/seed_demo.py
 |-------|-------|
 | **Password** | `DemoPassword1!` |
 
-| Email | Role | Name | Best for testing |
-|-------|------|------|------------------|
-| `owner@demo.sandbox` | Owner | Alex Owner | Full access, org settings, member management |
-| `admin@demo.sandbox` | Admin | Casey Admin | Day-to-day admin without ownership transfer |
-| `analyst@demo.sandbox` | Security Analyst | Sam Analyst | Scans, findings, risk review |
-| `manager@demo.sandbox` | Manager | Morgan Manager | Projects and reporting |
-| `viewer@demo.sandbox` | Viewer | Riley Viewer | Read-only access |
+| Email | Role (wire / UI) | Name | Best for testing |
+|-------|------------------|------|------------------|
+| `owner@demo.sandbox` | `owner` / Owner | Alex Owner | Full access, org settings, member management |
+| `admin@demo.sandbox` | `admin` / Admin | Casey Admin | Day-to-day admin without ownership transfer |
+| `analyst@demo.sandbox` | `security_analyst` / Security Analyst | Sam Analyst | Scans, findings, risk review |
+| `manager@demo.sandbox` | `manager` / Manager | Morgan Manager | Projects and reporting |
+| `viewer@demo.sandbox` | `viewer` / Viewer | Riley Viewer | Read-only access |
 
 Emails are pre-verified — no OTP step required.
 

@@ -4,6 +4,8 @@ As-built description of Sandbox. This folder is the product source of truth: it 
 
 If a feature README under `docs/auth/`, `docs/scans/`, and similar disagrees with these pages, treat this folder as correct until that deep-dive is updated.
 
+Canonical naming (events, roles, statuses, `resource_*` vs `entity_*`): [glossary.md](../glossary.md).
+
 | Document | Covers |
 |----------|--------|
 | [Definition](./definition.md) | Product, problem, solution, target users, V1 vs Future |

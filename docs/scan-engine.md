@@ -104,24 +104,24 @@ flowchart TD
 
     A["1. Load enabled plugins\nPluginLoader.select_for_scan() → Registry"]
     A --> B{Any plugins\nconfigured?}
-    B -->|No| FAIL1["Scan → FAILED"]
+    B -->|No| FAIL1["Scan → failed"]
     B -->|Yes| C
 
     C["2. Adapt asset\nAssetAdapter → NormalizedScanTarget → ScanTarget[]"]
     C --> D{Adapt OK?}
-    D -->|No| FAIL2["Scan → FAILED"]
+    D -->|No| FAIL2["Scan → failed"]
     D -->|Yes| E
 
     E["3. For each target × enabled plugin"]
     E --> F
 
     subgraph PerPlugin["Per plugin run (isolated)"]
-        F["Create scan_plugin_run\nstatus = RUNNING"]
+        F["Create scan_plugin_run\nstatus = running"]
         F --> G["4. Run plugin\nScanDispatcher.dispatch()"]
         G --> H{Success?}
-        H -->|Exception / failure| I["Save status = FAILED\n+ error_message"]
+        H -->|Exception / failure| I["Save status = failed\n+ error_message"]
         H -->|Success| J["5. Call normalizer\nScanNormalizer.normalize_findings()"]
-        J --> K["Save status = COMPLETED\n+ findings_count"]
+        J --> K["Save status = completed\n+ findings_count"]
         I --> L["PluginExecutionRecord"]
         K --> L
     end
@@ -133,8 +133,8 @@ flowchart TD
     N["6. Combine results\nmerge all normalized findings"]
     N --> O["7. Persist findings\ncreate_finding() per record"]
     O --> P{Any plugin\ncompleted?}
-    P -->|Yes| OK["Scan → COMPLETED"]
-    P -->|No| FAIL3["Scan → FAILED"]
+    P -->|Yes| OK["Scan → completed"]
+    P -->|No| FAIL3["Scan → failed"]
 
     FAIL1 --> END([return scan])
     FAIL2 --> END
@@ -142,7 +142,7 @@ flowchart TD
     OK --> END
 ```
 
-**Important:** One plugin failing does **not** stop the others. The scan is marked **COMPLETED** if **any** plugin succeeds (partial success). It is **FAILED** only when every plugin fails or skips, or when asset adaptation fails.
+**Important:** One plugin failing does **not** stop the others. The scan is marked **`completed`** if **any** plugin succeeds (partial success). It is **`failed`** only when every plugin fails or skips, or when asset adaptation fails.
 
 ---
 
@@ -470,7 +470,7 @@ erDiagram
     }
 ```
 
-**Example:** A **FULL** scan on a **website** with one **public_ip** child runs each enabled plugin against **both** targets. Findings are attributed to the correct `asset_id`. Plugin runs are unique per `(scan_id, asset_id, plugin_name)`.
+**Example:** A **`full`** scan on a **website** with one **public_ip** child runs each enabled plugin against **both** targets. Findings are attributed to the correct `asset_id`. Plugin runs are unique per `(scan_id, asset_id, plugin_name)`.
 
 ### API response
 

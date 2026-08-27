@@ -22,7 +22,7 @@ Sandbox uses organization-scoped roles mapped to fine-grained permissions. Every
 | `manager` | Read-mostly + generate reports; no scan execution |
 | `viewer` | Read-only access including dashboard and reports |
 
-See [roles-and-permissions.md](./roles-and-permissions.md) for the full matrix.
+Canonical wire values (and UI labels): [glossary.md](../glossary.md). See [roles-and-permissions.md](./roles-and-permissions.md) for the full matrix.
 
 ## Enforcement
 

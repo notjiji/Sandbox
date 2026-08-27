@@ -1,5 +1,7 @@
 # Audit integrity (as built)
 
+Naming: actions use `asset.create`; DB columns are `resource_type` / `resource_id` (API aliases `entity_*`). See [glossary.md](../glossary.md).
+
 ## Append-only
 
 Application code does not update or delete `audit_logs`. On **PostgreSQL**, trigger `audit_logs_immutable` (Alembic `045`) raises `audit_logs are immutable` on UPDATE/DELETE.

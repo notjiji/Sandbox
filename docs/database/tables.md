@@ -48,7 +48,7 @@ Asset notes are a **column** on `assets` (migration 028), not a `notes` table.
 | Column | Notes |
 |--------|-------|
 | `action` | Dot-separated name |
-| `resource_type` / `resource_id` | DB names. API aliases: entity_type / entity_id |
+| `resource_type` / `resource_id` | DB column names. API aliases: `entity_type` → `resource_type`, `entity_id` → `resource_id` (see [glossary](../glossary.md)) |
 | `severity` | info / warning / error / critical (migration 044) |
 | `details` | JSONB |
 | `prev_hash` / `entry_hash` | SHA-256 hex, nullable for pre-045 rows (migration 045). Chain is per organization; verify skips NULL hashes. |
@@ -67,6 +67,7 @@ Asset notes are a **column** on `assets` (migration 028), not a `notes` table.
 
 ## Naming traps
 
-- Do not document `entity_type` as a physical column.
+- Prefer [glossary.md](../glossary.md) for events, roles, statuses, and types.
+- Do not document `entity_type` as a physical column (`resource_type` is the DB name).
 - Do not document a separate findings table for monitoring alerts.
 - Do not document API-key tables — they do not exist.
