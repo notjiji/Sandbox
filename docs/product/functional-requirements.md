@@ -330,6 +330,8 @@ Deep-dive: [audit](../audit/README.md).
 
 110 is slightly above the 50–100 target because scanners and RBAC are split so each capability in the [definition table](./definition.md) has its own IDs. Do not add speculative requirements for Future rows.
 
+**Traceability:** implementation, tests, and docs for each ID — [requirements/traceability-matrix.md](../requirements/traceability-matrix.md).
+
 ---
 
 ## Out of scope (not requirements in V1)

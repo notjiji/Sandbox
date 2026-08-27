@@ -15,5 +15,6 @@ Canonical naming (events, roles, statuses, `resource_*` vs `entity_*`): [glossar
 | [Scope](./scope.md) | In the current product vs later / stubbed |
 | [Functional requirements](./functional-requirements.md) | Numbered V1 shall-statements (FR-*) |
 | [Non-functional requirements](./non-functional-requirements.md) | Numbered NFR-* : security, performance, scale, availability, maintainability |
+| [Requirements traceability](../requirements/traceability-matrix.md) | FR/NFR → code → tests → docs |
 
 Related: [architecture](../architecture/README.md), [security](../security/README.md), [roadmap](../roadmap/README.md).

@@ -272,6 +272,8 @@ Compose backend healthcheck uses `/health/ready`.
 | Maintainability | NFR-MAINT-01 … 14 | 14 |
 | **Total** | | **77** |
 
+**Traceability:** [requirements/traceability-matrix.md](../requirements/traceability-matrix.md).
+
 ---
 
 ## What this document does not claim

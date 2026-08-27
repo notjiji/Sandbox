@@ -20,6 +20,8 @@ If a feature README disagrees with those folders, **the seven folders win** unti
 
 **Naming:** [glossary.md](./glossary.md) — canonical events (`asset.create`), DB `resource_*` vs API `entity_*` aliases, roles, statuses, severities, asset/report types.
 
+**Traceability:** [requirements/traceability-matrix.md](./requirements/traceability-matrix.md) — every FR/NFR → implementation, tests, docs.
+
 ## Feature deep-dives
 
 Implementation notes for modules. Use them for APIs and internals; do not treat them as the product spec if they conflict with the folders above.
