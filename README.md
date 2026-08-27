@@ -49,7 +49,8 @@ Nginx (:80)
               Plugin pipeline → findings → risk → audit bus
 ```
 
-Full diagrams: [docs/architecture/system.md](docs/architecture/system.md).
+Full diagrams: [docs/architecture/system.md](docs/architecture/system.md).  
+Why these choices: [docs/architecture/decisions/](docs/architecture/decisions/README.md).
 
 ---
 
@@ -224,6 +225,7 @@ sandbox/
 | Index | [docs/README.md](docs/README.md) |
 | Product / FR / NFR | [docs/product/](docs/product/README.md) |
 | Architecture | [docs/architecture/](docs/architecture/README.md) |
+| ADRs | [docs/architecture/decisions/](docs/architecture/decisions/README.md) |
 | Database | [docs/database/](docs/database/README.md) |
 | Security | [docs/security/](docs/security/README.md) |
 | Testing | [docs/testing/](docs/testing/README.md) |
