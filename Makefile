@@ -1,4 +1,4 @@
-.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test prod-up prod-down prod-migrate prod-build
+.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test prod-up prod-down prod-migrate prod-build backup-now backup-restore backup-restore-test backup-integration-test
 
 up:
 	docker compose up -d
@@ -46,3 +46,16 @@ prod-up:
 
 prod-down:
 	docker compose -f docker-compose.prod.yml down
+
+backup-now:
+	docker compose -f docker-compose.prod.yml run --rm backup backup
+
+backup-restore:
+	@test -n "$(FILE)" || (echo "Usage: make backup-restore FILE=backups/postgres/sandbox-....dump.enc" && exit 1)
+	docker compose -f docker-compose.prod.yml run --rm backup restore --file "/backups/$(FILE)" --drop-first
+
+backup-restore-test:
+	docker compose -f docker-compose.prod.yml run --rm backup restore-test
+
+backup-integration-test:
+	bash infrastructure/backup/scripts/run-integration-test.sh

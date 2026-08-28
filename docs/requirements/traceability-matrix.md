@@ -319,7 +319,7 @@ NFRs are traced at **control-group** granularity. Full shall-text: [non-function
 | **NFR-AVL-07…08** AI degrade / no risk rollback | AI offline path | AI + risk tests | [ai](../ai/README.md) | Covered |
 | **NFR-AVL-09…10** SIEM best-effort / optional | SIEM subscribers | Audit fail-safe | [architecture/events](../architecture/events.md) | Partial |
 | **NFR-AVL-11…13** DB down / no fake cache / audit subordinate | Health ready, SAVEPOINT | Audit fail-safe tests | [security/audit](../security/audit.md) | Partial |
-| **NFR-AVL-14…15** Backup ops / email dependency | Operator docs; Resend | No automated backup job | [deployment/backups](../deployment/backups.md) | Intent / Policy |
+| **NFR-AVL-14…15** Backup ops / email dependency | `infrastructure/backup/` service + scripts | `tests/test_backup_restore.py`, `make backup-integration-test` | [deployment/backups](../deployment/backups.md) | Covered |
 
 ### Maintainability — NFR-MAINT
 

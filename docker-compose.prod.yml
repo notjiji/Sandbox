@@ -177,10 +177,39 @@ services:
     networks:
       - internal
 
+  backup:
+    build:
+      context: ./infrastructure/backup
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_ROOT: /backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${BACKUP_ENCRYPTION_PASSPHRASE}
+      BACKUP_REPORT_FILES: ${BACKUP_REPORT_FILES:-true}
+      BACKUP_S3_URI: ${BACKUP_S3_URI:-}
+      ENVIRONMENT: production
+      REPORT_STORAGE_MOUNT: /report_storage
+    volumes:
+      - backup_storage:/backups
+      - report_storage:/report_storage:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
 volumes:
   postgres_data:
   redis_data:
   report_storage:
+  backup_storage:
 
 networks:
   internal:

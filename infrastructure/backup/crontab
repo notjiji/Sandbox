@@ -1,0 +1,5 @@
+# Daily Postgres (+ optional report) backup at 02:00 UTC
+0 2 * * * /opt/backup/scripts/backup.sh >> /backups/logs/cron-backup.log 2>&1
+
+# Monthly restore verification on the 1st at 03:00 UTC
+0 3 1 * * /opt/backup/scripts/restore-test.sh >> /backups/logs/cron-restore-test.log 2>&1

@@ -44,7 +44,7 @@ Future work: [roadmap/](./roadmap/README.md).
 
 ## Platform and operations
 
-- **No automated backup job in-repo.** Operator policy is documented (daily Postgres, 7-day retention, encrypted offsite, monthly restore test). Volume loss without operator backups is data loss.
+- **Automated Postgres backups** via `infrastructure/backup/` service (daily, encrypted, 7-day retention, monthly restore test). See [deployment/backups.md](./deployment/backups.md).
 - **Redis is ephemeral** — Celery broker, rate limits, lockout counters. It is not durable business data and is not part of the backup policy as a system of record.
 - **Compose is development-oriented** — uvicorn `--reload`, bind mounts, default Grafana `admin`/`admin`, plain HTTP on port 80. Production hardening is operator-owned ([deployment/production.md](./deployment/production.md)).
 - **No published performance or uptime SLA** in this repository.

@@ -238,7 +238,7 @@ sandbox/
 
 ## Roadmap
 
-Later work (not shipped): API keys, webhooks, notification delivery, org restore, billing UI, stronger cloud/K8s scanners, automated backup jobs, production K8s overlay, frontend e2e.
+Later work (not shipped): API keys, webhooks, notification delivery, org restore, billing UI, stronger cloud/K8s scanners, production K8s overlay, frontend e2e.
 
 See [docs/roadmap/planned.md](docs/roadmap/planned.md).
 
@@ -254,7 +254,7 @@ A serious project states its boundaries. Highlights:
 - AI depends on provider availability
 - Legacy audit rows may lack hash-chain values
 - Dashboard trend charts are simplified
-- No automated backup job in-repo (operator policy documented)
+- Automated Postgres backups in production Compose ([backups](docs/deployment/backups.md))
 - Redis is ephemeral — not business data
 
 Full list: **[docs/known-limitations.md](docs/known-limitations.md)**.

@@ -32,4 +32,4 @@ make seed               # optional demo tenant
 
 Open http://localhost — see [installation.md](./installation.md) for the full boot sequence.
 
-**Backup:** not automated in-repo. Recommended policy and data classification (including Redis as ephemeral): [backups.md](./backups.md).
+**Backup:** automated in production Compose — [backups.md](./backups.md).

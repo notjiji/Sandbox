@@ -105,6 +105,17 @@ When `false`, Celery worker must be running or scans/reports stay queued.
 
 Details: [reports/storage.md](../reports/storage.md).
 
+## Automated backups (production Compose)
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `BACKUP_ENCRYPTION_PASSPHRASE` | empty | **Required in production** — AES-256 via openssl |
+| `BACKUP_RETENTION_DAYS` | `7` | Delete artifacts older than N days |
+| `BACKUP_REPORT_FILES` | `true` | Include report volume in daily backup |
+| `BACKUP_S3_URI` | empty | Optional offsite `s3://bucket/prefix` |
+
+Service: `docker-compose.prod.yml` → `backup`. Details: [backups.md](./backups.md).
+
 ## Email (Resend)
 
 | Variable | Default | Notes |

@@ -76,7 +76,8 @@ Observability (Prometheus, Grafana, Loki) is **not** included in the production 
 - [ ] TLS certificate and termination in front of nginx
 - [ ] Firewall: expose only 443 (and admin paths if needed); do not expose Postgres/Redis publicly
 - [ ] Change Grafana default admin password or disable public Grafana access
-- [ ] Postgres backups per [backups.md](./backups.md): daily dump, 7-day retention, encrypted offsite storage, monthly restore test
+- [ ] Set `BACKUP_ENCRYPTION_PASSPHRASE` and verify backup service is running (`docker compose ps backup`)
+- [ ] Postgres backups per [backups.md](./backups.md): daily dump (automated), 7-day retention, encrypted `backup_storage` volume, monthly restore test
 - [ ] Report file directory backed up or accepted as regenerable
 - [ ] `.env` / secrets in a vault (not only on the app host)
 - [ ] Do **not** rely on Redis dumps for disaster recovery
@@ -148,7 +149,7 @@ Compose already healthchecks `/health/ready` on the backend container.
 - Secret rotation runbooks
 - Kubernetes manifests
 
-Those are operator responsibilities. [backups.md](./backups.md) documents manual backup procedures you can run until automated jobs exist.
+Those are operator responsibilities for managed cloud targets. Self-hosted Compose includes the `backup` service — see [backups.md](./backups.md).
 
 ## Staging
 

@@ -1,0 +1,67 @@
+# Ephemeral stack for backup/restore integration tests.
+# Usage: infrastructure/backup/scripts/run-integration-test.sh
+
+name: sandbox-backup-test
+
+x-backup-env: &backup-env
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: sandbox
+  POSTGRES_USER: sandbox
+  POSTGRES_PASSWORD: backup-test-password
+  BACKUP_ROOT: /backups
+  BACKUP_RETENTION_DAYS: 7
+  BACKUP_REPORT_FILES: "false"
+  ENVIRONMENT: production
+  SECRET_KEY: backup-test-secret-key-minimum-32-characters-long
+  JWT_SECRET: backup-test-jwt-secret-minimum-32-characters-long
+  REDIS_URL: redis://redis:6379/0
+  RESEND_API_KEY: re_backup-integration-test-key
+  RESEND_FROM: Sandbox <test@example.com>
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sandbox
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: backup-test-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sandbox -d sandbox"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    networks:
+      - internal
+
+  migrate:
+    build:
+      context: ./backend
+    environment:
+      <<: *backup-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: alembic upgrade head
+    networks:
+      - internal
+
+  backup:
+    build:
+      context: ./infrastructure/backup
+    environment:
+      <<: *backup-env
+    volumes:
+      - backup_test_storage:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+volumes:
+  backup_test_storage:
+
+networks:
+  internal:
+    driver: bridge

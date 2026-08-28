@@ -180,17 +180,18 @@ make migrate-down
 
 ### Create a database dump
 
+### Backup (automated)
+
+Production Compose runs the `backup` service (daily 02:00 UTC, monthly restore test). Manual commands:
+
 ```bash
-docker compose exec -T postgres pg_dump \
-  -U "${POSTGRES_USER:-sandbox}" \
-  -d "${POSTGRES_DB:-sandbox}" \
-  -Fc \
-  > "sandbox-$(date +%Y%m%d-%H%M%S).dump"
+make backup-now
+make backup-restore-test
 ```
 
-Encrypt and store offsite per [backups.md](./backups.md) (daily / 7-day retention / monthly restore test).
+Encrypt and copy `backup_storage` offsite or set `BACKUP_S3_URI`. Full policy: [backups.md](./backups.md).
 
-Optional report files — see [backups.md](./backups.md) and [reports/storage.md](../reports/storage.md):
+Optional report files — see [backups.md](./backups.md) and [reports/storage.md](../reports/storage.md).
 
 ```bash
 # Prod Compose named volume

@@ -47,7 +47,7 @@ Enum (`backend/app/assets/enums.py`) includes website, domain, public_ip, server
 ## Explicitly not in this codebase
 
 - CIDR/ASN ownership allowlists and "I own this range" workflows
-- Automated backup jobs / PITR (operator policy is documented — [docs/deployment/backups.md](../deployment/backups.md))
+- WAL/PITR and managed-cloud backup automation (Compose backup service ships for self-hosted — [docs/deployment/backups.md](../deployment/backups.md))
 - System ERD or architecture pack — **this documentation set is that pack**
 - Product API keys
 - In-app notification center
