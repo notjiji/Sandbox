@@ -190,9 +190,14 @@ docker compose exec -T postgres pg_dump \
 
 Encrypt and store offsite per [backups.md](./backups.md) (daily / 7-day retention / monthly restore test).
 
-Optional report files:
+Optional report files — see [backups.md](./backups.md) and [reports/storage.md](../reports/storage.md):
 
 ```bash
+# Prod Compose named volume
+docker run --rm -v sandbox-prod_report_storage:/data -v "$(pwd)":/backup alpine \
+  tar -czf /backup/sandbox-reports-$(date +%Y%m%d).tar.gz -C /data reports
+
+# Dev bind mount
 tar -czf sandbox-reports-$(date +%Y%m%d).tar.gz -C backend storage/reports
 ```
 

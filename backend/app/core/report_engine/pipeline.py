@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.report_engine.ai_summary import generate_ai_summary
 from app.core.report_engine.data import REPORT_VERSION, collect_report_data
-from app.core.report_engine.renderer import report_file_path, write_report_artifacts
+from app.core.report_engine.renderer import write_report_artifacts
 from app.reports.enums import ReportStatus
 from app.reports.models import Report
 from app.reports.repositories.report_repository import update_report
@@ -31,12 +31,12 @@ def run_report_pipeline(db: Session, *, report_id: uuid.UUID) -> Report:
     try:
         data = collect_report_data(db, report=report)
         data.ai_summary = generate_ai_summary(data)
-        pdf_path, _html_path, file_size = write_report_artifacts(data)
+        pdf_artifact, _html_artifact, file_size = write_report_artifacts(data)
         update_report(
             db,
             report,
             status=ReportStatus.READY,
-            file_url=None,
+            file_url=pdf_artifact.key,
             file_size=file_size,
             completed_at=datetime.now(UTC),
             report_version=REPORT_VERSION,
@@ -58,7 +58,3 @@ def preview_report_html(db: Session, *, report: Report) -> str:
     if not data.ai_summary:
         data.ai_summary = generate_ai_summary(data)
     return render_report_html(data)
-
-
-def report_html_path(report_id: uuid.UUID):
-    return report_file_path(report_id, ext="html")

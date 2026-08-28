@@ -7,7 +7,6 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.core.report_engine.pipeline import run_report_pipeline
-from app.core.report_engine.renderer import report_file_path
 from app.reports.models import Report
 
 from app.reports.enums import ReportType

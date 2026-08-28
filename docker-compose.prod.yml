@@ -25,6 +25,8 @@ x-backend-env: &backend-env
   PUBLIC_API_URL: ${PUBLIC_API_URL}
   SCAN_RUN_INLINE: "false"
   REPORT_RUN_INLINE: "false"
+  REPORT_STORAGE_BACKEND: ${REPORT_STORAGE_BACKEND:-local}
+  REPORT_STORAGE_PATH: /app/storage/reports
 
 x-backend-depends: &backend-depends
   postgres:

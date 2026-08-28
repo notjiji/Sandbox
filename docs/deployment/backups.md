@@ -17,7 +17,7 @@ If the volume or database is lost and you have no backups, **tenant data is gone
 | Asset | Is it durable business data? | Backup required? | Notes |
 |-------|------------------------------|------------------|-------|
 | **PostgreSQL** | **Yes — source of truth** | **Yes** | Users, orgs, assets, scans, findings, risk, audit logs, AI conversations, report *metadata* |
-| **Report PDF/HTML files** | Derived artifacts | Recommended | On disk under `backend/storage/reports/`; can be regenerated from DB + findings |
+| **Report PDF/HTML files** | Derived artifacts | **Yes (recommended)** | Stored via `ReportStorageBackend`: Compose volume `report_storage` (local) or S3 bucket (`REPORT_STORAGE_BACKEND=s3`). Metadata + `file_url` key in Postgres. Regeneratable from findings if lost. |
 | **Uploaded user files** | **N/A in V1** | N/A | There is **no** file-upload product. Org logos are `logo_url` strings (external URLs), not stored blobs |
 | **Configuration (`.env`)** | Operational secrets | **Yes** (secret vault) | Not in git; not recoverable from Postgres |
 | **Redis** | **No — ephemeral** | **No** | Broker, rate limits, lockout counters only — see [Redis](#redis-ephemeral-not-business-data) |
@@ -76,18 +76,29 @@ Audit hash chains are **per organization** and live only in Postgres. Losing the
 
 | Item | Behavior |
 |------|----------|
-| **Where files live** | `backend/storage/reports/{report_id}.pdf` and `.html` (see `app/core/report_engine/renderer.py`) |
-| **In Compose** | Backend bind-mounts `./backend:/app`, so files sit on the host under `backend/storage/reports/` |
-| **In the database** | Report metadata/status; download APIs read files from disk |
-| **If files are lost** | Metadata may still show `ready`, but download fails until regenerated |
-| **Backup recommendation** | Include `storage/reports/` in daily backup **or** accept regeneration after restore |
+| **Metadata** | PostgreSQL `reports` table (`status`, `file_url` storage key, `file_size`, …) |
+| **File bytes** | `ReportStorageBackend` — see [reports/storage.md](../reports/storage.md) |
+| **Local prod Compose** | Named volume `report_storage` mounted at `/app/storage` (backend + celery-worker) |
+| **Cloud** | `REPORT_STORAGE_BACKEND=s3` → S3-compatible bucket |
+| **Dev Compose** | Bind mount `./backend:/app` → host path `backend/storage/reports/` |
+| **If files are lost** | Metadata may still show `ready`; download can regenerate from findings |
 
-Reports are **not** the system of record for findings. Prefer Postgres integrity first; back up report files if customers expect historical PDF downloads without re-running generation.
+Reports are **not** the system of record for findings. Back up storage if customers expect historical PDFs without re-generation.
+
+**Local volume backup (prod Compose):**
+
+```bash
+docker run --rm -v sandbox-prod_report_storage:/data -v "$(pwd)":/backup alpine \
+  tar -czf /backup/sandbox-reports-$(date +%Y%m%d).tar.gz -C /data reports
+```
+
+**Dev / bind-mount backup:**
 
 ```bash
 tar -czf sandbox-reports-$(date +%Y%m%d).tar.gz -C backend storage/reports
-# Encrypt and ship offsite with the same retention as DB dumps
 ```
+
+**S3:** enable versioning, lifecycle rules, and cross-region replication per your cloud policy.
 
 ---
 
@@ -139,7 +150,7 @@ Compose mounts volume `redis_data` for Redis persistence of its own RDB — that
 1. **Stop writers** — stop `backend`, `celery-worker`, `celery-beat` (or take traffic off the load balancer).
 2. **Restore PostgreSQL** from the chosen daily dump (or PITR to a point in time).
 3. **Confirm schema** — `alembic current` matches the dump era; upgrade only if intentional.
-4. **Restore report files** (optional) into `backend/storage/reports/` if you backed them up.
+4. **Restore report files** (optional) — reattach restored volume, restore S3 objects, or copy into `REPORT_STORAGE_PATH`.
 5. **Restore configuration** from secret manager into `.env` / runtime secrets.
 6. **Start Redis empty** (or existing empty volume) — do not require a Redis dump.
 7. **Start app and workers**; hit `/health/ready`.

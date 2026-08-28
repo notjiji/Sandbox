@@ -222,9 +222,9 @@ Also: scan history / finding trend range APIs in `tests/test_dashboard.py`.
 |-------------|----------------|-------|---------------|----------|
 | **FR-RPT-01** PDF types executive/technical/weekly/monthly | `app/reports/` | `tests/test_project_reports.py`, `tests/test_asset_reports.py` | [reports](../reports/README.md), [glossary](../glossary.md) | Covered |
 | **FR-RPT-02** Report status lifecycle | Report service / jobs | Report tests | [reports/generation-flow](../reports/generation-flow.md) | Covered |
-| **FR-RPT-03** Collect findings + branding → PDF | Report collector + templates | Report tests | [reports/templates](../reports/templates.md) | Covered |
+| **FR-RPT-03** Collect findings + branding → PDF | Report collector + templates + [storage](../reports/storage.md) | Report tests, `tests/test_report_storage.py` | [reports/templates](../reports/templates.md), [storage](../reports/storage.md) | Covered |
 | **FR-RPT-04** AI or offline summary | Report AI summary path | Report / AI tests | [reports](../reports/README.md) | Covered |
-| **FR-RPT-05** Auth preview/download (no public static) | Report download routes | Report tests, RBAC | [reports/api](../reports/api.md) | Covered |
+| **FR-RPT-05** Auth preview/download (no public static) | Report download routes + durable storage | Report tests, RBAC | [reports/api](../reports/api.md), [storage](../reports/storage.md) | Covered |
 | **FR-RPT-06** Delete report RBAC | Report delete | `tests/test_reports_rbac.py` | Same | Covered |
 | **FR-RPT-07** List org / project / asset scope | Report list routers | Report tests | Same | Covered |
 

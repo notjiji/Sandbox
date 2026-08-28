@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
@@ -11,6 +11,7 @@ from app.core.responses import success_response
 from app.members.models import OrganizationMember
 from app.reports.enums import ReportStatus, ReportType
 from app.reports.schemas import CreateAssetReportRequest, ReportListQuery
+from app.reports.responses import pdf_download_response
 from app.reports.services import report_service
 
 router = APIRouter()
@@ -69,20 +70,15 @@ def download_asset_report(
     report_id: uuid.UUID,
     db: Session = Depends(get_db),
     membership: OrganizationMember = Depends(require_permission(Permission.REPORT_READ)),
-) -> FileResponse:
-    report, path = report_service.resolve_report_download(
+) -> StreamingResponse:
+    report, pdf_bytes = report_service.resolve_report_download(
         db,
         membership,
         project_id=project_id,
         report_id=report_id,
         asset_id=asset_id,
     )
-    filename = f"{report.name.replace(' ', '-').lower()}.pdf"
-    return FileResponse(
-        path,
-        media_type="application/pdf",
-        filename=filename,
-    )
+    return pdf_download_response(report, pdf_bytes)
 
 
 @router.get("/{report_id}/preview")

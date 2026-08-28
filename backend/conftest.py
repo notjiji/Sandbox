@@ -36,9 +36,26 @@ os.environ.setdefault("SCAN_RUN_INLINE", "true")
 os.environ.setdefault("RESEND_API_KEY", "re_test_key")
 os.environ.setdefault("RESEND_FROM", "test@example.com")
 
+import tempfile
+
+_report_storage_dir = tempfile.mkdtemp(prefix="sandbox-report-storage-")
+os.environ.setdefault("REPORT_STORAGE_BACKEND", "local")
+os.environ.setdefault("REPORT_STORAGE_PATH", _report_storage_dir)
+
 from app.core.config import get_settings
+from app.core.report_storage import reset_report_storage_cache
 
 get_settings.cache_clear()
+reset_report_storage_cache()
+
+
+@pytest.fixture(autouse=True)
+def _refresh_report_storage_cache() -> None:
+    get_settings.cache_clear()
+    reset_report_storage_cache()
+    yield
+    get_settings.cache_clear()
+    reset_report_storage_cache()
 
 
 @compiles(JSONB, "sqlite")

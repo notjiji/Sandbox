@@ -1,5 +1,4 @@
 import uuid
-from pathlib import Path
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -9,7 +8,7 @@ from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationAppError
 from app.core.report_engine.generator import REPORT_TYPE_LABELS
 from app.core.report_engine.pipeline import preview_report_html, run_report_pipeline
-from app.core.report_engine.renderer import report_file_path
+from app.core.report_storage import get_report_storage
 from app.members.models import OrganizationMember
 from app.projects.validators import require_active_project
 from app.reports.enums import ReportStatus, ReportType
@@ -419,7 +418,7 @@ def resolve_report_download(
     project_id: uuid.UUID,
     report_id: uuid.UUID,
     asset_id: uuid.UUID | None = None,
-) -> tuple[Report, Path]:
+) -> tuple[Report, bytes]:
     require_active_project(db, membership, project_id)
     if asset_id is not None:
         report = get_asset_report_by_id(
@@ -435,11 +434,13 @@ def resolve_report_download(
     if report.status != ReportStatus.READY:
         raise ValidationAppError("Report is not ready for download")
 
-    path = report_file_path(report.id)
-    if not path.exists():
+    storage = get_report_storage()
+    if not storage.exists(report.id, ext="pdf"):
         run_report_pipeline(db, report_id=report.id)
         db.commit()
-        path = report_file_path(report.id)
+        db.refresh(report)
+
+    pdf_bytes = storage.read(report.id, ext="pdf")
 
     record_audit_event(
         db,
@@ -451,11 +452,8 @@ def resolve_report_download(
         details={"project_id": str(project_id)},
     )
     db.commit()
-    return report, path
+    return report, pdf_bytes
 
 
 def _remove_report_file(report_id: uuid.UUID) -> None:
-    for ext in ("pdf", "html"):
-        path = report_file_path(report_id, ext=ext)
-        if path.exists():
-            path.unlink()
+    get_report_storage().delete(report_id)

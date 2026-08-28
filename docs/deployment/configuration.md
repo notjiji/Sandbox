@@ -90,6 +90,21 @@ When nginx is the public entry, set `FRONTEND_URL` to your public origin (e.g. `
 
 When `false`, Celery worker must be running or scans/reports stay queued.
 
+## Report file storage
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `REPORT_STORAGE_BACKEND` | `local` | `local` (mounted volume) or `s3` |
+| `REPORT_STORAGE_PATH` | `/app/storage/reports` | Directory for local backend |
+| `REPORT_S3_BUCKET` | empty | Required when backend is `s3` |
+| `REPORT_S3_PREFIX` | empty | Optional key prefix |
+| `REPORT_S3_REGION` | `us-east-1` | AWS region |
+| `REPORT_S3_ENDPOINT_URL` | empty | MinIO / custom S3 endpoint |
+| `REPORT_S3_ACCESS_KEY_ID` | empty | Optional if using IAM role |
+| `REPORT_S3_SECRET_ACCESS_KEY` | empty | Optional if using IAM role |
+
+Details: [reports/storage.md](../reports/storage.md).
+
 ## Email (Resend)
 
 | Variable | Default | Notes |

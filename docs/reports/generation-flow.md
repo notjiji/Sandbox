@@ -34,8 +34,8 @@ File: `backend/app/core/report_engine/pipeline.py`
 | 1 | Set `status=generating` | DB update |
 | 2 | `collect_report_data()` | `ReportData` |
 | 3 | `generate_ai_summary()` | AI narrative on `ReportData` |
-| 4 | `write_report_artifacts()` | PDF + HTML on disk |
-| 5 | Update report | `status=ready`, `file_size`, `completed_at` |
+| 4 | `write_report_artifacts()` | PDF + HTML → durable storage (`local` volume or S3) |
+| 5 | Update report | `status=ready`, `file_url` (storage key), `file_size`, `completed_at` |
 | 6 | Audit | `report.generate` |
 
 On failure: `status=failed`, exception propagated.
@@ -62,15 +62,12 @@ Celery task name: `app.jobs.reports.generate_report`
 
 ## Storage
 
-| Artifact | Path |
-|----------|------|
-| PDF | `backend/storage/reports/{report_id}.pdf` |
-| HTML | `backend/storage/reports/{report_id}.html` |
+See [storage.md](./storage.md). Artifacts use keys `reports/{report_id}.pdf` and `.html` (`reports.file_url` stores the PDF key).
 
-Files are written by `write_report_artifacts()`. Access is only via:
+Access is only via:
 
-- `GET .../reports/{id}/download` — authenticated PDF
-- `GET .../reports/{id}/preview` — authenticated HTML
+- `GET .../reports/{id}/download` — authenticated PDF (streamed from storage backend)
+- `GET .../reports/{id}/preview` — authenticated HTML (rendered on demand)
 
 ## Frontend status handling
 

@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import field_validator, model_validator
@@ -68,6 +69,19 @@ class Settings(BaseSettings):
     AUDIT_SENTINEL_SHARED_KEY: str = ""
     AUDIT_SENTINEL_LOG_TYPE: str = "SandboxAudit"
 
+    REPORT_STORAGE_BACKEND: Literal["local", "s3"] = "local"
+    REPORT_STORAGE_PATH: str = "/app/storage/reports"
+    REPORT_S3_BUCKET: str = ""
+    REPORT_S3_PREFIX: str = ""
+    REPORT_S3_REGION: str = "us-east-1"
+    REPORT_S3_ENDPOINT_URL: str = ""
+    REPORT_S3_ACCESS_KEY_ID: str = ""
+    REPORT_S3_SECRET_ACCESS_KEY: str = ""
+
+    @property
+    def report_storage_root_path(self) -> Path:
+        return Path(self.REPORT_STORAGE_PATH)
+
     @property
     def database_url(self) -> str:
         return (
@@ -105,6 +119,9 @@ class Settings(BaseSettings):
 
         if not self.RESEND_API_KEY:
             raise ValueError("Production requires RESEND_API_KEY for transactional email")
+
+        if self.REPORT_STORAGE_BACKEND == "s3" and not self.REPORT_S3_BUCKET:
+            raise ValueError("Production requires REPORT_S3_BUCKET when REPORT_STORAGE_BACKEND=s3")
 
         return self
 
