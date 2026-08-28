@@ -27,7 +27,8 @@ Additionally enforced by defaults (not validator errors):
 
 | Behavior | Production |
 |----------|------------|
-| OpenAPI `/docs`, `/redoc` | Disabled |
+| OpenAPI `/docs`, `/redoc`, `/openapi.json` | Disabled at app + nginx public edge |
+| Prometheus `/metrics` | Not on public edge (nginx 404); internal scrape `backend:8000/metrics` |
 | `SCAN_RUN_INLINE` | `false` unless explicitly set |
 | `REPORT_RUN_INLINE` | `false` unless explicitly set |
 

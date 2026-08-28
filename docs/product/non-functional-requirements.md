@@ -58,7 +58,7 @@ Not in V1: OAuth/OIDC, WebAuthn, MFA beyond email OTP, product API keys.
 |----|-------------|------|-------|
 | **NFR-SEC-14** | Responses shall include `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` disabling camera/mic/geolocation, `Cache-Control: no-store`, and a restrictive CSP. Production shall add HSTS (`max-age=31536000; includeSubDomains`). | Enforced | `SecurityHeadersMiddleware`. |
 | **NFR-SEC-15** | CORS shall allow only origins in `CORS_ORIGINS`. | Enforced | Credentials allowed when `CORS_ALLOW_CREDENTIALS=true`. CORS is not a substitute for auth. |
-| **NFR-SEC-16** | OpenAPI `/docs` and `/redoc` shall be disabled when `ENVIRONMENT=production`. | Enforced | |
+| **NFR-SEC-16** | OpenAPI `/docs`, `/redoc`, and `/openapi.json` shall be disabled when `ENVIRONMENT=production`. Public nginx shall not proxy `/metrics`. | Enforced (app + `nginx.prod.conf`) | |
 | **NFR-SEC-17** | Agent ingest shall use a per-server credential, not a user JWT. Enrollment tokens (`sbe_…`) shall expire in **15 minutes** and be single-use. Permanent agent tokens shall not be shown in the UI. | Enforced | See FR-MON-*. |
 
 ### 1.5 RBAC

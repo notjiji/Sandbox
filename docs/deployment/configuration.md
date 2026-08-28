@@ -33,7 +33,8 @@ Effects:
 
 | Setting | Development (default) | Production |
 |---------|----------------------|------------|
-| OpenAPI `/docs`, `/redoc` | Enabled | **Disabled** |
+| OpenAPI `/docs`, `/redoc`, `/openapi.json` | Enabled | **Disabled** (app + nginx) |
+| Prometheus `/metrics` on public edge | Proxied (dev nginx) | **404** at nginx; scrape `backend:8000/metrics` internally |
 | `SCAN_RUN_INLINE` | `true` (unless set) | `false` |
 | `REPORT_RUN_INLINE` | `true` (unless set) | `false` |
 | Production validator | Skipped | Enforces non-default secrets, password, Resend |

@@ -4,7 +4,8 @@
 
 - `setup_logging` on API and Celery (`sandbox-api` / `sandbox-worker`).
 - Request logging middleware; request/correlation IDs.
-- `prometheus_fastapi_instrumentator` exposes `/metrics`.
+- `prometheus_fastapi_instrumentator` exposes `/metrics` on the **backend** (internal Docker network).
+- **Production:** nginx returns 404 for `/metrics` on the public edge; Prometheus scrapes `backend:8000/metrics` directly (see `infrastructure/monitoring/prometheus.yml`).
 - Health: `/health` (process up), `/health/live`, `/health/ready` (Postgres `SELECT 1` + Redis `PING`).
 
 ## Compose stack

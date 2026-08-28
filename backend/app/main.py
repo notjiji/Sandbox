@@ -17,6 +17,7 @@ from app.core.logging import get_logger, setup_logging
 from app.core.rate_limit import limiter
 from app.core.responses import error_response
 from app.core.version import API_VERSION
+from app.middleware.production_boundary import production_operator_docs_middleware
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.core.request_context import RequestContextMiddleware
@@ -38,12 +39,15 @@ async def lifespan(_app: FastAPI):
     yield
 
 
+_is_production = settings.ENVIRONMENT == "production"
+
 app = FastAPI(
     title="Sandbox",
     version=API_VERSION,
     lifespan=lifespan,
-    docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
-    redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
+    docs_url="/docs" if not _is_production else None,
+    redoc_url="/redoc" if not _is_production else None,
+    openapi_url="/openapi.json" if not _is_production else None,
 )
 
 app.state.limiter = limiter
@@ -52,6 +56,8 @@ app.include_router(api_v1_router, prefix="/api/v1")
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestContextMiddleware)
+if _is_production:
+    app.middleware("http")(production_operator_docs_middleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -70,7 +76,9 @@ app.add_middleware(
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+# Prometheus scrapes backend:8000/metrics on the internal Docker network — not via public nginx.
+instrumentator = Instrumentator().instrument(app)
+instrumentator.expose(app, endpoint="/metrics")
 
 
 @app.exception_handler(RateLimitExceeded)

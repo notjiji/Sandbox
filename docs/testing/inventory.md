@@ -19,7 +19,7 @@
 | `test_asset_verification.py` | Ownership challenge/verify, scan gate, invalidation on identity updates |
 | `test_risk_engine.py` | Scoring engine |
 | `test_dashboard.py` | Dashboard |
-| `test_backup_restore.py` | Backup → restore integration (Docker) |
+| `test_production_security_boundary.py` | Production public-edge blocks (OpenAPI, nginx config) |
 | `test_project_reports.py` / `test_asset_reports.py` / `test_reports_rbac.py` / `test_report_storage.py` | Reports |
 | `test_monitoring.py` | Agent/metrics/alerts |
 | `test_audit_logs.py` | Audit API, export, integrity |
