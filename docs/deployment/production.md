@@ -1,8 +1,17 @@
 # Production deployment
 
-The repository ships a **development-oriented** `docker-compose.yml`: bind-mounted source, uvicorn `--reload`, default Grafana credentials, and plain HTTP on port 80. Production deployment means satisfying the application's production validator and adding infrastructure this repo does **not** provide (TLS, backups, secret management, hardened images).
+Production uses **`docker-compose.prod.yml`**: baked images (no bind mounts), static frontend, multi-worker API, Celery workers, and **only nginx** publishing a host port. Postgres, Redis, and workers stay on the internal Docker network.
 
-There is no separate production Compose overlay or Kubernetes chart in this repository.
+Place a **TLS-terminating edge proxy** (Caddy, Traefik, ALB, etc.) in front of nginx. The compose file does not terminate HTTPS.
+
+```bash
+cp .env.production.example .env
+# edit secrets and URLs
+docker compose -f docker-compose.prod.yml run --rm migrate
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Development remains **`docker-compose.yml`** (hot reload, Vite, exposed Postgres/Redis/Grafana for local debugging).
 
 ## Production gates (enforced in code)
 
@@ -31,9 +40,9 @@ Scans and reports then require a running **Celery worker** and **Redis**.
    Internet ───────►│ TLS proxy   │  (you provide: Caddy, Traefik, ALB, etc.)
                     │ (HTTPS)     │
                     └──────┬──────┘
-                           │ HTTP to nginx :80
+                           │ HTTP to nginx :80 (only public compose port)
                     ┌──────▼──────┐
-                    │ nginx       │  /api → backend, / → frontend static
+                    │ nginx       │  /api → backend, / → frontend (static)
                     └──────┬──────┘
            ┌───────────────┼───────────────┐
            ▼               ▼               ▼
@@ -41,10 +50,12 @@ Scans and reports then require a running **Celery worker** and **Redis**.
            │               │               │
            └───────────────┼───────────────┘
                            ▼
-                    postgres + redis
+              postgres + redis (internal network)
 ```
 
-Observability (Prometheus, Grafana, Loki) is optional but recommended for operations.
+Compose file: `docker-compose.prod.yml`. Env template: `.env.production.example`.
+
+Observability (Prometheus, Grafana, Loki) is **not** included in the production compose file. Run a separate stack or bind monitoring to the internal network only.
 
 ## Minimum production checklist
 
@@ -130,12 +141,12 @@ Compose already healthchecks `/health/ready` on the backend container.
 
 ## What this repository does not provide
 
-- Production Compose/Kubernetes manifests
-- TLS certificates or Let's Encrypt automation
-- Database backups or point-in-time recovery
+- TLS certificates or Let's Encrypt automation (terminate at your edge proxy)
+- Database backups or point-in-time recovery (see [backups.md](./backups.md))
 - WAF, DDoS protection, or IP allowlists
 - CI/CD deploy pipelines
 - Secret rotation runbooks
+- Kubernetes manifests
 
 Those are operator responsibilities. [backups.md](./backups.md) documents manual backup procedures you can run until automated jobs exist.
 

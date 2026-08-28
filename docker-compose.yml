@@ -1,3 +1,13 @@
+# Development Compose — hot reload, bind mounts, Vite dev server, local observability.
+#
+# For production use docker-compose.prod.yml instead.
+#
+#   cp .env.example .env
+#   docker compose up -d
+#   docker compose exec backend alembic upgrade head
+
+name: sandbox-dev
+
 x-backend-env: &backend-env
   POSTGRES_HOST: postgres
   POSTGRES_PORT: 5432
@@ -37,7 +47,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -141,7 +151,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.55.1
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -171,7 +181,7 @@ services:
   loki:
     image: grafana/loki:3.3.2
     ports:
-      - "3100:3100"
+      - "${LOKI_PORT:-3100}:3100"
     volumes:
       - ./infrastructure/logging/loki-config.yml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
