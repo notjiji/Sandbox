@@ -94,6 +94,21 @@ When nginx is the public entry, set `FRONTEND_URL` to your public origin (e.g. `
 
 When `false`, Celery worker must be running or scans/reports stay queued.
 
+### Celery timeouts and beat PID
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SCAN_TASK_SOFT_TIMEOUT_SECONDS` | `3300` | Scan soft time limit (seconds) |
+| `SCAN_TASK_HARD_TIMEOUT_SECONDS` | `3600` | Scan hard time limit |
+| `SCAN_STALE_RUNNING_SECONDS` | `3900` | Fail `running` scans older than this (reconcile job) |
+| `REPORT_TASK_SOFT_TIMEOUT_SECONDS` | `600` | Report soft time limit |
+| `REPORT_TASK_HARD_TIMEOUT_SECONDS` | `900` | Report hard time limit |
+| `REPORT_STALE_GENERATING_SECONDS` | `1200` | Fail `generating` reports older than this |
+| `CELERY_BEAT_PIDFILE` | `/tmp/celerybeat.pid` | Beat healthcheck PID file |
+| `CELERY_CONCURRENCY` | `4` (prod Compose) | Worker process concurrency |
+
+Details: [workers.md](./workers.md).
+
 ## Report file storage
 
 | Variable | Default | Purpose |

@@ -20,6 +20,8 @@ Always `alembic upgrade head` before relying on audit hash columns or `delayed` 
 
 Celery must run for scheduled scans, offline agent reconcile, and non-inline scan/report execution. Inline mode can hide a missing worker in development.
 
+Worker healthchecks: `python -m app.workers.health worker|beat` in Compose. See [workers.md](./workers.md).
+
 ## Logs
 
 `make logs` / `make backend-logs`. Loki/Grafana if the monitoring profile is up.

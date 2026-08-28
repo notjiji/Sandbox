@@ -24,4 +24,4 @@ This stack is **local observability**, not a hosted APM product. Alerting rules 
 
 ## Audit vs ops logs
 
-`audit_logs` are a **compliance/activity** trail. They are not application error logs. Failed Celery tasks are logged via `task_failure`.
+`audit_logs` are a **compliance/activity** trail. They are not application error logs. Failed Celery tasks emit structured logs via `task_failure` (`background job failed`, `job_type`, `timed_out`) — see [deployment/workers.md](../deployment/workers.md).

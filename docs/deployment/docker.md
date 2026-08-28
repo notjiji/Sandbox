@@ -7,8 +7,8 @@ File: `docker-compose.yml`. Network: `sandbox`.
 | postgres | postgres:16-alpine | Volume `postgres_data`; health `pg_isready` |
 | redis | redis:7-alpine | Volume `redis_data` |
 | backend | `./backend` | `uvicorn app.main:app --reload`; env from `.env` + Compose overrides |
-| celery-worker | same image | `celery -A app.workers.celery_app worker` |
-| celery-beat | same image | beat scheduler |
+| celery-worker | same image | `celery -A app.workers.celery_app worker` — healthcheck via `python -m app.workers.health worker` |
+| celery-beat | same image | beat scheduler — **exactly one replica**; healthcheck via `python -m app.workers.health beat` |
 | frontend | `./frontend` target `dev` | Vite; `VITE_API_BASE_URL=/api/v1` |
 | nginx | nginx:1.27-alpine | Config `infrastructure/nginx/nginx.conf` |
 | prometheus | prom/prometheus:v2.55.1 | |

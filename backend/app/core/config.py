@@ -57,6 +57,14 @@ class Settings(BaseSettings):
     SCAN_RUN_INLINE: bool | None = None
     REPORT_RUN_INLINE: bool | None = None
 
+    SCAN_TASK_SOFT_TIMEOUT_SECONDS: int = 3300
+    SCAN_TASK_HARD_TIMEOUT_SECONDS: int = 3600
+    SCAN_STALE_RUNNING_SECONDS: int = 3900
+    REPORT_TASK_SOFT_TIMEOUT_SECONDS: int = 600
+    REPORT_TASK_HARD_TIMEOUT_SECONDS: int = 900
+    REPORT_STALE_GENERATING_SECONDS: int = 1200
+    CELERY_BEAT_PIDFILE: str = "/tmp/celerybeat.pid"
+
     RESEND_API_KEY: str = ""
     RESEND_FROM: str = "Sandbox <onboarding@resend.dev>"
 
@@ -90,6 +98,8 @@ class Settings(BaseSettings):
     @property
     def ai_live_enabled(self) -> bool:
         return bool(self.AI_ENABLED and self.OPENAI_API_KEY.strip())
+
+    @property
     def report_storage_root_path(self) -> Path:
         return Path(self.REPORT_STORAGE_PATH)
 

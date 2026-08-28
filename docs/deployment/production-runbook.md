@@ -26,7 +26,9 @@ Confirm containers:
 docker compose ps
 ```
 
-Expected: `postgres` and `redis` healthy; `backend` healthy (readiness); `celery-worker`, `celery-beat`, `nginx`, `frontend` running.
+Expected: `postgres` and `redis` healthy; `backend` healthy (readiness); `celery-worker` and `celery-beat` **healthy**; `nginx`, `frontend` running.
+
+Worker/beat reliability: [workers.md](./workers.md).
 
 ---
 
@@ -263,12 +265,14 @@ Work top-down: health → logs → restart → config.
 
 ### Celery stops
 
-1. `docker compose ps celery-worker celery-beat redis`.
+1. `docker compose ps celery-worker celery-beat redis` — worker and beat should show **healthy**.
 2. Redis ping: `docker compose exec redis redis-cli ping` → `PONG`.
-3. Logs: `docker compose logs --tail 200 celery-worker celery-beat`.
-4. Restart: `docker compose restart celery-worker celery-beat`.
-5. If Redis was wiped: queues are empty (expected); re-queue failed scans/reports from the UI/API.
-6. Only **one** `celery-beat` instance should run.
+3. Manual probe: `docker compose exec celery-worker python -m app.workers.health worker`.
+4. Logs: `docker compose logs --tail 200 celery-worker celery-beat` (filter `background job failed`, `reconciled stale`).
+5. Restart worker only: `docker compose restart celery-worker` (in-flight tasks re-queued via `acks_late`).
+6. Restart beat only: `docker compose restart celery-beat`.
+7. If Redis was wiped: queues are empty (expected); stale reconcile marks stuck scans/reports `failed` within ~5 minutes.
+8. Only **one** `celery-beat` instance — see [workers.md](./workers.md).
 
 ### SIEM stops receiving events
 

@@ -122,6 +122,7 @@ services:
     build:
       context: ./backend
     restart: unless-stopped
+    stop_grace_period: 120s
     env_file:
       - .env
     environment:
@@ -133,9 +134,16 @@ services:
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=${CELERY_CONCURRENCY:-4}
     volumes:
       - report_storage:/app/storage
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.workers.health", "worker"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     networks:
       - internal
 
+  # Run exactly ONE celery-beat replica. Never scale this service horizontally.
   celery-beat:
     build:
       context: ./backend
@@ -144,11 +152,21 @@ services:
       - .env
     environment:
       <<: *backend-env
+      CELERY_BEAT_PIDFILE: /tmp/celerybeat.pid
     depends_on:
       <<: *backend-depends
       celery-worker:
         condition: service_started
-    command: celery -A app.workers.celery_app beat --loglevel=info
+    command: >
+      celery -A app.workers.celery_app beat --loglevel=info
+      --pidfile=/tmp/celerybeat.pid
+      --schedule=/tmp/celerybeat-schedule
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.workers.health", "beat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     networks:
       - internal
 

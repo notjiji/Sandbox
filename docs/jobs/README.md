@@ -75,8 +75,11 @@ Scheduled tasks defined in `celery_app.conf.beat_schedule`:
 
 - **`check-scan-schedules`** — evaluates cron schedules, creates/queues due scans
 - **`reconcile-offline-agents`** — expires stale monitoring agents
+- **`reconcile-stale-jobs`** — fails scans/reports stuck after worker crash or timeout
 
-Beat runs as a separate Docker service (`celery-beat` in docker-compose).
+**Run exactly one beat instance** per environment. See [../deployment/workers.md](../deployment/workers.md).
+
+Beat runs as a separate Docker service (`celery-beat` in docker-compose) with `--pidfile` for healthchecks.
 
 ## Running locally
 
@@ -89,6 +92,18 @@ docker compose logs -f celery-worker celery-beat
 
 Tasks use `bind=True` with logging on failure. Failed scans set scan status to `failed`; failed reports set report status to `failed`. DB transactions are committed or rolled back in `finally` blocks.
 
+### Reliability (production)
+
+| Mechanism | Location |
+|-----------|----------|
+| Soft/hard time limits | `celery_app.conf.task_annotations` + config timeouts |
+| `task_failure` structured logging | `app/workers/job_failures.py` |
+| State recovery on failure | `recover_failed_job_state` → `scan_recovery.py` |
+| Stale `running`/`generating` reconcile | Beat task `reconcile_stale_jobs` (every 5 min) |
+| Worker/beat healthchecks | `python -m app.workers.health` |
+
+Full ops guide: [../deployment/workers.md](../deployment/workers.md).
+
 ## Correlation IDs
 
 Scan tasks accept optional `correlation_id` for log tracing across API → worker → plugins.
@@ -97,12 +112,13 @@ Scan tasks accept optional `correlation_id` for log tracing across API → worke
 
 - [../scan-engine.md](../scan-engine.md) — what happens inside `execute_scan`
 - [../reports/generation-flow.md](../reports/generation-flow.md) — report pipeline in worker
+- [../deployment/workers.md](../deployment/workers.md) — health, restart policy, timeouts
 
 ## Docker services
 
 | Service | Command |
 |---------|---------|
-| `celery-worker` | `celery -A app.workers.celery_app worker` |
-| `celery-beat` | `celery -A app.workers.celery_app beat` |
+| `celery-worker` | `celery -A app.workers.celery_app worker` (+ healthcheck) |
+| `celery-beat` | `celery -A app.workers.celery_app beat --pidfile=…` (**single replica**) |
 
 See `docker-compose.yml` and `Makefile` targets `backend-logs`, `logs`.

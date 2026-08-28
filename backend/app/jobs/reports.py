@@ -4,21 +4,36 @@ from __future__ import annotations
 
 import uuid
 
+from celery.exceptions import SoftTimeLimitExceeded
+
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
 from app.core.report_engine.pipeline import run_report_pipeline
+from app.scans.services.scan_recovery import fail_generating_report
 from app.workers.celery_app import celery_app
 
 logger = get_logger("sandbox.jobs.reports")
 
 
-@celery_app.task(name="app.jobs.reports.generate_report", bind=True, max_retries=1)
+@celery_app.task(
+    name="app.jobs.reports.generate_report",
+    bind=True,
+    max_retries=1,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
 def generate_report_task(self, *, report_id: str) -> str:
     db = SessionLocal()
     try:
         run_report_pipeline(db, report_id=uuid.UUID(report_id))
         db.commit()
         return "ok"
+    except SoftTimeLimitExceeded:
+        db.rollback()
+        fail_generating_report(db, report_id=uuid.UUID(report_id), reason="report_task_timeout")
+        db.commit()
+        logger.error("report worker soft timeout", extra={"report_id": report_id})
+        raise
     except Exception:
         db.rollback()
         logger.exception("report worker failed", extra={"report_id": report_id})
