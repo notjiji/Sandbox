@@ -31,7 +31,7 @@ Day-2 ops (restart, migrate, backup, incidents): [production-runbook.md](./produ
 ## What ops docs do not include
 
 - Multi-node Postgres
-- TLS termination beyond whatever you put in front of nginx
+- TLS termination beyond whatever you put in front of nginx — default: [tls-edge.md](./tls-edge.md) (Caddy)
 - Secret rotation runbooks
 
 Backup/restore procedures: [backups.md](./backups.md) and the runbook.

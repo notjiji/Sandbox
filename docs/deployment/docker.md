@@ -21,3 +21,12 @@ File: `docker-compose.yml`. Network: `sandbox`.
 Backend and workers mount `./backend:/app` (live code). Frontend mounts `./frontend` plus an anonymous `frontend_node_modules` volume.
 
 This is a **development Compose file** (reload, default Grafana password, bind-mounted source). It is not by itself a hardened production topology.
+
+## Production (`docker-compose.prod.yml` + optional `docker-compose.edge.yml`)
+
+| Service | Notes |
+|---------|--------|
+| `caddy` | Edge overlay only — public `:443`/`:80`, automatic TLS — [tls-edge.md](./tls-edge.md) |
+| `nginx` | Internal app router; config `infrastructure/nginx/nginx.prod.conf` |
+| `backend`, `celery-worker`, `celery-beat`, `frontend`, `backup` | No public ports |
+| `postgres`, `redis` | Internal network only |

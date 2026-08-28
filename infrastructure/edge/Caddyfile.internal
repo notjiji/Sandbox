@@ -1,0 +1,21 @@
+# Staging / single-server dev without public DNS — Caddy internal CA (browser warning).
+# Use: CADDYFILE=./infrastructure/edge/Caddyfile.internal in .env
+# Set EDGE_DOMAIN to the hostname you browse (e.g. localhost or sandbox.local).
+
+{
+	# No ACME email required for internal TLS.
+}
+
+{$EDGE_DOMAIN:localhost} {
+	encode gzip zstd
+	tls internal
+
+	@http protocol http
+	redir @http https://{host}{uri} permanent
+
+	reverse_proxy nginx:80 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto https
+	}
+}

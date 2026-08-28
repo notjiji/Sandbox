@@ -1,15 +1,17 @@
 # Production deployment
 
-Production uses **`docker-compose.prod.yml`**: baked images (no bind mounts), static frontend, multi-worker API, Celery workers, and **only nginx** publishing a host port. Postgres, Redis, and workers stay on the internal Docker network.
+Production uses **`docker-compose.prod.yml`**: baked images (no bind mounts), static frontend, multi-worker API, Celery workers, and an internal app nginx.
 
-Place a **TLS-terminating edge proxy** (Caddy, Traefik, ALB, etc.) in front of nginx. The compose file does not terminate HTTPS.
+**Public HTTPS (recommended):** add **`docker-compose.edge.yml`** — Caddy terminates TLS on `:443` and forwards to nginx. See [tls-edge.md](./tls-edge.md).
 
 ```bash
 cp .env.production.example .env
-# edit secrets and URLs
-docker compose -f docker-compose.prod.yml run --rm migrate
-docker compose -f docker-compose.prod.yml up -d --build
+# edit secrets, EDGE_DOMAIN, ACME_EMAIL, and HTTPS URLs
+docker compose -f docker-compose.prod.yml -f docker-compose.edge.yml run --rm migrate
+docker compose -f docker-compose.prod.yml -f docker-compose.edge.yml up -d --build
 ```
+
+Without the edge overlay, nginx may bind HTTP only (`NGINX_HTTP_PORT`) — suitable for localhost or when you terminate TLS with an external proxy.
 
 Development remains **`docker-compose.yml`** (hot reload, Vite, exposed Postgres/Redis/Grafana for local debugging).
 
@@ -42,24 +44,22 @@ Scans and reports then require a running **Celery worker** and **Redis**.
 ## Recommended production architecture
 
 ```
-                    ┌─────────────┐
-   Internet ───────►│ TLS proxy   │  (you provide: Caddy, Traefik, ALB, etc.)
-                    │ (HTTPS)     │
-                    └──────┬──────┘
-                           │ HTTP to nginx :80 (only public compose port)
-                    ┌──────▼──────┐
-                    │ nginx       │  /api → backend, / → frontend (static)
-                    └──────┬──────┘
-           ┌───────────────┼───────────────┐
-           ▼               ▼               ▼
-      backend         celery-worker    celery-beat
-           │               │               │
-           └───────────────┼───────────────┘
-                           ▼
-              postgres + redis (internal network)
+User
+ │  HTTPS :443
+ ▼
+Caddy (docker-compose.edge.yml — TLS, ACME, redirect)
+ │
+ │  HTTP (internal Docker network)
+ ▼
+nginx  —  /api → backend, / → frontend (static)
+ │
+ ├── backend ── celery-worker / celery-beat
+ └── postgres + redis (internal only)
 ```
 
-Compose file: `docker-compose.prod.yml`. Env template: `.env.production.example`.
+Compose: `docker-compose.prod.yml` + `docker-compose.edge.yml`. Env: `.env.production.example`. Guide: [tls-edge.md](./tls-edge.md).
+
+Alternative: terminate TLS with Traefik, host nginx, or a cloud load balancer — forward HTTP to `NGINX_HTTP_PORT=127.0.0.1:8080` with `X-Forwarded-Proto: https`.
 
 Observability (Prometheus, Grafana, Loki) is **not** included in the production compose file. Run a separate stack or bind monitoring to the internal network only.
 
@@ -77,10 +77,10 @@ Observability (Prometheus, Grafana, Loki) is **not** included in the production 
 - [ ] Run `alembic upgrade head` before serving traffic
 - [ ] Confirm Celery worker and beat containers are healthy
 
-### Infrastructure (outside repo)
+### Infrastructure
 
-- [ ] TLS certificate and termination in front of nginx
-- [ ] Firewall: expose only 443 (and admin paths if needed); do not expose Postgres/Redis publicly
+- [ ] TLS on public edge — `docker-compose.edge.yml` (Caddy) or external proxy — [tls-edge.md](./tls-edge.md)
+- [ ] Firewall: expose only **443** (and **80** for ACME redirect); do not expose Postgres/Redis publicly
 - [ ] Change Grafana default admin password or disable public Grafana access
 - [ ] Set `BACKUP_ENCRYPTION_PASSPHRASE` and verify backup service is running (`docker compose ps backup`)
 - [ ] Postgres backups per [backups.md](./backups.md): daily dump (automated), 7-day retention, encrypted `backup_storage` volume, monthly restore test
@@ -148,14 +148,14 @@ Compose already healthchecks `/health/ready` on the backend container.
 
 ## What this repository does not provide
 
-- TLS certificates or Let's Encrypt automation (terminate at your edge proxy)
-- Database backups or point-in-time recovery (see [backups.md](./backups.md))
+- Multi-node Postgres HA or managed cloud wiring (operator choice beyond Compose)
+- Database point-in-time recovery beyond [backups.md](./backups.md)
 - WAF, DDoS protection, or IP allowlists
 - Automated **deploy** pipelines (CI **quality gate** exists — [ci.md](./ci.md))
 - Secret rotation runbooks
 - Kubernetes manifests
 
-Those are operator responsibilities for managed cloud targets. Self-hosted Compose includes the `backup` service — see [backups.md](./backups.md).
+Caddy + Let's Encrypt **is** included via `docker-compose.edge.yml` for single-server deployments. Cloud load balancers and Traefik remain valid alternatives — see [tls-edge.md](./tls-edge.md).
 
 ## Staging
 

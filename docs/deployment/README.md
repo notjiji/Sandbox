@@ -10,6 +10,7 @@ Docker Compose is the documented runtime for local and small-team deployments. T
 | [CI quality gate](./ci.md) | GitHub Actions pipeline (pytest, build, Docker, secrets) |
 | [Production runbook](./production-runbook.md) | Startup, health, logs, restart, migrate, backup, incidents |
 | [Workers and scheduler](./workers.md) | Celery health, restart policy, timeouts, failure logging, single beat |
+| [TLS and public edge](./tls-edge.md) | Caddy HTTPS entry, Let's Encrypt, bring-your-own proxy |
 | [Backups](./backups.md) | Postgres policy (daily / 7-day / encrypted / monthly restore test); reports, config, Redis |
 | [Troubleshooting](./troubleshooting.md) | Common failures and fixes |
 

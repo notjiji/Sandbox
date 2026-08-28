@@ -109,6 +109,19 @@ When `false`, Celery worker must be running or scans/reports stay queued.
 
 Details: [workers.md](./workers.md).
 
+### TLS edge (production HTTPS)
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `EDGE_DOMAIN` | — | Public hostname (Caddy site + ACME) |
+| `ACME_EMAIL` | — | Let's Encrypt account email |
+| `EDGE_HTTP_PORT` | `80` | Host port for HTTP / ACME |
+| `EDGE_HTTPS_PORT` | `443` | Host port for HTTPS |
+| `CADDYFILE` | `./infrastructure/edge/Caddyfile` | Use `Caddyfile.internal` for staging |
+| `NGINX_HTTP_PORT` | `80` | Host bind when edge overlay is **not** used |
+
+Deploy: `docker-compose.prod.yml` + `docker-compose.edge.yml`. Guide: [tls-edge.md](./tls-edge.md).
+
 ## Report file storage
 
 | Variable | Default | Purpose |
@@ -218,7 +231,7 @@ Structured JSON logs from the backend; Promtail ships container logs to Loki whe
 - [ ] `FRONTEND_URL` and `PUBLIC_API_URL` match public URLs
 - [ ] `CORS_ORIGINS` lists only trusted origins
 - [ ] Grafana admin password changed
-- [ ] TLS terminated in front of nginx (not in-repo)
+- [ ] TLS edge — `docker-compose.edge.yml` or external proxy — [tls-edge.md](./tls-edge.md)
 - [ ] Celery worker + beat running (`SCAN_RUN_INLINE=false`)
 
 Related: [environment.md](./environment.md) (legacy quick reference), [health.md](./health.md) (probes).

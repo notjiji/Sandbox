@@ -12,7 +12,7 @@ Backend tests (pytest)
 Frontend build (npm run build)
         │
         ▼
-Production Docker build (docker-compose.prod.yml)
+Production Docker build (docker-compose.prod.yml + Caddy validate)
         │
         ▼
 Security / secret checks (gitleaks + repo policy)
@@ -28,7 +28,7 @@ FAIL → block
 |-----|----------------|
 | **Backend tests** | `pytest tests app` on Python 3.12 (SQLite in-memory fixtures) |
 | **Frontend build** | `npm ci && npm run build` (TypeScript + Vite production bundle) |
-| **Production Docker build** | `docker compose -f docker-compose.prod.yml build` |
+| **Production Docker build** | `docker compose -f docker-compose.prod.yml build` + `scripts/ci/validate-edge.sh` |
 | **Security** | Gitleaks scan + `scripts/ci/check-secrets.sh` + test inventory drift check |
 | **Quality gate** | Fails if any upstream job failed |
 
@@ -44,6 +44,7 @@ Or step through the same commands manually:
 make test
 cd frontend && npm ci && npm run build
 docker compose -f docker-compose.prod.yml build
+bash scripts/ci/validate-edge.sh
 bash scripts/ci/check-secrets.sh
 bash scripts/ci/check-test-inventory.sh
 ```

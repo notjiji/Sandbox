@@ -79,7 +79,7 @@ Equivalent: `make up`.
 5. **What does *not* run automatically**
    - **Database migrations** — schema is not applied until you run `make migrate`
    - **Demo seed data** — optional; run `make seed` after migrate
-   - **TLS** — nginx listens on plain HTTP port 80 only
+   - **TLS** — local dev uses HTTP on port 80; production HTTPS uses `docker-compose.edge.yml` (Caddy) — [tls-edge.md](./tls-edge.md)
 
 6. **First boot timing** — Backend healthcheck allows ~15s start period. Until Postgres and Redis are healthy, backend readiness returns 503. Frontend Vite may take 30–60s on first `npm install` inside the container.
 

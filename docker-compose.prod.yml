@@ -1,13 +1,15 @@
-# Production Compose — internal data plane, single public HTTP entry (nginx).
+# Production Compose — internal data plane; public HTTPS via docker-compose.edge.yml (Caddy).
 #
-# Place a TLS-terminating edge proxy (Caddy, Traefik, ALB, …) in front of nginx.
-# Only nginx publishes a host port. Postgres, Redis, and workers stay on the internal network.
+# Without the edge overlay, nginx may bind NGINX_HTTP_PORT (HTTP only — not for public production).
+# With the edge overlay: User → HTTPS :443 → Caddy → nginx:80 → frontend + /api → backend.
 #
 # Usage:
 #   cp .env.production.example .env
-#   # edit secrets and URLs
-#   docker compose -f docker-compose.prod.yml run --rm migrate
-#   docker compose -f docker-compose.prod.yml up -d
+#   # edit secrets, EDGE_DOMAIN, and URLs
+#   docker compose -f docker-compose.prod.yml -f docker-compose.edge.yml run --rm migrate
+#   docker compose -f docker-compose.prod.yml -f docker-compose.edge.yml up -d
+#
+# See docs/deployment/tls-edge.md
 
 name: sandbox-prod
 

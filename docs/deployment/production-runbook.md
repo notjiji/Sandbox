@@ -9,15 +9,17 @@ Assume you are in the repository root with a valid `.env`.
 ## Startup
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose.prod.yml -f docker-compose.edge.yml up -d
 ```
 
-Or: `make up`.
+Or: `make prod-edge-up` (after `make prod-edge-migrate` on first boot).
+
+Without TLS edge (HTTP only / external proxy): `make prod-up`.
 
 Then apply schema if this is a new database or you have pending migrations:
 
 ```bash
-make migrate
+make prod-edge-migrate   # or: make prod-migrate
 ```
 
 Confirm containers:
@@ -26,9 +28,9 @@ Confirm containers:
 docker compose ps
 ```
 
-Expected: `postgres` and `redis` healthy; `backend` healthy (readiness); `celery-worker` and `celery-beat` **healthy**; `nginx`, `frontend` running.
+Expected: `postgres` and `redis` healthy; `backend` healthy (readiness); `celery-worker` and `celery-beat` **healthy**; `caddy` healthy (edge overlay); `nginx`, `frontend` running.
 
-Worker/beat reliability: [workers.md](./workers.md).
+TLS edge: [tls-edge.md](./tls-edge.md). Worker/beat reliability: [workers.md](./workers.md).
 
 ---
 

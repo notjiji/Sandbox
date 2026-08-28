@@ -1,0 +1,43 @@
+# TLS edge overlay — use with docker-compose.prod.yml
+#
+# Public entry:
+#   User → HTTPS :443 → Caddy (TLS termination) → nginx:80 → React + FastAPI
+#
+# Usage:
+#   cp .env.production.example .env
+#   # set EDGE_DOMAIN, ACME_EMAIL, FRONTEND_URL, CORS_ORIGINS, PUBLIC_API_URL
+#   docker compose -f docker-compose.prod.yml -f docker-compose.edge.yml run --rm migrate
+#   docker compose -f docker-compose.prod.yml -f docker-compose.edge.yml up -d --build
+#
+# Staging without public DNS:
+#   CADDYFILE=./infrastructure/edge/Caddyfile.internal
+#   EDGE_DOMAIN=localhost
+#   FRONTEND_URL=https://localhost  (accept browser cert warning)
+
+services:
+  nginx:
+    # App nginx stays on the internal network only; Caddy is the sole public entry.
+    ports: []
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${EDGE_HTTP_PORT:-80}:80"
+      - "${EDGE_HTTPS_PORT:-443}:443"
+    environment:
+      EDGE_DOMAIN: ${EDGE_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ${CADDYFILE:-./infrastructure/edge/Caddyfile}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      nginx:
+        condition: service_started
+    networks:
+      - internal
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,4 +1,4 @@
-.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test ci prod-up prod-down prod-migrate prod-build backup-now backup-restore backup-restore-test backup-integration-test
+.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test ci prod-up prod-down prod-migrate prod-build prod-edge-up prod-edge-down prod-edge-migrate backup-now backup-restore backup-restore-test backup-integration-test
 
 up:
 	docker compose up -d
@@ -40,6 +40,7 @@ ci: test
 	docker compose -f docker-compose.prod.yml build
 	bash scripts/ci/check-secrets.sh
 	bash scripts/ci/check-test-inventory.sh
+	bash scripts/ci/validate-edge.sh
 
 prod-build:
 	docker compose -f docker-compose.prod.yml build
@@ -52,6 +53,17 @@ prod-up:
 
 prod-down:
 	docker compose -f docker-compose.prod.yml down
+
+PROD_COMPOSE = docker compose -f docker-compose.prod.yml -f docker-compose.edge.yml
+
+prod-edge-migrate:
+	$(PROD_COMPOSE) run --rm migrate
+
+prod-edge-up:
+	$(PROD_COMPOSE) up -d
+
+prod-edge-down:
+	$(PROD_COMPOSE) down
 
 backup-now:
 	docker compose -f docker-compose.prod.yml run --rm backup backup
