@@ -5,6 +5,8 @@ from typing import Literal
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.production_config import validate_production_settings as run_production_validation
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -22,11 +24,13 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     REDIS_URL: str
     OPENAI_API_KEY: str = ""
+    AI_ENABLED: bool | None = None
     AI_MODEL: str = "gpt-4o-mini"
     AI_TEMPERATURE: float = 0.2
     AI_MAX_OUTPUT_TOKENS: int = 2048
     AI_REQUEST_TIMEOUT_SECONDS: float = 60.0
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
+    DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:80,http://127.0.0.1:5173"
@@ -78,7 +82,14 @@ class Settings(BaseSettings):
     REPORT_S3_ACCESS_KEY_ID: str = ""
     REPORT_S3_SECRET_ACCESS_KEY: str = ""
 
+    BACKUP_ENCRYPTION_PASSPHRASE: str = ""
+    BACKUP_RETENTION_DAYS: int = 7
+    BACKUP_REPORT_FILES: bool = True
+    BACKUP_S3_URI: str = ""
+
     @property
+    def ai_live_enabled(self) -> bool:
+        return bool(self.AI_ENABLED and self.OPENAI_API_KEY.strip())
     def report_storage_root_path(self) -> Path:
         return Path(self.REPORT_STORAGE_PATH)
 
@@ -107,22 +118,13 @@ class Settings(BaseSettings):
             object.__setattr__(self, "SCAN_RUN_INLINE", self.ENVIRONMENT == "development")
         if self.REPORT_RUN_INLINE is None:
             object.__setattr__(self, "REPORT_RUN_INLINE", self.ENVIRONMENT == "development")
+        if self.AI_ENABLED is None:
+            object.__setattr__(self, "AI_ENABLED", self.ENVIRONMENT != "production")
 
         if self.ENVIRONMENT != "production":
             return self
 
-        if self.SECRET_KEY.startswith("change-me") or self.JWT_SECRET.startswith("change-me"):
-            raise ValueError("Production requires non-default SECRET_KEY and JWT_SECRET values")
-
-        if "changeme" in self.POSTGRES_PASSWORD.lower():
-            raise ValueError("Production requires a non-default POSTGRES_PASSWORD")
-
-        if not self.RESEND_API_KEY:
-            raise ValueError("Production requires RESEND_API_KEY for transactional email")
-
-        if self.REPORT_STORAGE_BACKEND == "s3" and not self.REPORT_S3_BUCKET:
-            raise ValueError("Production requires REPORT_S3_BUCKET when REPORT_STORAGE_BACKEND=s3")
-
+        run_production_validation(self)
         return self
 
 

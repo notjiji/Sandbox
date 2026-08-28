@@ -93,7 +93,7 @@ SQL injection is mitigated by SQLAlchemy bound parameters. XSS is mitigated by J
 | ID | Requirement | Kind | Notes |
 |----|-------------|------|-------|
 | **NFR-SEC-28** | Secrets shall be supplied via environment variables / `.env`, not committed. `.env.example` shall contain placeholders only. | Enforced | `SECRET_KEY`, `JWT_SECRET`, DB password, Redis URL, optional OpenAI / Resend / SIEM tokens. |
-| **NFR-SEC-29** | Production startup shall refuse default `SECRET_KEY` / `JWT_SECRET` (`change-me…`), a Postgres password containing `changeme`, and a missing `RESEND_API_KEY`. | Enforced | `Settings.validate_production_settings`. |
+| **NFR-SEC-29** | Production startup shall refuse weak/default secrets, localhost public URLs/CORS, debug mode, inline workers, missing email/backup encryption, and `AI_ENABLED=true` without `OPENAI_API_KEY`. | Enforced | `Settings.validate_production_settings`, `production_config.py`. |
 | **NFR-SEC-30** | Audit logs, AI context, and SIEM payloads shall not include passwords, refresh tokens, OTPs, enrollment tokens, or agent ingest credentials. | Enforced (policy in audit docs) | |
 | **NFR-SEC-31** | Compose Grafana default `admin` / `admin` is a **development** credential. Production operators shall override `GRAFANA_ADMIN_*`. | Intent | Not a production control in-repo. |
 

@@ -23,8 +23,8 @@ class LLMResult:
 class LLMProvider:
     def complete(self, *, system_prompt: str, user_content: str) -> LLMResult:
         settings = get_settings()
-        if not settings.OPENAI_API_KEY:
-            return self._offline_response(user_content)
+        if not settings.AI_ENABLED or not settings.OPENAI_API_KEY:
+            return self._offline_response(user_content, ai_disabled=not settings.AI_ENABLED)
 
         payload = {
             "model": settings.AI_MODEL,
@@ -58,17 +58,26 @@ class LLMProvider:
             output_tokens=int(usage.get("completion_tokens") or 0),
         )
 
-    def _offline_response(self, user_content: str) -> LLMResult:
-        settings = get_settings()
+    def _offline_response(self, user_content: str, *, ai_disabled: bool = False) -> LLMResult:
         snippet = user_content[:400].replace("\n", " ")
+        if ai_disabled:
+            message = (
+                "Live AI is disabled in this deployment (`AI_ENABLED=false`). "
+                "Structured scan context was built successfully; enable AI in configuration for LLM explanations.\n\n"
+                f"Context preview: `{snippet}...`"
+            )
+            summary = "AI disabled in configuration"
+        else:
+            message = (
+                "The AI assistant is configured but **OPENAI_API_KEY** is not set. "
+                "Structured scan context was built successfully; connect an LLM provider to generate explanations.\n\n"
+                f"Context preview: `{snippet}...`"
+            )
+            summary = "AI provider not configured"
         return LLMResult(
             payload=AIResponsePayload(
-                answer=(
-                    "The AI assistant is configured but **OPENAI_API_KEY** is not set. "
-                    "Structured scan context was built successfully; connect an LLM provider to generate explanations.\n\n"
-                    f"Context preview: `{snippet}...`"
-                ),
-                summary="AI provider not configured",
+                answer=message,
+                summary=summary,
                 references=[],
                 related_findings=[],
                 confidence="low",

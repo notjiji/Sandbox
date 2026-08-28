@@ -28,6 +28,9 @@ Validation runs at import time. Invalid secrets raise a startup error before the
 | Variable | Values | Default |
 |----------|--------|---------|
 | `ENVIRONMENT` | `development`, `staging`, `production` | `development` |
+| `DEBUG` | `true` / `false` | `false` (required in production) |
+| `LOG_LEVEL` | e.g. `INFO`, `WARNING` | Must not be `DEBUG` in production |
+| `AI_ENABLED` | `true` / `false` | Defaults `false` in production, `true` elsewhere |
 
 Effects:
 
@@ -37,7 +40,7 @@ Effects:
 | Prometheus `/metrics` on public edge | Proxied (dev nginx) | **404** at nginx; scrape `backend:8000/metrics` internally |
 | `SCAN_RUN_INLINE` | `true` (unless set) | `false` |
 | `REPORT_RUN_INLINE` | `true` (unless set) | `false` |
-| Production validator | Skipped | Enforces non-default secrets, password, Resend |
+| Production validator | Skipped | HTTPS URLs, no localhost CORS, strong secrets, backup encryption, AI consistency — [production.md](./production.md) |
 
 See [production.md](./production.md) for production-specific requirements.
 
@@ -130,7 +133,8 @@ Without `RESEND_API_KEY` in development, registration still works if users are m
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `OPENAI_API_KEY` | empty | Live model calls; empty = offline templates |
+| `AI_ENABLED` | `true` in dev/staging, `false` in production | Explicit live-AI toggle; production requires `OPENAI_API_KEY` when `true` |
+| `OPENAI_API_KEY` | empty | Live model calls; required when `AI_ENABLED=true` in production |
 | `AI_MODEL` | `gpt-4o-mini` | Chat and report summary model |
 | `AI_TEMPERATURE` | `0.2` | |
 | `AI_MAX_OUTPUT_TOKENS` | `2048` | |

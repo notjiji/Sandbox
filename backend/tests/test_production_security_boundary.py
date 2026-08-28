@@ -38,10 +38,18 @@ def test_nginx_prod_blocks_public_operator_endpoints() -> None:
 @pytest.fixture
 def production_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("ENVIRONMENT", "production")
-    monkeypatch.setenv("POSTGRES_PASSWORD", "production-test-postgres-password-32chars")
+    monkeypatch.setenv("DEBUG", "false")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "prod-db-credential-x7k9m2n4p8q1r5t3")
     monkeypatch.setenv("SECRET_KEY", "production-test-secret-key-minimum-32-chars")
     monkeypatch.setenv("JWT_SECRET", "production-test-jwt-secret-minimum-32-chars")
-    monkeypatch.setenv("RESEND_API_KEY", "re_production_test_key")
+    monkeypatch.setenv("RESEND_API_KEY", "re_production_test_email_api_key_32chars")
+    monkeypatch.setenv("BACKUP_ENCRYPTION_PASSPHRASE", "production-backup-passphrase-minimum-32-chars")
+    monkeypatch.setenv("CORS_ORIGINS", "https://app.example.com")
+    monkeypatch.setenv("FRONTEND_URL", "https://app.example.com")
+    monkeypatch.setenv("PUBLIC_API_URL", "https://app.example.com/api/v1")
+    monkeypatch.setenv("SCAN_RUN_INLINE", "false")
+    monkeypatch.setenv("REPORT_RUN_INLINE", "false")
+    monkeypatch.setenv("AI_ENABLED", "false")
     get_settings.cache_clear()
     import app.main as main_module
 

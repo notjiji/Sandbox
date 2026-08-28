@@ -19,9 +19,14 @@ When `ENVIRONMENT=production`, `Settings.validate_production_settings` in `backe
 
 | Check | Requirement |
 |-------|-------------|
-| Secrets | `SECRET_KEY` and `JWT_SECRET` must **not** start with `change-me` |
-| Database password | `POSTGRES_PASSWORD` must **not** contain `changeme` (any case) |
-| Email | `RESEND_API_KEY` must be set |
+| Debug | `DEBUG=false`, `LOG_LEVEL` not `DEBUG` |
+| Secrets | Strong `SECRET_KEY`, `JWT_SECRET`, `BACKUP_ENCRYPTION_PASSPHRASE` (no placeholders, min 32 chars) |
+| Database | Strong `POSTGRES_PASSWORD`; `POSTGRES_USER` not `postgres`/`admin`/`root` |
+| Email | Non-placeholder `RESEND_API_KEY` |
+| Public URLs | `FRONTEND_URL`, `PUBLIC_API_URL`, and `CORS_ORIGINS` use **HTTPS** and not localhost |
+| Background jobs | `SCAN_RUN_INLINE=false`, `REPORT_RUN_INLINE=false` |
+| AI | `AI_ENABLED=true` requires `OPENAI_API_KEY`; use `AI_ENABLED=false` for assessment-only |
+| Reports (S3) | `REPORT_S3_BUCKET` when `REPORT_STORAGE_BACKEND=s3` |
 
 Additionally enforced by defaults (not validator errors):
 
