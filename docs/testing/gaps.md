@@ -16,7 +16,8 @@ Relative to a “full platform” checklist. These are **missing or thin**, not 
 | Postgres trigger immutability | Not asserted on SQLite |
 | Plugin future stubs (cloud/k8s/malware) | Not product-tested as enabled scanners |
 | CIDR/ASN scan authorization | **Not implemented** — no tests (asset-level challenge/verify **is** implemented) |
-| Backup/restore | **Not implemented** |
+| Backup/restore automation | **Implemented** — `infrastructure/backup/`, `tests/test_backup_restore.py` |
+| CI quality gate | **Implemented** — [deployment/ci.md](../deployment/ci.md) |
 | Notification delivery | Stub only |
 | Load / performance tests | None in-repo |
 

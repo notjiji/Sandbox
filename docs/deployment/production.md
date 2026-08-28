@@ -151,7 +151,7 @@ Compose already healthchecks `/health/ready` on the backend container.
 - TLS certificates or Let's Encrypt automation (terminate at your edge proxy)
 - Database backups or point-in-time recovery (see [backups.md](./backups.md))
 - WAF, DDoS protection, or IP allowlists
-- CI/CD deploy pipelines
+- Automated **deploy** pipelines (CI **quality gate** exists — [ci.md](./ci.md))
 - Secret rotation runbooks
 - Kubernetes manifests
 

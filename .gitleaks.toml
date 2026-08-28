@@ -1,0 +1,14 @@
+title = "Sandbox gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow documented placeholders and example env templates"
+paths = [
+  '''(?i)\.env\.example$''',
+  '''(?i)\.env\.production\.example$''',
+  '''(?i)^docs/''',
+  '''(?i)^README\.md$''',
+  '''(?i)scripts/ci/check-secrets\.sh$''',
+]

@@ -1,1 +1,2 @@
 infrastructure/backup/** text eol=lf
+scripts/ci/** text eol=lf

@@ -1,5 +1,7 @@
 # Test inventory
 
+CI runs `scripts/ci/check-test-inventory.sh` to ensure every file here exists and every `backend/tests/test_*.py` is documented (no silent drift vs the traceability matrix).
+
 ## `backend/tests/`
 
 | File | Area |
@@ -9,19 +11,35 @@
 | `test_rbac.py` | Viewer/manager/analyst/admin/owner permission boundaries |
 | `test_organizations.py` | Org CRUD |
 | `test_organization_activity.py` | Activity feed |
-| `test_members.py` / `test_member_lifecycle.py` | Members |
+| `test_members.py` | Members |
+| `test_member_lifecycle.py` | Member lifecycle |
 | `test_invitations.py` | Invites |
 | `test_projects.py` | Projects |
-| `test_org_isolation.py` | Cross-tenant isolation (assets, projects, scans, findings, reports, AI conversations, audit logs, monitoring) |
-| `test_assets.py` plus `test_asset_*` | Assets, tags, notes, bulk, timeline, relationships, overview, card fields, findings, reports, schedules, risk history |
-| `test_scans.py` / `test_scan_history.py` | Scans |
-| `test_product_pipeline.py` | API E2E: user → org → project → asset → **verify** → scan/plugins → findings → risk → AI → report → audit (external HTTP/DNS/TLS/LLM mocked) |
-| `test_asset_verification.py` | Ownership challenge/verify, scan gate, invalidation on identity updates |
+| `test_org_isolation.py` | Cross-tenant isolation |
+| `test_assets.py` | Asset CRUD |
+| `test_asset_bulk_actions.py` | Bulk actions |
+| `test_asset_card_fields.py` | Card fields |
+| `test_asset_findings.py` | Asset findings |
+| `test_asset_notes.py` | Notes |
+| `test_asset_overview.py` | Overview |
+| `test_asset_relationships.py` | Relationships / hierarchy |
+| `test_asset_reports.py` | Asset-scoped reports |
+| `test_asset_risk_history.py` | Risk history |
+| `test_asset_scan_schedules.py` | Scan schedules |
+| `test_asset_tags_search.py` | Tags / search |
+| `test_asset_timeline.py` | Timeline |
+| `test_asset_verification.py` | Ownership challenge/verify, scan gate |
+| `test_scans.py` | Scans |
+| `test_scan_history.py` | Scan history |
+| `test_product_pipeline.py` | API E2E pipeline (mocked externals) |
 | `test_risk_engine.py` | Scoring engine |
 | `test_dashboard.py` | Dashboard |
+| `test_project_reports.py` | Project reports |
+| `test_reports_rbac.py` | Report RBAC |
+| `test_report_storage.py` | Report file storage |
+| `test_backup_restore.py` | Backup/restore Docker integration |
 | `test_production_config.py` | Production startup validator |
-| `test_production_security_boundary.py` | Production public-edge blocks (OpenAPI, nginx config) |
-| `test_project_reports.py` / `test_asset_reports.py` / `test_reports_rbac.py` / `test_report_storage.py` | Reports |
+| `test_production_security_boundary.py` | Production public-edge blocks |
 | `test_monitoring.py` | Agent/metrics/alerts |
 | `test_audit_logs.py` | Audit API, export, integrity |
 

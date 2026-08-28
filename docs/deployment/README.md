@@ -7,6 +7,7 @@ Docker Compose is the documented runtime for local and small-team deployments. T
 | [Installation](./installation.md) | `git clone` → `.env` → `docker compose up` — **what happens at each step** |
 | [Configuration](./configuration.md) | All environment variables and Compose overrides |
 | [Production](./production.md) | Production validator, hardening checklist, scaling notes |
+| [CI quality gate](./ci.md) | GitHub Actions pipeline (pytest, build, Docker, secrets) |
 | [Production runbook](./production-runbook.md) | Startup, health, logs, restart, migrate, backup, incidents |
 | [Backups](./backups.md) | Postgres policy (daily / 7-day / encrypted / monthly restore test); reports, config, Redis |
 | [Troubleshooting](./troubleshooting.md) | Common failures and fixes |

@@ -13,7 +13,7 @@ If a feature README disagrees with those folders, **the seven folders win** unti
 | [database/](./database/README.md) | ER diagram, tables, migrations |
 | [security/](./security/README.md) | Auth, RBAC, tenancy, scanner limits, audit integrity |
 | [testing/](./testing/README.md) | How tests run, what exists, gaps |
-| [deployment/](./deployment/README.md) | Install, config, production, backups, troubleshooting |
+| [deployment/](./deployment/README.md) | Install, config, production, CI quality gate, backups, troubleshooting |
 | [roadmap/](./roadmap/README.md) | Limitations and later work (not shipped) |
 
 **Boundaries:** [known-limitations.md](./known-limitations.md) — what this repo does *not* claim.

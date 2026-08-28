@@ -1,4 +1,4 @@
-.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test prod-up prod-down prod-migrate prod-build backup-now backup-restore backup-restore-test backup-integration-test
+.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test ci prod-up prod-down prod-migrate prod-build backup-now backup-restore backup-restore-test backup-integration-test
 
 up:
 	docker compose up -d
@@ -34,6 +34,12 @@ monitoring:
 
 test:
 	cd backend && pip install -q -r requirements-dev.txt && python -m pytest tests app -q
+
+ci: test
+	cd frontend && npm ci && npm run build
+	docker compose -f docker-compose.prod.yml build
+	bash scripts/ci/check-secrets.sh
+	bash scripts/ci/check-test-inventory.sh
 
 prod-build:
 	docker compose -f docker-compose.prod.yml build

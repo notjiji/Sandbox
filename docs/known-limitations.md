@@ -54,7 +54,7 @@ Future work: [roadmap/](./roadmap/README.md).
 
 ## Testing honesty
 
-- `make test` covering backend pytest does **not** prove: frontend e2e, live OpenAI, live DNS/HTTP against the public internet, Postgres trigger immutability in CI (often SQLite), or load tests.
+- CI runs pytest, frontend build, production Docker build, and secret/inventory checks on every PR — [deployment/ci.md](deployment/ci.md). Green CI does **not** prove frontend e2e, live OpenAI, live DNS/HTTP against the public internet, Postgres trigger immutability (SQLite in tests), or load tests.
 
 ---
 
