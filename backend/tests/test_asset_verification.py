@@ -107,6 +107,62 @@ def test_pending_verification_blocks_scan(client, db) -> None:
     assert "mandatory" in body["error"]["message"].lower()
 
 
+def test_identity_field_update_clears_verification(client, db) -> None:
+    """Updates that change scan identity invalidate ownership verification."""
+    ctx = bootstrap_org_context(db, client, email="verify-invalidate@example.com")
+    project_id = uuid.UUID(ctx["project"]["id"])
+    headers = ctx["org_headers"]
+
+    asset = create_website_asset(
+        db, ctx["membership"], project_id=project_id, url="https://invalidate.example.com"
+    )
+    asset_id = uuid.UUID(asset.id)
+
+    update = client.put(
+        f"/api/v1/projects/{project_id}/assets/{asset_id}",
+        json={"name": "Renamed Site"},
+        headers=headers,
+    )
+    assert update.status_code == 200, update.text
+    payload = update.json()["data"]
+    assert payload["verification_status"] == "unverified"
+    assert payload["verification_method"] is None
+
+    scan_response = client.post(
+        f"/api/v1/projects/{project_id}/assets/{asset_id}/scans",
+        json={"scan_type": "quick"},
+        headers=headers,
+    )
+    assert scan_response.status_code in {400, 422}
+    assert "mandatory" in scan_response.json()["error"]["message"].lower()
+
+
+def test_cosmetic_update_preserves_verification(client, db) -> None:
+    ctx = bootstrap_org_context(db, client, email="verify-cosmetic@example.com")
+    project_id = uuid.UUID(ctx["project"]["id"])
+    headers = ctx["org_headers"]
+
+    asset = create_website_asset(
+        db, ctx["membership"], project_id=project_id, url="https://cosmetic.example.com"
+    )
+    asset_id = uuid.UUID(asset.id)
+
+    update = client.put(
+        f"/api/v1/projects/{project_id}/assets/{asset_id}",
+        json={"description": "Inventory note only"},
+        headers=headers,
+    )
+    assert update.status_code == 200, update.text
+    assert update.json()["data"]["verification_status"] == "verified"
+
+    create_scan = client.post(
+        f"/api/v1/projects/{project_id}/assets/{asset_id}/scans",
+        json={"scan_type": "quick"},
+        headers=headers,
+    )
+    assert create_scan.status_code == 201, create_scan.text
+
+
 def test_website_scan_requires_verified_ownership(client, db) -> None:
     ctx = bootstrap_org_context(db, client, email="verify-required@example.com")
     project_id = uuid.UUID(ctx["project"]["id"])

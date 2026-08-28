@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Executive — Example Site</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; color: #1a1a2e; margin: 32px; font-size: 12px; }
+    h1 { color: #7c3aed; font-size: 28px; margin-bottom: 4px; }
+    h2 { color: #7c3aed; font-size: 16px; margin-top: 24px; border-bottom: 2px solid #eee; padding-bottom: 4px; }
+    h3 { font-size: 13px; color: #444; margin: 16px 0 8px; }
+    .cover { text-align: center; padding: 80px 0 40px; }
+    .meta { color: #666; margin: 8px 0; }
+    .score-box { display: inline-block; border: 3px solid #7c3aed; border-radius: 12px; padding: 24px 40px; margin: 16px 0; }
+    .score { font-size: 48px; font-weight: bold; color: #7c3aed; }
+    .grid { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .grid th, .grid td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: middle; }
+    .grid th { background: #f5f5f5; }
+    .chart { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
+    .chart td { border: none; padding: 4px 6px; vertical-align: middle; }
+    .chart-label { width: 88px; font-weight: bold; }
+    .chart-value { width: 36px; text-align: right; color: #555; }
+    .chart-track { background: #eee; height: 14px; }
+    .severity-critical { color: #dc2626; font-weight: bold; }
+    .severity-high { color: #ea580c; font-weight: bold; }
+    .muted { color: #666; font-size: 11px; }
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    
+    <h1>Security Assessment Report</h1>
+    <p class="meta"><strong>Test Org</strong></p>
+    <p class="meta">Project: Test Project</p>
+    <p class="meta">Assessment: 2026-08-28</p>
+    <p class="meta">Report ID: 2251f5b2…</p>
+    <div class="score-box">
+      <div class="score">—</div>
+      <div>SECURITY SCORE / 100</div>
+      
+    </div>
+  </div>
+
+  <h2>1. Executive Summary</h2>
+  <table class="grid">
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Overall Security Score</td><td>— (Grade N/A)</td></tr>
+    <tr><td>Risk Level</td><td>Stable</td></tr>
+    <tr><td>Assets Assessed</td><td>1</td></tr>
+    <tr><td>Critical Findings</td><td class="severity-critical">1</td></tr>
+    <tr><td>High Findings</td><td class="severity-high">0</td></tr>
+    <tr><td>Medium Findings</td><td>0</td></tr>
+    <tr><td>Low Findings</td><td>0</td></tr>
+  </table>
+
+  <h2>2. Security Posture</h2>
+  <p>Overall trend: <strong>stable</strong></p>
+
+  <h3>Severity Distribution</h3>
+  
+  <table class="chart">
+    
+    <tr>
+      <td class="chart-label">Critical</td>
+      <td>
+        <table class="chart-track" width="100%" cellpadding="0" cellspacing="0"><tr>
+          
+          <td width="100.0%" bgcolor="#dc2626">&nbsp;</td>
+          
+          <td>&nbsp;</td>
+        </tr></table>
+      </td>
+      <td class="chart-value">1</td>
+    </tr>
+    
+    <tr>
+      <td class="chart-label">High</td>
+      <td>
+        <table class="chart-track" width="100%" cellpadding="0" cellspacing="0"><tr>
+          
+          <td>&nbsp;</td>
+        </tr></table>
+      </td>
+      <td class="chart-value">0</td>
+    </tr>
+    
+    <tr>
+      <td class="chart-label">Medium</td>
+      <td>
+        <table class="chart-track" width="100%" cellpadding="0" cellspacing="0"><tr>
+          
+          <td>&nbsp;</td>
+        </tr></table>
+      </td>
+      <td class="chart-value">0</td>
+    </tr>
+    
+    <tr>
+      <td class="chart-label">Low</td>
+      <td>
+        <table class="chart-track" width="100%" cellpadding="0" cellspacing="0"><tr>
+          
+          <td>&nbsp;</td>
+        </tr></table>
+      </td>
+      <td class="chart-value">0</td>
+    </tr>
+    
+  </table>
+  
+
+  <h3>Risk Trend</h3>
+  
+  <p class="muted">Insufficient historical data for trend visualization.</p>
+  
+
+  <h3>Findings by Category</h3>
+  
+  <table class="chart">
+    
+    <tr>
+      <td class="chart-label">Other</td>
+      <td>
+        <table class="chart-track" width="100%" cellpadding="0" cellspacing="0"><tr>
+          
+          <td width="100.0%" bgcolor="#5b21b6">&nbsp;</td>
+          
+          <td>&nbsp;</td>
+        </tr></table>
+      </td>
+      <td class="chart-value">1</td>
+    </tr>
+    
+  </table>
+  
+
+  <h2>3. Key Risks</h2>
+  
+  <table class="grid">
+    <tr><th>Finding</th><th>Severity</th><th>Asset</th></tr>
+    
+    <tr>
+      <td>Expired SSL</td>
+      <td class="severity-critical">critical</td>
+      <td>Example Site</td>
+    </tr>
+    
+  </table>
+  
+
+  <h2>4. Recommendations</h2>
+  <ol>
+    
+  </ol>
+
+  <h2>5. Security Trend</h2>
+  <table class="grid">
+    <tr><th>Previous Score</th><th>Current Score</th><th>Change</th></tr>
+    <tr>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+  </table>
+
+  <h2>6. Asset Overview</h2>
+  <table class="grid">
+    <tr><th>Type</th><th>Count</th></tr>
+    <tr><td>Websites</td><td>1</td></tr>
+    <tr><td>Domains</td><td>0</td></tr>
+    <tr><td>Public IPs</td><td>0</td></tr>
+    <tr><td>Servers</td><td>0</td></tr>
+  </table>
+
+  
+  <div class="page-break"></div>
+  <h2>7. AI-Generated Summary</h2>
+  <p>A security score is not yet available. There are 1 critical and 0 high severity open findings across 1 assessed assets. Priority should be given to resolving critical issues and maintaining scan cadence.</p>
+  
+
+  <h2>Conclusion</h2>
+  <p class="muted">Generated for Test Org on 2026-08-28. Findings sourced from scanner results stored in the platform database.</p>
+  
+  
+</body>
+</html>

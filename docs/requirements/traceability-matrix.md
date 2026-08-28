@@ -33,7 +33,7 @@ Update this matrix whenever you add, change, or retire an `FR-*` / `NFR-*` ID.
 | Non-functional (NFR-*) | 77 | Enforced NFRs map to code; Intent/ops items marked explicitly |
 | Frontend e2e | — | **None** in V1 (`package.json` has typecheck/build only) |
 
-End-to-end product path (user → org → project → asset → scan → findings → risk → AI → report → audit): `tests/test_product_pipeline.py`.
+End-to-end product path (user → org → project → asset → **verify** → scan → findings → risk → AI → report → audit): `tests/test_product_pipeline.py`.
 
 ---
 
@@ -126,7 +126,7 @@ End-to-end product path (user → org → project → asset → scan → finding
 | **FR-AST-06** Tags, notes, filters, bulk, timeline | `app/assets/` services | `tests/test_asset_tags_search.py`, `test_asset_notes.py`, `test_asset_bulk_actions.py`, `test_asset_timeline.py` | FR-AST-06 | Covered |
 | **FR-AST-07** Scannable only if active (+ verified for web/domain/IP) | `validate_asset_scannable`, verification gate | `tests/test_asset_verification.py`, `tests/test_scans.py` | [security/scanning](../security/scanning.md) | Covered |
 | **FR-AST-08** Soft-delete assets | Asset delete service | `tests/test_assets.py` | FR-AST-08 | Covered |
-| **FR-AST-09** Ownership verification (domain/DNS/HTTP/IP) | `app/assets/services/verification_service.py` | `tests/test_asset_verification.py` | FR-AST-09, [security/scanning](../security/scanning.md) | Covered |
+| **FR-AST-09** Ownership verification (domain/DNS/HTTP/IP) | `app/assets/services/verification_service.py` | `tests/test_asset_verification.py`, `tests/test_product_pipeline.py` | FR-AST-09, [security/scanning](../security/scanning.md) | Covered |
 
 ---
 
@@ -345,6 +345,7 @@ Honest holes (also in [testing/gaps.md](../testing/gaps.md)):
 | SIEM adapters lightly tested | FR-SIEM-01/02 |
 | Lockout / rate-limit / p95 not load-tested in CI | FR-AUTH-09/10, NFR-PERF-01 |
 | Live OpenAI not called in CI | FR-AI-04 (offline path is) |
+| CIDR/ASN ownership allowlist not implemented | Known limitation; asset verify covers FR-AST-09 |
 
 ---
 

@@ -117,7 +117,7 @@ Deep-dive: [organizations](../organizations/README.md).
 | **FR-AST-06** | The system shall support tags, metadata, notes, saved filters, bulk actions, and an asset timeline. | Analyst / admin | |
 | **FR-AST-07** | The system shall allow scan of an asset only when `status=active`; `website`, `domain`, and `public_ip` assets must also have ownership verification status `verified`. | System | `validate_asset_scannable`. |
 | **FR-AST-08** | The system shall soft-delete assets (`deleted_at`, `status=deleted`). | Roles with `asset:delete` | |
-| **FR-AST-09** | The system shall support domain, DNS TXT, HTTP, and IP ownership verification challenge flows at the asset level. | System | Verification is mandatory for `website`, `domain`, and `public_ip` scan targets. |
+| **FR-AST-09** | The system shall support domain, DNS TXT, HTTP, and IP ownership verification challenge flows at the asset level. | System | Verification is mandatory for `website`, `domain`, and `public_ip` scan targets. Updates to `name`, `type`, `metadata`, or `external_identifier` clear verification — see [security/scanning](../security/scanning.md). |
 
 ---
 

@@ -1,0 +1,51 @@
+%PDF-1.4
+1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj
+2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj
+3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>endobj
+4 0 obj<< /Length 554 >>stream
+BT
+/F1 16 Tf
+50 780 Td
+(Executive ? Example Site) Tj
+ET
+BT
+/F1 11 Tf
+50 752 Td
+(Organization: Test Org) Tj
+0 -14 Td
+50 738 Td
+(Project: Test Project) Tj
+0 -14 Td
+50 724 Td
+(Score: None) Tj
+0 -14 Td
+50 710 Td
+(Critical: 1) Tj
+0 -14 Td
+50 696 Td
+(High: 0) Tj
+0 -14 Td
+50 682 Td
+() Tj
+0 -14 Td
+50 668 Td
+(Summary:) Tj
+0 -14 Td
+50 654 Td
+(A security score is not yet available. There are 1 critical and 0 high severity open findings across 1 assessed assets. Priority should be given to resolving critical issues and maintaining scan cadence.) Tj
+0 -14 Td
+ET
+endstream endobj
+5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000056 00000 n 
+0000000111 00000 n 
+0000000235 00000 n 
+0000000838 00000 n 
+trailer<< /Size 6 /Root 1 0 R >>
+startxref
+906
+%%EOF

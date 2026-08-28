@@ -12,7 +12,7 @@ import pytest
 
 from app.services.ai.models import AIResponsePayload
 from app.services.ai.provider import LLMResult
-from tests.support import TEST_PASSWORD, login_headers
+from tests.support import TEST_PASSWORD, login_headers, verify_website_asset_via_api
 
 pytestmark = pytest.mark.integration
 
@@ -117,7 +117,7 @@ def _mock_llm(monkeypatch) -> list[str]:
 
 
 def test_product_pipeline_connects(client, db, monkeypatch) -> None:
-    """Create user → org → project → asset → scan → plugins → finding → risk → AI → report → audit."""
+    """Create user → org → project → asset → verify → scan → plugins → finding → risk → AI → report → audit."""
     _mock_httpx(monkeypatch)
     _mock_dns(monkeypatch)
     _mock_tls(monkeypatch)
@@ -168,6 +168,15 @@ def test_product_pipeline_connects(client, db, monkeypatch) -> None:
         status=201,
     )
     asset_id = asset["id"]
+
+    verify_website_asset_via_api(
+        client,
+        project_id=project_id,
+        asset_id=asset_id,
+        headers=org_headers,
+        method="http",
+        monkeypatch=monkeypatch,
+    )
 
     scan = _data(
         client.post(

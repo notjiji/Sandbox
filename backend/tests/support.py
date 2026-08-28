@@ -188,3 +188,36 @@ def create_pending_scan(
         asset_id=asset_id,
         body=CreateAssetScanRequest(scan_type=ScanType.QUICK),
     )
+
+
+def verify_website_asset_via_api(
+    client,
+    *,
+    project_id: str | uuid.UUID,
+    asset_id: str | uuid.UUID,
+    headers: dict[str, str],
+    method: str = "http",
+    monkeypatch=None,
+) -> None:
+    """Start and complete ownership verification through the public asset API."""
+    project_id = str(project_id)
+    asset_id = str(asset_id)
+    base = f"/api/v1/projects/{project_id}/assets/{asset_id}/verification"
+
+    challenge = client.post(
+        f"{base}/challenge",
+        json={"method": method},
+        headers=headers,
+    )
+    assert challenge.status_code == 200, challenge.text
+    assert challenge.json()["data"]["status"] == "pending"
+
+    if monkeypatch is not None and method == "http":
+        monkeypatch.setattr(
+            "app.assets.services.verification_service.AssetVerificationService._verify_http_token",
+            lambda self, host, token: (True, None),
+        )
+
+    verify = client.post(f"{base}/verify", headers=headers)
+    assert verify.status_code == 200, verify.text
+    assert verify.json()["data"]["status"] == "verified"

@@ -42,6 +42,23 @@ Flow:
 
 Verification enforcement is mandatory for `website`, `domain`, and `public_ip` scan targets.
 
+### When verification is cleared
+
+Ownership verification is **reset to `unverified`** when an asset update changes anything that affects **what gets scanned** or **how the target is resolved**. Implementation: `asset_service.update_for_project` in `backend/app/assets/services/asset_service.py`.
+
+| Update field | Clears verification? | Reason |
+|--------------|---------------------|--------|
+| `name` | **Yes** | Display identity; may affect derived external identifier |
+| `type` | **Yes** | Changes scannable surface and plugin targets |
+| `metadata` | **Yes** | URL, domain, IP, and other scan identifiers live here |
+| `external_identifier` | **Yes** | Direct scan target override |
+| `description`, `notes`, `owner`, `business_unit`, `asset_category` | No | Cosmetic / inventory only |
+| `environment`, `criticality`, `status` (non-delete), `tags`, `parent_id`, `allow_private_ip` | No | Posture labels and structure, not scan identity |
+
+When cleared, the platform removes `verification_method`, `verification_token`, timestamps, and last error. The asset must complete challenge → verify again before the next scan on `website`, `domain`, or `public_ip`.
+
+Tests: `tests/test_asset_verification.py` (`test_identity_field_update_clears_verification`, `test_cosmetic_update_preserves_verification`).
+
 ## Scanner capabilities
 
 Active plugins speak HTTP, TLS, DNS, WHOIS, cookie/header inspection, robots, security.txt, port checks, and OSV CVE lookup from hints. They run from the **backend/worker network**.

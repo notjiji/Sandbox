@@ -36,12 +36,6 @@ def test_asset_timeline(client, db) -> None:
     )
     asset_id = uuid.UUID(asset.id)
 
-    client.put(
-        f"/api/v1/projects/{project_id}/assets/{asset_id}",
-        json={"name": "Timeline Site Updated"},
-        headers=headers,
-    )
-
     scan_summary = create_pending_scan(
         db,
         membership,
@@ -74,6 +68,13 @@ def test_asset_timeline(client, db) -> None:
                 asset_id=asset_id,
             )
             db.commit()
+
+    # Cosmetic updates do not invalidate verification; identity fields would (see scanning docs).
+    client.put(
+        f"/api/v1/projects/{project_id}/assets/{asset_id}",
+        json={"description": "Updated after first scan"},
+        headers=headers,
+    )
 
     save_asset_risk(
         db,
