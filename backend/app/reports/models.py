@@ -1,11 +1,11 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, pg_enum
 from app.reports.enums import ReportStatus, ReportType
 
 
@@ -31,7 +31,7 @@ class Report(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     report_type: Mapped[ReportType] = mapped_column(
-        Enum(ReportType, name="report_type", native_enum=True),
+        pg_enum(ReportType, "report_type"),
         nullable=False,
         default=ReportType.EXECUTIVE,
     )
@@ -39,7 +39,7 @@ class Report(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[ReportStatus] = mapped_column(
-        Enum(ReportStatus, name="report_status", native_enum=True),
+        pg_enum(ReportStatus, "report_status"),
         nullable=False,
         default=ReportStatus.DRAFT,
     )

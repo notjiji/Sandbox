@@ -29,9 +29,11 @@ def _add_enum_value(enum_name: str, value: str) -> None:
 
 
 def upgrade() -> None:
-    _add_enum_value("asset_type", "website")
-    _add_enum_value("asset_type", "server")
-    _add_enum_value("asset_type", "public_ip")
+    # PostgreSQL requires new enum values to be committed before use in the same migration run.
+    with op.get_context().autocommit_block():
+        _add_enum_value("asset_type", "website")
+        _add_enum_value("asset_type", "server")
+        _add_enum_value("asset_type", "public_ip")
 
     op.add_column("assets", sa.Column("parent_id", sa.UUID(), nullable=True))
     op.create_index(op.f("ix_assets_parent_id"), "assets", ["parent_id"], unique=False)

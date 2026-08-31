@@ -3,12 +3,12 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.findings.enums import FindingSeverity
-from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, pg_enum
 
 
 class Recommendation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -27,7 +27,7 @@ class RiskRule(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     title: Mapped[str] = mapped_column(String(512), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     severity: Mapped[FindingSeverity] = mapped_column(
-        Enum(FindingSeverity, name="finding_severity", native_enum=True),
+        pg_enum(FindingSeverity, "finding_severity"),
         nullable=False,
     )
     score: Mapped[float] = mapped_column(Float, nullable=False)

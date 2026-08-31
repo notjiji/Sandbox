@@ -24,6 +24,14 @@ def test_job_type_mapping() -> None:
     assert job_type_for_task_name("app.jobs.scans.check_due_schedules") == "scan_schedule"
 
 
+def test_model_registry_resolves_audit_relationships() -> None:
+    from app.audit.models import AuditLog
+    from app.shared.db.models_registry import import_all_models
+
+    import_all_models()
+    assert "organization" in AuditLog.__mapper__.relationships
+
+
 def test_fail_running_scan_marks_failed(db, client) -> None:
     ctx = bootstrap_org_context(db, client, email="worker-recovery@example.com")
     project_id = uuid.UUID(ctx["project"]["id"])

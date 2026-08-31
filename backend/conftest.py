@@ -68,22 +68,11 @@ def _compile_uuid_sqlite(_element, _compiler, **_kw) -> str:
     return "CHAR(36)"
 
 
+from app.shared.db.models_registry import import_all_models
+
+
 def _import_models() -> None:
-    import app.assets.models  # noqa: F401
-    import app.audit.models  # noqa: F401
-    import app.auth.models  # noqa: F401
-    import app.findings.models  # noqa: F401
-    import app.members.models  # noqa: F401
-    import app.organizations.invites  # noqa: F401
-    import app.organizations.models  # noqa: F401
-    import app.projects.models  # noqa: F401
-    import app.reports.models  # noqa: F401
-    import app.risk.models  # noqa: F401
-    import app.scans.models  # noqa: F401
-    import app.scans.schedule_models  # noqa: F401
-    import app.assets.saved_filter_models  # noqa: F401
-    import app.users.models  # noqa: F401
-    import app.monitoring.models  # noqa: F401
+    import_all_models()
 
 
 _import_models()

@@ -1,11 +1,11 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, pg_enum
 from app.scans.enums import SchedulePreset, ScanType
 
 
@@ -28,11 +28,11 @@ class AssetScanSchedule(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     preset: Mapped[SchedulePreset] = mapped_column(
-        Enum(SchedulePreset, name="schedule_preset", native_enum=True),
+        pg_enum(SchedulePreset, "schedule_preset"),
         nullable=False,
     )
     scan_type: Mapped[ScanType] = mapped_column(
-        Enum(ScanType, name="scan_type", native_enum=True, create_constraint=False),
+        pg_enum(ScanType, "scan_type", create_constraint=False),
         nullable=False,
     )
     selected_plugins: Mapped[list | None] = mapped_column(JSONB, nullable=True)

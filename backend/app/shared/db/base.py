@@ -1,9 +1,24 @@
+import enum
 import uuid
 from datetime import datetime
+from typing import TypeVar
 
-from sqlalchemy import DateTime, func
+from sqlalchemy import DateTime, Enum, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+E = TypeVar("E", bound=enum.Enum)
+
+
+def pg_enum(enum_class: type[E], name: str, **kwargs) -> Enum:
+    """PostgreSQL native enum persisted with Python enum values (e.g. active), not names (ACTIVE)."""
+    return Enum(
+        enum_class,
+        name=name,
+        native_enum=True,
+        values_callable=lambda members: [member.value for member in members],
+        **kwargs,
+    )
 
 
 class Base(DeclarativeBase):

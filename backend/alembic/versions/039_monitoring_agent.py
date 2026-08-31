@@ -24,6 +24,7 @@ agent_status = postgresql.ENUM(
     "offline",
     "revoked",
     name="agent_status",
+    create_type=False,
 )
 monitoring_alert_severity = postgresql.ENUM(
     "critical",
@@ -32,11 +33,13 @@ monitoring_alert_severity = postgresql.ENUM(
     "low",
     "info",
     name="monitoring_alert_severity",
+    create_type=False,
 )
 monitoring_alert_status = postgresql.ENUM(
     "open",
     "resolved",
     name="monitoring_alert_status",
+    create_type=False,
 )
 
 

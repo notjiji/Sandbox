@@ -122,6 +122,12 @@ Details: [workers.md](./workers.md).
 
 Deploy: `docker-compose.prod.yml` + `docker-compose.edge.yml`. Guide: [tls-edge.md](./tls-edge.md).
 
+### Staging-only
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `STAGING_FIXED_OTP` | empty | When `ENVIRONMENT=staging`, fixed email verification code for acceptance |
+
 ## Report file storage
 
 | Variable | Default | Purpose |

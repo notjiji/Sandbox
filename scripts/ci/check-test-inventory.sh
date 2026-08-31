@@ -48,6 +48,8 @@ for name in \
   test_reports_rbac.py \
   test_report_storage.py \
   test_backup_restore.py \
+  test_worker_reliability.py \
+  test_staging_acceptance.py \
   test_monitoring.py \
   test_audit_logs.py
 do

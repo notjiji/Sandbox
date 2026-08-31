@@ -123,7 +123,7 @@ def upgrade() -> None:
             "description": description,
             "system_prompt": PROMPT_TEMPLATES[name],
         }
-        for name, description in _PROMPTS
+        for name, _label, description in _PROMPTS
         if name in PROMPT_TEMPLATES
     ]
     if rows:

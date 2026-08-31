@@ -2,12 +2,12 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.members.enums import OrganizationRole
-from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, pg_enum
 
 
 class InviteStatus(str, enum.Enum):
@@ -28,7 +28,7 @@ class OrganizationInvite(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
     role: Mapped[OrganizationRole] = mapped_column(
-        Enum(OrganizationRole, name="organization_role", native_enum=True),
+        pg_enum(OrganizationRole, "organization_role"),
         nullable=False,
     )
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
@@ -43,7 +43,7 @@ class OrganizationInvite(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=True,
     )
     status: Mapped[InviteStatus] = mapped_column(
-        Enum(InviteStatus, name="invite_status", native_enum=True),
+        pg_enum(InviteStatus, "invite_status"),
         nullable=False,
         default=InviteStatus.PENDING,
     )

@@ -1,0 +1,40 @@
+# Acceptance-test overlay — hardcoded credentials; use only from test_staging_acceptance.py
+services:
+  postgres:
+    environment:
+      POSTGRES_DB: sandbox
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: staging-acceptance-postgres-password-32
+
+  migrate:
+    environment:
+      POSTGRES_DB: sandbox
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: staging-acceptance-postgres-password-32
+
+  backend:
+    environment:
+      POSTGRES_DB: sandbox
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: staging-acceptance-postgres-password-32
+      SECRET_KEY: staging-acceptance-secret-key-minimum-32-chars
+      JWT_SECRET: staging-acceptance-jwt-secret-minimum-32-chars
+      STAGING_FIXED_OTP: "123456"
+
+  celery-worker:
+    environment:
+      POSTGRES_DB: sandbox
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: staging-acceptance-postgres-password-32
+
+  celery-beat:
+    environment:
+      POSTGRES_DB: sandbox
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: staging-acceptance-postgres-password-32
+
+  backup:
+    environment:
+      POSTGRES_DB: sandbox
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: staging-acceptance-postgres-password-32

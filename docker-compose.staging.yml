@@ -1,0 +1,52 @@
+# Staging overlay — use with docker-compose.prod.yml
+#
+#   cp .env.staging.example .env
+#   docker compose -f docker-compose.prod.yml -f docker-compose.staging.yml run --rm migrate
+#   docker compose -f docker-compose.prod.yml -f docker-compose.staging.yml up -d --build
+#
+# Production-like workers (inline=false) with staging ENVIRONMENT (no production validator).
+# See docs/deployment/staging.md
+
+x-staging-env-file: &staging-env-file
+  env_file:
+    - .env
+
+services:
+  mock-target:
+    build:
+      context: ./infrastructure/staging/mock-target
+    restart: unless-stopped
+    volumes:
+      - mock_target_data:/data
+    networks:
+      internal:
+        aliases:
+          - mock-target.test
+
+  migrate:
+    <<: *staging-env-file
+    environment:
+      ENVIRONMENT: staging
+
+  backend:
+    <<: *staging-env-file
+    environment:
+      ENVIRONMENT: staging
+      STAGING_FIXED_OTP: ${STAGING_FIXED_OTP:-123456}
+      AI_ENABLED: ${AI_ENABLED:-false}
+
+  celery-worker:
+    <<: *staging-env-file
+    environment:
+      ENVIRONMENT: staging
+
+  celery-beat:
+    <<: *staging-env-file
+    environment:
+      ENVIRONMENT: staging
+
+  backup:
+    <<: *staging-env-file
+
+volumes:
+  mock_target_data:

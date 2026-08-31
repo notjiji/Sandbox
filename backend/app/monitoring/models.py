@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Float, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.monitoring.enums import AgentStatus, AlertSeverity, AlertStatus
-from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, pg_enum
 
 
 class MonitoringAgent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -41,7 +41,7 @@ class MonitoringAgent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         String(64), nullable=True, unique=True, index=True
     )
     status: Mapped[AgentStatus] = mapped_column(
-        Enum(AgentStatus, name="agent_status", native_enum=True),
+        pg_enum(AgentStatus, "agent_status"),
         nullable=False,
         default=AgentStatus.PENDING,
     )
@@ -157,12 +157,12 @@ class MonitoringAlert(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     evidence: Mapped[str | None] = mapped_column(Text, nullable=True)
     severity: Mapped[AlertSeverity] = mapped_column(
-        Enum(AlertSeverity, name="monitoring_alert_severity", native_enum=True),
+        pg_enum(AlertSeverity, "monitoring_alert_severity"),
         nullable=False,
         default=AlertSeverity.MEDIUM,
     )
     status: Mapped[AlertStatus] = mapped_column(
-        Enum(AlertStatus, name="monitoring_alert_status", native_enum=True),
+        pg_enum(AlertStatus, "monitoring_alert_status"),
         nullable=False,
         default=AlertStatus.OPEN,
         index=True,

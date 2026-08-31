@@ -1,11 +1,11 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, pg_enum
 from app.scans.enums import ScanStatus, ScanType, PluginRunStatus
 
 
@@ -25,13 +25,13 @@ class Scan(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     scan_type: Mapped[ScanType] = mapped_column(
-        Enum(ScanType, name="scan_type", native_enum=True),
+        pg_enum(ScanType, "scan_type"),
         nullable=False,
         default=ScanType.FULL,
     )
     selected_plugins: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[ScanStatus] = mapped_column(
-        Enum(ScanStatus, name="scan_status", native_enum=True),
+        pg_enum(ScanStatus, "scan_status"),
         nullable=False,
         default=ScanStatus.PENDING,
     )
@@ -75,14 +75,14 @@ class ScanPluginRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     plugin_name: Mapped[str] = mapped_column(String(128), nullable=False)
     status: Mapped[PluginRunStatus] = mapped_column(
-        Enum(PluginRunStatus, name="plugin_run_status", native_enum=True),
+        pg_enum(PluginRunStatus, "plugin_run_status"),
         nullable=False,
         default=PluginRunStatus.PENDING,
     )
     error_message: Mapped[str | None] = mapped_column(nullable=True)
     findings_count: Mapped[int] = mapped_column(nullable=False, default=0)
     duration_seconds: Mapped[float | None] = mapped_column(nullable=True)
-    metadata_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    metadata_json: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

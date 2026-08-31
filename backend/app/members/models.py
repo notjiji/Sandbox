@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.members.enums import MemberStatus, OrganizationRole
-from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, pg_enum
 
 
 class OrganizationMember(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -28,12 +28,12 @@ class OrganizationMember(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     role: Mapped[OrganizationRole] = mapped_column(
-        Enum(OrganizationRole, name="organization_role", native_enum=True),
+        pg_enum(OrganizationRole, "organization_role"),
         nullable=False,
         default=OrganizationRole.VIEWER,
     )
     status: Mapped[MemberStatus] = mapped_column(
-        Enum(MemberStatus, name="member_status", native_enum=True),
+        pg_enum(MemberStatus, "member_status"),
         nullable=False,
         default=MemberStatus.ACTIVE,
     )

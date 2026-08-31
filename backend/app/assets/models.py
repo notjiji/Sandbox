@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.assets.enums import AssetCategory, AssetCriticality, AssetEnvironment, AssetStatus, AssetType
-from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, pg_enum
 
 
 class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -33,7 +33,7 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     type: Mapped[AssetType] = mapped_column(
-        Enum(AssetType, name="asset_type", native_enum=True),
+        pg_enum(AssetType, "asset_type"),
         nullable=False,
         default=AssetType.WEBSITE,
     )
@@ -41,17 +41,17 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[AssetStatus] = mapped_column(
-        Enum(AssetStatus, name="asset_status", native_enum=True),
+        pg_enum(AssetStatus, "asset_status"),
         nullable=False,
         default=AssetStatus.PENDING,
     )
     environment: Mapped[AssetEnvironment] = mapped_column(
-        Enum(AssetEnvironment, name="asset_environment", native_enum=True),
+        pg_enum(AssetEnvironment, "asset_environment"),
         nullable=False,
         default=AssetEnvironment.PRODUCTION,
     )
     criticality: Mapped[AssetCriticality] = mapped_column(
-        Enum(AssetCriticality, name="asset_criticality", native_enum=True),
+        pg_enum(AssetCriticality, "asset_criticality"),
         nullable=False,
         default=AssetCriticality.MEDIUM,
     )
@@ -59,7 +59,7 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     external_identifier: Mapped[str | None] = mapped_column(String(512), nullable=True)
     business_unit: Mapped[str | None] = mapped_column(String(128), nullable=True)
     asset_category: Mapped[AssetCategory | None] = mapped_column(
-        Enum(AssetCategory, name="asset_category", native_enum=True),
+        pg_enum(AssetCategory, "asset_category"),
         nullable=True,
     )
     created_by: Mapped[uuid.UUID | None] = mapped_column(

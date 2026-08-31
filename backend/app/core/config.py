@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     REPORT_TASK_HARD_TIMEOUT_SECONDS: int = 900
     REPORT_STALE_GENERATING_SECONDS: int = 1200
     CELERY_BEAT_PIDFILE: str = "/tmp/celerybeat.pid"
+    STAGING_FIXED_OTP: str = ""
 
     RESEND_API_KEY: str = ""
     RESEND_FROM: str = "Sandbox <onboarding@resend.dev>"

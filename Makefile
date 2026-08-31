@@ -1,4 +1,4 @@
-.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test ci prod-up prod-down prod-migrate prod-build prod-edge-up prod-edge-down prod-edge-migrate backup-now backup-restore backup-restore-test backup-integration-test
+.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test ci prod-up prod-down prod-migrate prod-build prod-edge-up prod-edge-down prod-edge-migrate staging-migrate staging-up staging-down staging-acceptance backup-now backup-restore backup-restore-test backup-integration-test
 
 up:
 	docker compose up -d
@@ -64,6 +64,20 @@ prod-edge-up:
 
 prod-edge-down:
 	$(PROD_COMPOSE) down
+
+STAGING_COMPOSE = docker compose -f docker-compose.prod.yml -f docker-compose.staging.yml
+
+staging-migrate:
+	$(STAGING_COMPOSE) run --rm migrate
+
+staging-up:
+	$(STAGING_COMPOSE) up -d --build
+
+staging-down:
+	$(STAGING_COMPOSE) down
+
+staging-acceptance:
+	bash scripts/staging/run-acceptance.sh
 
 backup-now:
 	docker compose -f docker-compose.prod.yml run --rm backup backup

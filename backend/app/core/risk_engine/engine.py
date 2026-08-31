@@ -453,7 +453,9 @@ class RiskEngine:
                 issue_counts[finding.finding_code] += 1
             asset = finding.asset
             if asset:
-                asset_type_counts[asset.asset_type.value if hasattr(asset.asset_type, "value") else str(asset.asset_type)] += 1
+                asset_type_counts[
+                    asset.type.value if hasattr(asset.type, "value") else str(asset.type)
+                ] += 1
 
         assets_at_risk = sum(
             1 for a in org.asset_scores if a.scanned and a.score is not None and a.score < 75

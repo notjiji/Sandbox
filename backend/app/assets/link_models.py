@@ -1,11 +1,11 @@
 import uuid
 
-from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.assets.enums import AssetLinkType
-from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.shared.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, pg_enum
 
 
 class AssetLink(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -40,7 +40,7 @@ class AssetLink(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     link_type: Mapped[AssetLinkType] = mapped_column(
-        Enum(AssetLinkType, name="asset_link_type", native_enum=True),
+        pg_enum(AssetLinkType, "asset_link_type"),
         nullable=False,
     )
     label: Mapped[str | None] = mapped_column(String(255), nullable=True)

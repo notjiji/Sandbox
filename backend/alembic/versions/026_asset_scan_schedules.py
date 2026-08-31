@@ -24,6 +24,13 @@ schedule_preset_enum = ENUM(
     name="schedule_preset",
     create_type=False,
 )
+scan_type_enum = ENUM(
+    "quick",
+    "full",
+    "custom",
+    name="scan_type",
+    create_type=False,
+)
 
 
 def upgrade() -> None:
@@ -39,7 +46,7 @@ def upgrade() -> None:
         sa.Column("preset", schedule_preset_enum, nullable=False),
         sa.Column(
             "scan_type",
-            sa.Enum("quick", "full", "custom", name="scan_type", create_type=False),
+            scan_type_enum,
             nullable=False,
         ),
         sa.Column("selected_plugins", sa.dialects.postgresql.JSONB(), nullable=True),

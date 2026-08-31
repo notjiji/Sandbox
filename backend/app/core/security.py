@@ -128,6 +128,10 @@ def get_organization_invite_expiry() -> datetime:
 def generate_otp() -> str:
     import secrets
 
+    settings = get_settings()
+    if settings.ENVIRONMENT == "staging" and settings.STAGING_FIXED_OTP.strip():
+        return settings.STAGING_FIXED_OTP.strip()
+
     return f"{secrets.randbelow(900000) + 100000:06d}"
 
 

@@ -4,7 +4,10 @@ from celery.signals import task_failure, task_postrun, task_prerun, worker_proce
 
 from app.core.config import get_settings
 from app.core.logging import get_logger, log_context, setup_logging
+from app.shared.db.models_registry import import_all_models
 from app.workers.job_failures import log_failed_job, recover_failed_job_state
+
+import_all_models()
 
 settings = get_settings()
 
@@ -67,6 +70,7 @@ _task_log_context: dict[str, object] = {}
 
 @worker_process_init.connect
 def configure_worker_logging(**_kwargs) -> None:
+    import_all_models()
     setup_logging(
         settings.LOG_LEVEL,
         service_name="sandbox-worker",
