@@ -33,3 +33,7 @@ node_modules/
 frontend/dist/
 
 *.log
+
+# Local-only deep-dive notes (not for the repo)
+local/
+*.local.md
