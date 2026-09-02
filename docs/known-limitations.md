@@ -54,7 +54,7 @@ Future work: [roadmap/](./roadmap/README.md).
 
 ## Testing honesty
 
-- CI runs pytest, frontend build, production Docker build, and secret/inventory checks on every PR — [deployment/ci.md](deployment/ci.md). Green CI does **not** prove frontend e2e, live OpenAI, live DNS/HTTP against the public internet, Postgres trigger immutability (SQLite in tests), or load tests.
+- CI runs pytest, frontend build, production Docker build, secret/inventory checks, staging acceptance, and a database restore drill on every PR — [deployment/ci.md](deployment/ci.md). Green CI does **not** prove frontend e2e, live OpenAI, live DNS/HTTP against the public internet, or load tests. Fast pytest still uses SQLite; the restore drill and staging jobs use Compose Postgres.
 
 ---
 

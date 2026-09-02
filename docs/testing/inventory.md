@@ -37,11 +37,11 @@ CI runs `scripts/ci/check-test-inventory.sh` to ensure every file here exists an
 | `test_project_reports.py` | Project reports |
 | `test_reports_rbac.py` | Report RBAC |
 | `test_report_storage.py` | Report file storage |
-| `test_backup_restore.py` | Backup/restore Docker integration |
+| `test_backup_restore.py` | Backup/restore Docker integration (`@pytest.mark.docker`; CI restore drill) |
 | `test_production_config.py` | Production startup validator |
 | `test_production_security_boundary.py` | Production public-edge blocks |
 | `test_worker_reliability.py` | Worker failure recovery, stale reconcile |
-| `test_staging_acceptance.py` | Staging Compose acceptance (workers, PDF after restart, audit) |
+| `test_staging_acceptance.py` | Staging Compose acceptance (workers, PDF after restart, audit; `@pytest.mark.docker`; required CI job) |
 | `test_monitoring.py` | Agent/metrics/alerts |
 | `test_audit_logs.py` | Audit API, export, integrity |
 

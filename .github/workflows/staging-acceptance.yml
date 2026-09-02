@@ -1,5 +1,5 @@
-# Staging acceptance — run before production promotion.
-# Trigger manually from GitHub Actions → Staging acceptance.
+# Staging acceptance — same suite as the CI quality-gate job.
+# Keep for on-demand re-runs without waiting for the full CI workflow.
 
 name: Staging acceptance
 

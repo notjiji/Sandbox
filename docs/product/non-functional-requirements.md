@@ -248,7 +248,7 @@ Compose backend healthcheck uses `/health/ready`.
 | ID | Requirement | Kind | Notes |
 |----|-------------|------|-------|
 | **NFR-MAINT-09** | Backend changes shall be coverable by `make test` (pytest: `backend/tests/` and `app/*/tests.py`, including plugins and scan engine). Isolation tests shall remain in the suite. | Enforced | |
-| **NFR-MAINT-10** | Green CI / `make ci` means pytest, frontend build, prod Docker build, and secret checks passed. It does **not** mean frontend e2e, live OpenAI, Postgres trigger immutability, or load tests exist. | Enforced | [deployment/ci.md](../deployment/ci.md), [testing gaps](../testing/gaps.md). |
+| **NFR-MAINT-10** | Green CI / `make ci-full` means pytest, frontend build, prod Docker build, secret checks, staging acceptance, and the database restore drill passed. Fast `make ci` omits the two Compose jobs. It does **not** mean frontend e2e, live OpenAI, or load tests exist. | Enforced | [deployment/ci.md](../deployment/ci.md), [testing gaps](../testing/gaps.md). |
 | **NFR-MAINT-11** | New V1 behavior should add or extend pytest coverage in the matching module rather than relying only on manual clicks. | Intent | Especially auth, isolation, RBAC, risk math, audit integrity. |
 
 ### 5.5 Documentation

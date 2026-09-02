@@ -167,7 +167,7 @@ make test
 Covers backend integration and unit tests (auth, RBAC, isolation, scans, audit, dashboard, …).  
 There is **no** frontend Jest/Vitest suite in V1 (`npm run typecheck` / `npm run build` only).
 
-**CI:** every push/PR runs pytest, frontend build, production Docker build, and secret checks — [docs/deployment/ci.md](docs/deployment/ci.md). Local equivalent: `make ci`.
+**CI:** every push/PR runs pytest, frontend build, production Docker build, secret checks, staging acceptance, and a database restore drill — [docs/deployment/ci.md](docs/deployment/ci.md). Local fast gate: `make ci`. Full local gate: `make ci-full`.
 
 Strategy and gaps: [docs/testing/](docs/testing/README.md).
 
@@ -179,7 +179,7 @@ Strategy and gaps: [docs/testing/](docs/testing/README.md).
 |-----|-----|
 | [Installation](docs/deployment/installation.md) | Clone → `.env` → Compose → migrate |
 | [Production](docs/deployment/production.md) | Validator gates and hardening |
-| [CI quality gate](docs/deployment/ci.md) | GitHub Actions — pytest, build, Docker, secrets |
+| [CI quality gate](docs/deployment/ci.md) | GitHub Actions — pytest, build, secrets, staging e2e, restore drill |
 | [Production runbook](docs/deployment/production-runbook.md) | Startup, health, logs, restart, incidents |
 | [Backups](docs/deployment/backups.md) | Daily Postgres / retention / restore; Redis is ephemeral |
 | [Troubleshooting](docs/deployment/troubleshooting.md) | Common failures |
@@ -275,7 +275,10 @@ Full list: **[docs/known-limitations.md](docs/known-limitations.md)**.
 | `make logs` | Follow all logs |
 | `make backend-logs` | API + Celery |
 | `make test` | Backend pytest |
-| `make ci` | Full CI gate locally (tests + frontend build + prod Docker + secret checks) |
+| `make ci` | Fast CI locally (tests + frontend build + prod Docker + secret checks) |
+| `make ci-full` | GitHub quality gate locally (`make ci` + restore drill + staging e2e) |
+| `make staging-acceptance` | Staging Compose e2e (workers, PDF after restart) |
+| `make backup-integration-test` | Encrypted backup → restore drill |
 | `make shell` | Bash in backend container |
 
 ---

@@ -131,14 +131,14 @@ Promote to production: [production.md](./production.md), [tls-edge.md](./tls-edg
 
 ## CI integration
 
-Pre-merge **CI** runs fast pytest (SQLite, inline jobs) — see [ci.md](./ci.md).
+Pre-merge **CI** runs fast pytest (SQLite, inline jobs) **and** this staging acceptance suite as a required quality-gate job — see [ci.md](./ci.md).
 
-Run staging acceptance **manually** before production cutover:
+Run locally:
 
 ```bash
 make staging-acceptance
 ```
 
-Optional GitHub Actions workflow: `.github/workflows/staging-acceptance.yml` (`workflow_dispatch`).
+On-demand GitHub re-run without the full CI workflow: `.github/workflows/staging-acceptance.yml` (`workflow_dispatch`).
 
 Related: [production-runbook.md](./production-runbook.md), [testing/gaps.md](../testing/gaps.md).

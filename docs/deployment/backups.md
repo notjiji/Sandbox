@@ -48,7 +48,7 @@ docker compose -f docker-compose.prod.yml stop backend celery-worker celery-beat
 make backup-restore FILE=postgres/sandbox-YYYYMMDD-HHMMSS.dump.enc
 docker compose -f docker-compose.prod.yml start backend celery-worker celery-beat
 
-# CI / pre-release verification (ephemeral stack)
+# Required CI quality-gate job (ephemeral stack)
 make backup-integration-test
 ```
 
@@ -99,7 +99,7 @@ Generate passphrase: `openssl rand -hex 32`
 | **Frequency** | Daily 02:00 UTC (cron in backup service) |
 | **Retention** | 7 days (`BACKUP_RETENTION_DAYS`) |
 | **Storage** | Encrypted on `backup_storage` volume; optional S3 |
-| **Restore test** | Monthly + `make backup-integration-test` / `tests/test_backup_restore.py` |
+| **Restore test** | Required CI job + monthly cron + `make backup-integration-test` / `tests/test_backup_restore.py` |
 | **Before migrations** | Run `make backup-now` before `alembic upgrade head` on production |
 
 ### What a Postgres backup must include

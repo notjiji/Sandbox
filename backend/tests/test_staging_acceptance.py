@@ -417,6 +417,7 @@ def _run_product_story(api: StagingClient, *, compose_env: dict[str, str] | None
     }
 
 
+@pytest.mark.docker
 @pytest.mark.integration
 @pytest.mark.skipif(not _docker_available(), reason="Docker not available")
 def test_staging_acceptance_full_workflow() -> None:

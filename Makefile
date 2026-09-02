@@ -1,4 +1,4 @@
-.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test ci prod-up prod-down prod-migrate prod-build prod-edge-up prod-edge-down prod-edge-migrate staging-migrate staging-up staging-down staging-acceptance backup-now backup-restore backup-restore-test backup-integration-test
+.PHONY: up down build migrate migrate-down seed logs shell backend-logs monitoring test ci ci-full prod-up prod-down prod-migrate prod-build prod-edge-up prod-edge-down prod-edge-migrate staging-migrate staging-up staging-down staging-acceptance backup-now backup-restore backup-restore-test backup-integration-test
 
 up:
 	docker compose up -d
@@ -33,7 +33,7 @@ monitoring:
 	@echo "Loki:     http://localhost:3100"
 
 test:
-	cd backend && pip install -q -r requirements-dev.txt && python -m pytest tests app -q
+	cd backend && pip install -q -r requirements-dev.txt && python -m pytest tests app -q -m "not docker"
 
 ci: test
 	cd frontend && npm ci && npm run build
@@ -41,6 +41,9 @@ ci: test
 	bash scripts/ci/check-secrets.sh
 	bash scripts/ci/check-test-inventory.sh
 	bash scripts/ci/validate-edge.sh
+
+# Local equivalent of the GitHub quality gate (includes Docker staging e2e + restore drill).
+ci-full: ci backup-integration-test staging-acceptance
 
 prod-build:
 	docker compose -f docker-compose.prod.yml build

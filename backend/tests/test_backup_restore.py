@@ -47,6 +47,7 @@ def _compose_run_backup(command: str, *, passphrase: str) -> subprocess.Complete
     )
 
 
+@pytest.mark.docker
 @pytest.mark.integration
 @pytest.mark.skipif(not _docker_available(), reason="Docker not available")
 def test_backup_restore_integration() -> None:

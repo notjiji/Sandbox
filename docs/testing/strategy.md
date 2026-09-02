@@ -4,10 +4,10 @@
 
 ```bash
 make test
-# → cd backend && pip install -q -r requirements-dev.txt && python -m pytest tests app -q
+# → cd backend && pip install -q -r requirements-dev.txt && python -m pytest tests app -q -m "not docker"
 ```
 
-`pytest.ini`: `testpaths = tests app`, files `test_*.py`, `*_test.py`, `tests.py`, `lifecycle_tests.py`. Marker: `integration`.
+`pytest.ini`: `testpaths = tests app`, files `test_*.py`, `*_test.py`, `tests.py`, `lifecycle_tests.py`. Markers: `integration`, `docker` (Compose suites; required CI jobs via `make staging-acceptance` and `make backup-integration-test`).
 
 ## Layers
 
