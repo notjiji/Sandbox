@@ -4,6 +4,8 @@
 
 This README is the front door. Detailed truth lives under [`docs/`](docs/README.md).
 
+V1 is a **single-node Docker Compose** application behind a **Caddy HTTPS** edge. Production readiness is validated through automated tests, staging end-to-end testing, security checks, persistence testing (durable PDF after restart), and a database restore drill. The platform does **not** provide HA, autoscaling, multi-region deployment, enterprise SLA guarantees, or a dedicated WAF / secrets-management product.
+
 ---
 
 ## What is this?
@@ -30,15 +32,18 @@ It is **not** a general-purpose attack platform. Scanning is authorized against 
 
 ## Architecture
 
-Modular monolith: one FastAPI app, PostgreSQL, Redis, Celery, React SPA, nginx edge.
+V1 production is a **single-node Docker Compose** app. Public HTTPS is **Caddy** (`docker-compose.edge.yml`) in front of app nginx. There is no HA, autoscaling, multi-region, enterprise SLA, WAF, or in-repo secrets vault.
 
 ```
-Browser
-   │
-   ▼
-Nginx (:80)
-   ├─ /        → Frontend (Vite / React)
-   └─ /api/*   → Backend (FastAPI :8000)
+User
+ │  HTTPS :443
+ ▼
+Caddy (TLS, Let's Encrypt)
+ │  HTTP (internal)
+ ▼
+Nginx
+ ├─ /        → Frontend (React static)
+ └─ /api/*   → Backend (FastAPI :8000)
                     │
         ┌───────────┼───────────┐
         ▼           ▼           ▼
@@ -49,8 +54,11 @@ Nginx (:80)
               Plugin pipeline → findings → risk → audit bus
 ```
 
+Local development skips Caddy and uses nginx on `:80` (`docker-compose.yml`). Postgres/Redis stay on the host for debugging.
+
 Full diagrams: [docs/architecture/system.md](docs/architecture/system.md).  
-Why these choices: [docs/architecture/decisions/](docs/architecture/decisions/README.md).
+Why these choices: [docs/architecture/decisions/](docs/architecture/decisions/README.md).  
+Production HTTPS: [docs/deployment/tls-edge.md](docs/deployment/tls-edge.md).
 
 ---
 
@@ -63,7 +71,7 @@ Why these choices: [docs/architecture/decisions/](docs/architecture/decisions/RE
 - Scheduled scans (Celery beat)
 - Security Intelligence dashboard with selectable history ranges (7d / 30d / 90d / 1y)
 - Hash-chained audit logs + integrity API
-- Compose stack with Prometheus, Grafana, Loki
+- Dev Compose stack with Prometheus, Grafana, Loki (not in the production compose file)
 
 ---
 
@@ -75,10 +83,10 @@ Why these choices: [docs/architecture/decisions/](docs/architecture/decisions/RE
 | Jobs | Celery, Redis |
 | DB | PostgreSQL 16 |
 | Frontend | React 19, TypeScript, Vite, Tailwind, TanStack Query |
-| Edge | nginx |
-| Observability | Prometheus, Grafana, Loki, Promtail |
+| Edge | nginx (app); Caddy (production TLS) |
+| Observability | Prometheus, Grafana, Loki, Promtail (dev Compose only) |
 | Agent | Python monitoring agent (read-only) |
-| Runtime | Docker Compose |
+| Runtime | Docker Compose (one replica of each service) |
 
 ---
 
@@ -93,11 +101,13 @@ UI product screenshots are not checked into the repo yet. Auth and token flow di
 | Token lifecycle | ![Token lifecycle](docs/diagrams/token%20lifecycle.png) |
 | Enforcement | ![Enforcement](docs/diagrams/enforcement%20mechanism.png) |
 
-After seeding demo data, open http://localhost for the live UI. Contributions welcome under `docs/screenshots/`.
+After seeding **demo** data on the local stack, open http://localhost for the live UI. Contributions welcome under `docs/screenshots/`.
 
 ---
 
-## Quick start
+## Quick start (local / demo)
+
+This is the **dev** stack (`sandbox-dev`). It is not production. `make seed` is optional and **must not** run on the prod stack.
 
 **Prerequisites:** Docker Compose v2, free ports (80, 5432, 6379, 3000, …).
 
@@ -107,7 +117,7 @@ cd sandbox
 cp .env.example .env          # keep SECRET_KEY / JWT_SECRET ≥ 32 chars
 docker compose up -d          # or: make up
 make migrate                  # required — schema is not applied automatically
-make seed                     # optional demo tenant
+make seed                     # optional Demo Corp tenant
 ```
 
 | What | URL / value |
@@ -130,7 +140,15 @@ Full boot sequence: [docs/deployment/installation.md](docs/deployment/installati
 
 ## Environment variables
 
-Copy [`.env.example`](.env.example) → `.env`. Required always:
+| Stack | Template | Compose |
+|-------|----------|---------|
+| Local / demo | [`.env.example`](.env.example) | `docker-compose.yml` |
+| Staging | [`.env.staging.example`](.env.staging.example) | `docker-compose.prod.yml` + `docker-compose.staging.yml` |
+| Production | [`.env.production.example`](.env.production.example) | `docker-compose.prod.yml` + `docker-compose.edge.yml` |
+
+Copy the matching template → `.env`. Do not commit `.env`. Demo and production use **separate Compose projects and volumes** (`sandbox-dev` vs `sandbox-prod`); the database name is `sandbox` in both.
+
+Required always:
 
 | Variable | Purpose |
 |----------|---------|
@@ -139,16 +157,22 @@ Copy [`.env.example`](.env.example) → `.env`. Required always:
 | `JWT_SECRET` | JWT signing (≥ 32 chars) |
 | `REDIS_URL` | Celery + rate limits + lockout |
 
+Production also requires (startup fails otherwise):
+
+| Variable | Purpose |
+|----------|---------|
+| `ENVIRONMENT=production` | Enables the production validator |
+| `RESEND_API_KEY` | Transactional email |
+| `BACKUP_ENCRYPTION_PASSPHRASE` | Encrypted Postgres backups |
+| `FRONTEND_URL` / `PUBLIC_API_URL` / `CORS_ORIGINS` | Public **HTTPS** origins (not localhost) |
+| `EDGE_DOMAIN` / `ACME_EMAIL` | Caddy site + Let's Encrypt |
+
 Notable optionals:
 
 | Variable | Purpose |
 |----------|---------|
-| `ENVIRONMENT` | `development` \| `staging` \| `production` |
-| `OPENAI_API_KEY` | Live AI; empty = offline / degraded |
-| `RESEND_API_KEY` | Email; **required** when `ENVIRONMENT=production` |
+| `OPENAI_API_KEY` | Live AI; empty = offline / degraded. Production needs this if `AI_ENABLED=true` |
 | `AUDIT_SIEM_SINK` | `none` \| `syslog` \| `splunk` \| `elk` \| `sentinel` |
-| `CORS_ORIGINS` | Comma-separated allowed origins |
-| `FRONTEND_URL` / `PUBLIC_API_URL` | Links in email and agent install |
 
 Compose overrides `POSTGRES_HOST=postgres` and Redis URL inside containers.
 
@@ -161,13 +185,15 @@ Full reference: [docs/deployment/configuration.md](docs/deployment/configuration
 ```bash
 make test
 # equivalent:
-# cd backend && pip install -r requirements-dev.txt && python -m pytest tests app -q
+# cd backend && pip install -r requirements-dev.txt && python -m pytest tests app -q -m "not docker"
 ```
 
 Covers backend integration and unit tests (auth, RBAC, isolation, scans, audit, dashboard, …).  
 There is **no** frontend Jest/Vitest suite in V1 (`npm run typecheck` / `npm run build` only).
 
-**CI:** every push/PR runs pytest, frontend build, production Docker build, secret checks, staging acceptance, and a database restore drill — [docs/deployment/ci.md](docs/deployment/ci.md). Local fast gate: `make ci`. Full local gate: `make ci-full`.
+**CI quality gate** (every push/PR): pytest, frontend build, production Docker build, Caddy validate, secret checks, **staging end-to-end**, and a **database restore drill**. That is the automated proof for production readiness — [docs/deployment/ci.md](docs/deployment/ci.md).
+
+Local: `make ci` (fast). Full gate: `make ci-full`.
 
 Strategy and gaps: [docs/testing/](docs/testing/README.md).
 
@@ -175,16 +201,30 @@ Strategy and gaps: [docs/testing/](docs/testing/README.md).
 
 ## Deployment
 
+**Local / demo** uses `docker-compose.yml` + `.env.example` + optional `make seed` (`demo-corp`, `owner@demo.sandbox`).  
+**Production** is a different stack and volume. Never seed it.
+
+```bash
+cp .env.production.example .env
+# replace every CHANGE-ME / example.com; set EDGE_DOMAIN, ACME_EMAIL, HTTPS URLs, Resend, backup passphrase
+# DNS for EDGE_DOMAIN must already point at this host
+make prod-edge-migrate
+make prod-edge-up
+```
+
+Traffic: `Internet → HTTPS :443 → Caddy → nginx → frontend + /api`. Firewall: 80 and 443 only.
+
+The platform does **not** provide HA, autoscaling, multi-region, an enterprise SLA, a WAF, or a dedicated secrets-management product. Secrets live in `.env` (operator vault is outside this repo).
+
 | Doc | Use |
 |-----|-----|
-| [Installation](docs/deployment/installation.md) | Clone → `.env` → Compose → migrate |
+| [Installation](docs/deployment/installation.md) | Local clone → `.env` → Compose → migrate |
+| [TLS edge](docs/deployment/tls-edge.md) | Caddy HTTPS, Let's Encrypt, bring-your-own proxy |
 | [Production](docs/deployment/production.md) | Validator gates and hardening |
-| [CI quality gate](docs/deployment/ci.md) | GitHub Actions — pytest, build, secrets, staging e2e, restore drill |
+| [CI quality gate](docs/deployment/ci.md) | GitHub Actions — tests, secrets, staging e2e, restore drill |
 | [Production runbook](docs/deployment/production-runbook.md) | Startup, health, logs, restart, incidents |
 | [Backups](docs/deployment/backups.md) | Daily Postgres / retention / restore; Redis is ephemeral |
 | [Troubleshooting](docs/deployment/troubleshooting.md) | Common failures |
-
-Production requires non-default secrets, a real `POSTGRES_PASSWORD`, and `RESEND_API_KEY`. Compose as shipped is a **dev stack** (reload, bind mounts, default Grafana).
 
 ---
 
@@ -210,13 +250,17 @@ sandbox/
 ├── backend/            # FastAPI app, Alembic, Celery, plugins, tests
 ├── frontend/           # React + Vite SPA
 ├── docs/               # Product, architecture, security, deployment (source of truth)
-├── infrastructure/     # nginx, Prometheus, Grafana, Loki configs
+├── infrastructure/     # nginx, Caddy, backup, Prometheus/Grafana/Loki (dev)
 ├── scanner-sdk/        # Shared scanner contracts / SDK
 ├── scripts/            # Utility scripts
 ├── shared/             # Shared packages (if any)
-├── docker-compose.yml
+├── docker-compose.yml              # local / demo (sandbox-dev)
+├── docker-compose.prod.yml         # production data plane (sandbox-prod)
+├── docker-compose.edge.yml         # Caddy HTTPS overlay
 ├── Makefile
-└── .env.example
+├── .env.example
+├── .env.staging.example
+└── .env.production.example
 ```
 
 ---
@@ -259,6 +303,7 @@ A serious project states its boundaries. Highlights:
 - Dashboard trend charts are simplified
 - Automated Postgres backups in production Compose ([backups](docs/deployment/backups.md))
 - Redis is ephemeral — not business data
+- Single-node Compose only — no HA, autoscaling, multi-region, published SLA, WAF, or vault product
 
 Full list: **[docs/known-limitations.md](docs/known-limitations.md)**.
 
@@ -271,7 +316,9 @@ Full list: **[docs/known-limitations.md](docs/known-limitations.md)**.
 | `make up` | `docker compose up -d` |
 | `make down` | Stop containers (volumes kept) |
 | `make migrate` | `alembic upgrade head` |
-| `make seed` | Demo tenant |
+| `make seed` | Demo tenant (dev stack only — never on prod) |
+| `make prod-edge-migrate` | Alembic on prod + Caddy compose |
+| `make prod-edge-up` | Production stack behind Caddy |
 | `make logs` | Follow all logs |
 | `make backend-logs` | API + Celery |
 | `make test` | Backend pytest |
