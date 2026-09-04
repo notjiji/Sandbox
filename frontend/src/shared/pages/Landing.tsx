@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Shield, Terminal, Zap, type LucideIcon } from "lucide-react";
 import PageShell from "@/shared/layouts/PageShell";
 import GlitchText from "@/shared/components/GlitchText";
-import ScanBeam from "@/shared/components/ScanBeam";
 
 const features: Array<{ icon: LucideIcon; title: string; desc: string }> = [
   {
@@ -39,8 +38,6 @@ const item = {
 export default function Landing() {
   return (
     <PageShell>
-      <ScanBeam />
-
       <section className="mx-auto max-w-6xl px-6 py-20 md:py-28">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
