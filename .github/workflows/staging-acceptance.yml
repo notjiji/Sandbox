@@ -23,7 +23,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install test dependencies
-        run: pip install httpx pytest
+        run: pip install -r backend/requirements-dev.txt
 
       - name: Run staging acceptance
         run: bash scripts/staging/run-acceptance.sh

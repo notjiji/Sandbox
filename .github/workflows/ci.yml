@@ -126,7 +126,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install test dependencies
-        run: pip install httpx pytest
+        run: pip install -r backend/requirements-dev.txt
 
       - name: Staging acceptance (workers, PDF after restart, audit)
         run: make staging-acceptance

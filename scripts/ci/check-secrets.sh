@@ -13,7 +13,7 @@ fail() {
 echo "Checking for tracked .env files (must not commit real env)..."
 while IFS= read -r tracked; do
   case "${tracked}" in
-    .env.example|.env.production.example) continue ;;
+    .env.example|.env.production.example|.env.staging.example) continue ;;
     .env|.env.*)
       fail "tracked env file must not be committed: ${tracked}"
       ;;
@@ -28,7 +28,7 @@ mapfile -t files < <(git ls-files \
   'infrastructure/**' \
   'docker-compose*.yml' \
   'Makefile' \
-  | grep -Ev '(^docs/|\.env\.example$|\.env\.production\.example$|scripts/ci/check-secrets\.sh$)' || true)
+  | grep -Ev '(^docs/|\.env\.example$|\.env\.production\.example$|\.env\.staging\.example$|scripts/ci/check-secrets\.sh$)' || true)
 
 patterns=(
   'CHANGE-ME'

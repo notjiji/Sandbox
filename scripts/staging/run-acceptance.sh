@@ -37,5 +37,5 @@ for name in (".env", ".env.staging.acceptance"):
 PY
 
 cd backend
-pip install -q httpx
+pip install -q -r requirements-dev.txt
 python -m pytest tests/test_staging_acceptance.py -q "$@"
